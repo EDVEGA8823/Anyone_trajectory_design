@@ -1,0 +1,133 @@
+@charset "UTF-8";
+/* CSSを書くところ */
+h1 {
+  color: black;
+}
+/* h3 {
+        margin: 2px;
+      } */
+
+ul {
+  display: table;
+  margin-left: auto;
+  padding: 0;
+  width: 40%;
+  text-align: center;
+}
+
+ul li {
+  display: table-cell;
+  min-width: 10px;
+}
+
+ul li a {
+  display: block;
+  width: 100%;
+  padding: 10px 0;
+  text-decoration: none;
+  color: #555;
+}
+
+ul li.current {
+  background-color: #deebf7;
+}
+ul li:hover {
+  background-color: #eae9e9;
+}
+
+#main_area {
+  margin: 0;
+  display: flex;
+  flex-direction: row; /* 横方向に配置 */
+  height: calc(100vh - 90px); /* 画面全体の高さに設定 */
+}
+#graph-panel {
+  flex: 1; /* 左側を幅の50%に設定 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#UI-panel {
+  flex: 1; /* 左側を幅の50%に設定 */
+  display: flex;
+}
+
+/* --- BOXの定義 -------------------------------------------------*/
+.control-panel {
+  flex: 1;
+  position: relative; /* タイトル用に親要素定義  */
+  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
+  margin: 2px; /* BOXの位置               */
+  max-width: 500px; /* BOXの最大横幅           */
+  background: #fff; /* BOXの背景色             */
+  padding: 33px 10px 25px 10px; /* BOX内の余白             */
+  border: 3px solid #0059b3; /* BOXの枠線               */
+}
+
+/* --- タイトル部分の定義 ----------------------------------------*/
+.control-panel::before {
+  position: absolute; /* 親からの相対位置の定義  */
+  display: inline-block; /* インラインボックス定義  */
+  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
+  line-height: 1; /* 1行の高さを初期化       */
+  background: #0059b3; /* タイトル背景色          */
+  color: #ffffff; /* タイトルの文字色        */
+  content: attr(title); /* タイトルに[title]を表示 */
+  font-weight: bold; /* タイトルは太字          */
+  padding: 8px 13px; /* タイトル内の余白        */
+  top: -17px; /* タイトル上位置はマイナス*/
+  left: 16px; /* タイトル右位置は1文字分 */
+  border-radius: 5px; /* タイトルの角丸          */
+  font-size: 16px; /* タイトルの文字サイズ    */
+}
+
+/* モバイル用のメディアクエリ */
+@media (max-aspect-ratio: 1/1) {
+  #main_area {
+    flex-direction: column; /* 縦方向のレイアウト */
+    flex: 0 0 auto; /* サイズを自動調整 */
+    height: auto; /* 高さは自動調整 */
+  }
+}
+
+#panel-title1 {
+  position: absolute;
+  top: -10px;
+}
+
+
+.sequence{
+    display: flex;              /* Flexboxを使用 */
+    justify-content: space-between; /* 左右端に配置 */
+    flex: 1;
+    position: relative; /* タイトル用に親要素定義  */
+    box-sizing: border-box; /* 罫線・余白も含む大きさ  */
+    margin: 2px; /* BOXの位置               */
+    max-width: 500px; /* BOXの最大横幅           */
+    background: #fff; /* BOXの背景色             */
+    padding: 20px 20px 15px 20px; /* BOX内の余白             */
+    border: 3px solid #0059b3; /* BOXの枠線               */
+    font-weight: bold;
+  }
+  
+  /* --- タイトル部分の定義 ----------------------------------------*/
+  .sequence::before {
+    position: absolute; /* 親からの相対位置の定義  */
+    display: inline-block; /* インラインボックス定義  */
+    box-sizing: border-box; /* 罫線・余白も含む大きさ  */
+    line-height: 1; /* 1行の高さを初期化       */
+    background: #0059b3; /* タイトル背景色          */
+    color: #ffffff; /* タイトルの文字色        */
+    content: attr(title); /* タイトルに[title]を表示 */
+    font-weight: bold; /* タイトルは太字          */
+    padding: 8px 13px; /* タイトル内の余白        */
+    top: -17px; /* タイトル上位置はマイナス*/
+    left: 16px; /* タイトル右位置は1文字分 */
+    border-radius: 5px; /* タイトルの角丸          */
+    font-size: 16px; /* タイトルの文字サイズ    */
+  }
+  .propaty{
+    font-size: 30px;
+  }
