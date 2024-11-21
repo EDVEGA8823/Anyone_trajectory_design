@@ -14,14 +14,33 @@
       <div id="plot"></div>
     </div>
     <div id="UI-panel">
-      <div class="control-panel" title="軌道の調整">
-        <label for="propaty">出発惑星</label>
-        <select name="propaty" id="propaty">
-        </select>
-        <input type="datetime-local" id="date_time" value="2024-11-20T12:00">
-      </div>
-      <div class="control-panel" title="ミッションシーケンス">
+      <div class="sequence-panel" title="ミッションシーケンス">
         <div id="sequence"></div>
+      </div>
+      <div class="control-panel" title="軌道の調整">
+        <div class="row_box">
+        <div class="red">打上げ</div>
+          <div class="column">
+            <label for="propaty">天体</label>
+            <select id="propaty"></select>
+          </div>
+        </div>
+
+        <div class="column_box">
+            <label for="date_time">時刻</label>
+            <input type="datetime-local" id="date_time" value="2024-11-20T12:00" />
+            <div class="row-center">
+              <a id="D_1year" class="triangle-left"></a>
+              <a id="D_1month" class="triangle-left"></a>
+              <a id="D_5day" class="triangle-left"></a>
+              <a id="D_1day" class="triangle-left"></a>
+              <a id="U_1day" class="triangle-right"></a>
+              <a id="U_5day" class="triangle-right"></a>
+              <a id="U_1month" class="triangle-right"></a>
+              <a id="U_1year" class="triangle-right"></a>
+            </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -36,4 +55,5 @@
 
   <script src="./js/plot.js"></script>
   <script src="./js/main.js"></script>
+  <script src="./js/event.js"></script>
 </body>

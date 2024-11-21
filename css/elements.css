@@ -56,18 +56,51 @@ ul li:hover {
 
 /* --- BOXの定義 -------------------------------------------------*/
 .control-panel {
-  flex: 1;
+  flex: 2.2;
   position: relative; /* タイトル用に親要素定義  */
+  display: flex; /* Flexboxを使用 */
+  flex-direction: column; /* 縦方向のレイアウト */
   box-sizing: border-box; /* 罫線・余白も含む大きさ  */
   margin: 2px; /* BOXの位置               */
-  max-width: 500px; /* BOXの最大横幅           */
+  max-width: 1000px; /* BOXの最大横幅           */
   background: #fff; /* BOXの背景色             */
-  padding: 33px 10px 25px 10px; /* BOX内の余白             */
+  padding: 40px 10px 25px 10px; /* BOX内の余白             */
   border: 3px solid #0059b3; /* BOXの枠線               */
 }
 
 /* --- タイトル部分の定義 ----------------------------------------*/
 .control-panel::before {
+  position: absolute; /* 親からの相対位置の定義  */
+  display: inline-block; /* インラインボックス定義  */
+  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
+  line-height: 1; /* 1行の高さを初期化       */
+  background: #6eb4fa; /* タイトル背景色          */
+  color: #ffffff; /* タイトルの文字色        */
+  content: attr(title); /* タイトルに[title]を表示 */
+  font-weight: bold; /* タイトルは太字          */
+  padding: 8px 13px; /* タイトル内の余白        */
+  top: -17px; /* タイトル上位置はマイナス*/
+  left: 16px; /* タイトル右位置は1文字分 */
+  border-radius: 5px; /* タイトルの角丸          */
+  font-size: 20px; /* タイトルの文字サイズ    */
+}
+
+.sequence-panel {
+  flex: 1;
+  position: relative; /* タイトル用に親要素定義  */
+  display: flex; /* Flexboxを使用 */
+  flex-direction: column; /* 縦方向のレイアウト */
+  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
+  margin: 2px; /* BOXの位置               */
+  max-width: 1000px; /* BOXの最大横幅           */
+  min-width: 250px;
+  background: #fff; /* BOXの背景色             */
+  padding: 40px 10px 25px 10px; /* BOX内の余白             */
+  border: 3px solid #0059b3; /* BOXの枠線               */
+}
+
+/* --- タイトル部分の定義 ----------------------------------------*/
+.sequence-panel::before {
   position: absolute; /* 親からの相対位置の定義  */
   display: inline-block; /* インラインボックス定義  */
   box-sizing: border-box; /* 罫線・余白も含む大きさ  */
@@ -80,7 +113,7 @@ ul li:hover {
   top: -17px; /* タイトル上位置はマイナス*/
   left: 16px; /* タイトル右位置は1文字分 */
   border-radius: 5px; /* タイトルの角丸          */
-  font-size: 16px; /* タイトルの文字サイズ    */
+  font-size: 20px; /* タイトルの文字サイズ    */
 }
 
 /* モバイル用のメディアクエリ */
@@ -97,37 +130,118 @@ ul li:hover {
   top: -10px;
 }
 
+.sequence {
+  display: flex; /* Flexboxを使用 */
+  justify-content: space-between; /* 左右端に配置 */
+  flex: 1;
+  position: relative; /* タイトル用に親要素定義  */
+  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
+  margin: 2px; /* BOXの位置               */
+  max-width: 500px; /* BOXの最大横幅           */
+  background: #fff; /* BOXの背景色             */
+  padding: 20px 20px 15px 20px; /* BOX内の余白             */
+  border: 3px solid #0059b3; /* BOXの枠線               */
+  font-weight: bold;
+}
 
-.sequence{
-    display: flex;              /* Flexboxを使用 */
-    justify-content: space-between; /* 左右端に配置 */
-    flex: 1;
-    position: relative; /* タイトル用に親要素定義  */
-    box-sizing: border-box; /* 罫線・余白も含む大きさ  */
-    margin: 2px; /* BOXの位置               */
-    max-width: 500px; /* BOXの最大横幅           */
-    background: #fff; /* BOXの背景色             */
-    padding: 20px 20px 15px 20px; /* BOX内の余白             */
-    border: 3px solid #0059b3; /* BOXの枠線               */
-    font-weight: bold;
+/* --- タイトル部分の定義 ----------------------------------------*/
+.sequence::before {
+  position: absolute; /* 親からの相対位置の定義  */
+  display: inline-block; /* インラインボックス定義  */
+  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
+  line-height: 1; /* 1行の高さを初期化       */
+  background: #0059b3; /* タイトル背景色          */
+  color: #ffffff; /* タイトルの文字色        */
+  content: attr(title); /* タイトルに[title]を表示 */
+  font-weight: bold; /* タイトルは太字          */
+  padding: 8px 13px; /* タイトル内の余白        */
+  top: -17px; /* タイトル上位置はマイナス*/
+  left: 16px; /* タイトル右位置は1文字分 */
+  border-radius: 5px; /* タイトルの角丸          */
+  font-size: 16px; /* タイトルの文字サイズ    */
+}
+select {
+  border: 1px solid;
+  font-size: 20px;
+  font-weight: bold;
+}
+input {
+  border: 1px solid;
+  font-size: 30px;
+  font-weight: bold;
+}
+label {
+  font-size: 20px;
+  /* line-height: 2; */
+  /* font-weight: bold; */
+}
+.column {
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  /* align-items: center; */
+}
+.row-center {
+    display: flex;
+    flex-flow: row;
+    justify-content: center;
+    align-items: center;
   }
-  
-  /* --- タイトル部分の定義 ----------------------------------------*/
-  .sequence::before {
-    position: absolute; /* 親からの相対位置の定義  */
-    display: inline-block; /* インラインボックス定義  */
-    box-sizing: border-box; /* 罫線・余白も含む大きさ  */
-    line-height: 1; /* 1行の高さを初期化       */
-    background: #0059b3; /* タイトル背景色          */
-    color: #ffffff; /* タイトルの文字色        */
-    content: attr(title); /* タイトルに[title]を表示 */
-    font-weight: bold; /* タイトルは太字          */
-    padding: 8px 13px; /* タイトル内の余白        */
-    top: -17px; /* タイトル上位置はマイナス*/
-    left: 16px; /* タイトル右位置は1文字分 */
-    border-radius: 5px; /* タイトルの角丸          */
-    font-size: 16px; /* タイトルの文字サイズ    */
-  }
-  .propaty{
-    font-size: 30px;
-  }
+.row {
+  display: flex;
+  flex-flow: row;
+  /* justify-content: center; */
+  justify-content: space-between;
+  align-items: center;
+}
+.column_box {
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  /* align-items: center; */
+  border: 1px solid #000000;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 2px;
+}
+.row_box {
+  display: flex;
+  flex-flow: row;
+  /* justify-content: center; */
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #000000;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 2px;
+}
+.red {
+  color: red;
+  font-size: 30;
+  font-weight: bold;
+}
+
+
+.triangle-left{
+    border-style: solid;
+    border-width: 10px 10px 10px 0;
+    border-color: transparent #128c8e transparent transparent;
+    display: inline-block;
+    width: 0;
+    height: 0;
+}
+.triangle-left:active {
+    transform: translateY(2px);
+}
+
+.triangle-right{
+    border-style: solid;
+    border-width: 10px 0 10px 10px;
+    border-color: transparent transparent transparent #fb3c3c;
+    display: inline-block;
+    width: 0;
+    height: 0;
+}
+.triangle-right:active {
+    transform: translateY(2px);
+}

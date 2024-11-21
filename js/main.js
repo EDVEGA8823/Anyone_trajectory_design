@@ -18,7 +18,7 @@ planets = [2];
 function make_launch_sequence() {
   const sequence = document.getElementById("sequence");
   sequence.innerHTML =
-    `<div class="sequence" title="打ち上げ"><span>` +
+    `<div class="sequence" title="打上げ"><span>` +
     planet_list[planets[0]] +
     `</span> <span>` +
     JulianToDate(dates[0]).toLocaleDateString() +
@@ -26,15 +26,6 @@ function make_launch_sequence() {
 }
 
 function make_launch_propaty() {
-  //   const propaty = document.getElementById("propaty");
-  //   propaty.innerHTML = `
-  //   <label for="planet">出発天体</label>
-  //     <select id="planet">
-  //       <option value="Mercury">水星</option>
-  //       <option value="Venus" selected>金星</option>
-  //       <option value="Earth" selected>地球</option>
-  //     </select>
-  //     `;
   const select = document.getElementById("propaty");
   //   const select = document.querySelector('select[name="propaty"]');
 
@@ -58,11 +49,14 @@ function make_launch_propaty() {
 
   const date_time = document.getElementById("date_time");
   date_time.value = JulianToDate(dates[0])
-    .toLocaleString()
-    .replace(" ", "T")
-    .replace("/", "-")
-    .replace("/", "-")
-    .slice(0, -3);
+    .toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    .replaceAll("/", "-");
 }
 
 function calc() {
@@ -80,20 +74,13 @@ function calc() {
 function update_plot() {
   let [planet_pos, planet_orbits] = calc();
   d = get_data(planet_pos, planet_orbits, planet_list);
-  Plotly.react("plot", d,layout);
+  Plotly.react("plot", d, layout);
 }
 function make_plot() {
   let [planet_pos, planet_orbits] = calc();
   d = get_data(planet_pos, planet_orbits, planet_list);
-  Plotly.newPlot("plot", d,layout);
+  Plotly.newPlot("plot", d, layout);
 }
-
-let date_time=document.getElementById("date_time");
-date_time.addEventListener("change", function(){
-    dates[0] = DateToJulian(new Date(date_time.value));
-    update_plot();
-    make_launch_sequence();
-});
 
 make_plot();
 updateLayout();
