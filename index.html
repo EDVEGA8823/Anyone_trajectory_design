@@ -27,7 +27,7 @@
         <div id="sequence"></div>
       </div>
       <div class="control-panel" title="軌道の調整">
-        <div class="row_box">
+        <div class="row box">
         <div class="red">打上げ</div>
           <div class="column">
             <label for="propaty">天体</label>
@@ -35,18 +35,26 @@
           </div>
         </div>
 
-        <div class="column_box">
+        <div class="column box">
             <label for="date_time">時刻</label>
             <input type="datetime-local" id="date_time" value="2024-11-20T12:00" />
             <div class="row-center">
-              <a id="D_1year" class="triangle-left"></a>
-              <a id="D_1month" class="triangle-left"></a>
-              <a id="D_5day" class="triangle-left"></a>
-              <a id="D_1day" class="triangle-left"></a>
-              <a id="U_1day" class="triangle-right"></a>
-              <a id="U_5day" class="triangle-right"></a>
-              <a id="U_1month" class="triangle-right"></a>
-              <a id="U_1year" class="triangle-right"></a>
+            <div class="t_button" id="D_1year"> </div>
+            <div class="t_button" id="D_1month"></div>
+            <div class="t_button" id="D_5day"  ></div>
+            <div class="t_button" id="D_1day"  ></div>
+            <div class="t_button" id="U_1day"  ></div>
+            <div class="t_button" id="U_5day"  ></div>
+            <div class="t_button" id="U_1month"></div>
+            <div class="t_button" id="U_1year" ></div>
+              <!-- <a   >a</a>
+              <a id="D_1month" class="t_button">a</a>
+              <a id="D_5day"   class="t_button">a</a>
+              <a id="D_1day"   class="t_button">a</a>
+              <a id="U_1day"   class="t_button">a</a>
+              <a id="U_5day"   class="t_button">a</a>
+              <a id="U_1month" class="t_button">a</a>
+              <a id="U_1year"  class="t_button">a</a> -->
             </div>
         </div>
 

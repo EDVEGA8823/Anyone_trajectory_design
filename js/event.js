@@ -46,7 +46,7 @@ U_1month.addEventListener("click", function () {
 });
 U_1year.addEventListener("click", function () {
   d = JulianToDate(dates[0]);
-  console.log(d.getYear())
+  console.log(d.getYear());
   d.setFullYear(d.getFullYear() + 1);
   dates[0] = DateToJulian(d);
   Update_time();
@@ -105,7 +105,10 @@ for (let i = 0; i < change_day.length; i++) {
   });
 
   // スマホ対応 (タッチイベント)
+
+  //   change_day[i].addEventListener("to")
   change_day[i].addEventListener("touchstart", (e) => {
+    change_day[i].click();
     e.preventDefault(); // デフォルト動作を防止
     if (is_pushed[i]) return;
     is_pushed[i] = setInterval(() => {

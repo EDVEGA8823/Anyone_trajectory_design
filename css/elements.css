@@ -182,66 +182,117 @@ label {
   /* align-items: center; */
 }
 .row-center {
-    display: flex;
-    flex-flow: row;
-    justify-content: center;
-    align-items: center;
-  }
+  display: flex;
+  flex-flow: row;
+  justify-content: center;
+  align-items: center;
+}
 .row {
   display: flex;
   flex-flow: row;
-  /* justify-content: center; */
   justify-content: space-between;
   align-items: center;
 }
-.column_box {
-  display: flex;
-  flex-flow: column;
-  justify-content: center;
-  /* align-items: center; */
+.box {
   border: 1px solid #000000;
   border-radius: 10px;
   padding: 10px;
   margin: 2px;
 }
-.row_box {
-  display: flex;
-  flex-flow: row;
-  /* justify-content: center; */
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid #000000;
-  border-radius: 10px;
-  padding: 10px;
-  margin: 2px;
-}
+
 .red {
   color: red;
   font-size: 30;
   font-weight: bold;
 }
 
+.t_button {
+  margin: 5pt;
+  height: 100px;
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
+}
 
-.triangle-left{
+#D_1year {
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  background-color: blue;
+}
+
+#D_1month {
+  clip-path: polygon(0% 50%, 100% 10%, 100% 90%);
+  background-color: rgb(100, 100, 255);
+}
+#D_5day {
+  clip-path: polygon(0% 50%, 100% 20%, 100%80%);
+  background-color: rgb(150, 150, 255);
+}
+#D_1day {
+  clip-path: polygon(10% 50%, 90% 30%, 90% 70%);
+  background-color: rgb(170, 170, 255);
+}
+#U_1year {
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  background-color: red;
+}
+#U_1month {
+  clip-path: polygon(0 10%, 100% 50%, 0 90%);
+  background-color: rgb(255, 100, 100);
+}
+#U_5day {
+  clip-path: polygon(0 20%, 100% 50%, 0 80%);
+  background-color: rgb(255, 150, 150);
+}
+#U_1day {
+  clip-path: polygon(10% 30%, 90% 50%, 10% 70%);
+  background-color: rgb(255, 170, 170);
+}
+/* #D_1year a {
     border-style: solid;
-    border-width: 10px 10px 10px 0;
+    display: block;
+    border-width: 100% 100% 100% 0;
     border-color: transparent #128c8e transparent transparent;
     display: inline-block;
     width: 0;
     height: 0;
+    position: absolute;
+    
+} */
+.t_button:active {
+  transform: translateY(2px);
 }
-.triangle-left:active {
-    transform: translateY(2px);
+.t_button:hover {
+  background-color: #eae9e9;
 }
+/* .t_button::after {
+  content: "";
+  display: inline-block;
+  border-style: solid;
+  border-width: 8px 0 8px 8px;
+  border-color: transparent transparent transparent #fff;
+  display: inline-block;
+  width: 0;
+  height: 0;
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+} */
+/* #D_1year a:before {
+  display: block;
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 25px;
+  width: 0;
+  height: 0;
+  margin-top: -5px;
+  border: 5px solid transparent; 
+  border-left: 5px solid #fff;
+} */
 
-.triangle-right{
-    border-style: solid;
-    border-width: 10px 0 10px 10px;
-    border-color: transparent transparent transparent #fb3c3c;
-    display: inline-block;
-    width: 0;
-    height: 0;
-}
-.triangle-right:active {
-    transform: translateY(2px);
-}
+/* .t_button .triangle_R1::after {
+  display: inline-block;
+  border-style: solid;
+  border-width: 10px 0 10px 10px;
+  border-color: transparent transparent transparent #fb3c3c;
+} */
