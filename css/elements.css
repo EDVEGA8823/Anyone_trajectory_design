@@ -184,7 +184,6 @@ label {
 .row-center {
   display: flex;
   flex-flow: row;
-  justify-content: center;
   align-items: center;
 }
 .row {
@@ -199,52 +198,92 @@ label {
   padding: 10px;
   margin: 2px;
 }
-
+.left_right {
+  display: flex;
+  flex-flow: row;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  /* font-size: 20px; */
+  margin-left: 20px;
+  margin-right: 20px;
+}
 .red {
   color: red;
   font-size: 30;
   font-weight: bold;
 }
+.blue {
+    color: rgb(0, 60, 255);
+    font-size: 30;
+    font-weight: bold;
+  }
 
 .t_button {
-  margin: 5pt;
-  height: 100px;
+  height: 80px;
   display: flex; /* Flexboxを使用 */
   flex: 1;
+  flex-flow: column;
+  user-select: none;
+  text-align: center;
 }
 
-#D_1year {
+.D_1year {
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
   clip-path: polygon(0 50%, 100% 0, 100% 100%);
   background-color: blue;
+  margin: 5pt;
 }
 
-#D_1month {
+.D_1month {
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
   clip-path: polygon(0% 50%, 100% 10%, 100% 90%);
   background-color: rgb(100, 100, 255);
+  margin: 5pt;
 }
-#D_5day {
+.D_5day {
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
   clip-path: polygon(0% 50%, 100% 20%, 100%80%);
   background-color: rgb(150, 150, 255);
+  margin: 5pt;
 }
-#D_1day {
+.D_1day {
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
   clip-path: polygon(10% 50%, 90% 30%, 90% 70%);
   background-color: rgb(170, 170, 255);
+  margin: 5pt;
 }
-#U_1year {
+.U_1year {
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
   clip-path: polygon(0 0, 100% 50%, 0 100%);
   background-color: red;
+  margin: 5pt;
 }
-#U_1month {
+.U_1month {
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
   clip-path: polygon(0 10%, 100% 50%, 0 90%);
   background-color: rgb(255, 100, 100);
+  margin: 5pt;
 }
-#U_5day {
+.U_5day {
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
   clip-path: polygon(0 20%, 100% 50%, 0 80%);
   background-color: rgb(255, 150, 150);
+  margin: 5pt;
 }
-#U_1day {
+.U_1day {
+  display: flex; /* Flexboxを使用 */
+  flex: 1;
   clip-path: polygon(10% 30%, 90% 50%, 10% 70%);
   background-color: rgb(255, 170, 170);
+  margin: 5pt;
 }
 /* #D_1year a {
     border-style: solid;

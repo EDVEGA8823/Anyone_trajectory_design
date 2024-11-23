@@ -7,13 +7,18 @@
   <link rel="stylesheet" href="css/elements.css" />
 </head>
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XNQLFPS4RY"></script>
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=G-XNQLFPS4RY"
+></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
 
-  gtag('config', 'G-XNQLFPS4RY');
+  gtag("config", "G-XNQLFPS4RY");
 </script>
 
 <body>
@@ -28,7 +33,7 @@
       </div>
       <div class="control-panel" title="軌道の調整">
         <div class="row box">
-        <div class="red">打上げ</div>
+          <div class="red">打上げ</div>
           <div class="column">
             <label for="propaty">天体</label>
             <select id="propaty"></select>
@@ -36,18 +41,51 @@
         </div>
 
         <div class="column box">
-            <label for="date_time">時刻</label>
-            <input type="datetime-local" id="date_time" value="2024-11-20T12:00" />
-            <div class="row-center">
-            <div class="t_button" id="D_1year"> </div>
-            <div class="t_button" id="D_1month"></div>
-            <div class="t_button" id="D_5day"  ></div>
-            <div class="t_button" id="D_1day"  ></div>
-            <div class="t_button" id="U_1day"  ></div>
-            <div class="t_button" id="U_5day"  ></div>
-            <div class="t_button" id="U_1month"></div>
-            <div class="t_button" id="U_1year" ></div>
-              <!-- <a   >a</a>
+          <label for="date_time"><b>時刻</b></label>
+          <input
+            type="datetime-local"
+            id="date_time"
+            value="2024-11-20T12:00"
+          />
+          <div class="left_right">
+            <span><div class="blue">ー</div></span>
+            <span>時刻変更</span>
+            <span><div class="red">＋</div></span>
+          </div>
+          <div class="row-center">
+            <div class="t_button" id="D_1year">
+              <div class="D_1year"></div>
+              1年
+            </div>
+            <div class="t_button" id="D_1month">
+              <div class="D_1month"></div>
+              1月
+            </div>
+            <div class="t_button" id="D_5day">
+              <div class="D_5day"></div>
+              5日
+            </div>
+            <div class="t_button" id="D_1day">
+              <div class="D_1day"></div>
+              1日
+            </div>
+            <div class="t_button" id="U_1day">
+              <div class="U_1day"></div>
+              1日
+            </div>
+            <div class="t_button" id="U_5day">
+              <div class="U_5day"></div>
+              5日
+            </div>
+            <div class="t_button" id="U_1month">
+              <div class="U_1month"></div>
+              1月
+            </div>
+            <div class="t_button" id="U_1year">
+              <div class="U_1year"></div>
+              1年
+            </div>
+            <!-- <a   >a</a>
               <a id="D_1month" class="t_button">a</a>
               <a id="D_5day"   class="t_button">a</a>
               <a id="D_1day"   class="t_button">a</a>
@@ -55,9 +93,8 @@
               <a id="U_5day"   class="t_button">a</a>
               <a id="U_1month" class="t_button">a</a>
               <a id="U_1year"  class="t_button">a</a> -->
-            </div>
+          </div>
         </div>
-
       </div>
     </div>
   </div>
