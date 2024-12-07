@@ -212,10 +212,15 @@ loader.setCrossOrigin('anonymous'); // クロスオリジン設定
 
 const backgroundTexture =loader.load('./textures/hipp8.jpg');
 
+const sphere = new THREE.Mesh(
+    new THREE.IcosahedronGeometry( 100, 15 ),
+    new THREE.MeshPhongMaterial({
+      map: backgroundTexture,
+    }),
+  );
+  sphere.geometry.scale(-1, 1, 1); //表面を内側に向ける
+  scene.add(sphere);
 
-
-// 背景に設定
-scene.background = backgroundTexture;
 const camera = new THREE.PerspectiveCamera(15, 1, 0.1, 1000);
 camera.position.z = 5;
 const lines = [];
