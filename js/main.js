@@ -82,7 +82,7 @@ function make_plot() {
   Plotly.newPlot("plot", d, layout);
 }
 
-make_plot();
+// make_plot();
 updateLayout();
 
 make_launch_sequence();

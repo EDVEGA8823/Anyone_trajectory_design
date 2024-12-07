@@ -5,6 +5,8 @@
   <script src="./js/lib/vector.js"></script>
   <script src="./js/trajectory.js"></script>
   <link rel="stylesheet" href="css/elements.css" />
+  <script src="https://unpkg.com/three@0.142.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.142.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <!-- Google tag (gtag.js) -->
 <script
@@ -25,7 +27,7 @@
   <h1>だれでも軌道設計</h1>
   <div id="main_area">
     <div id="graph-panel">
-      <div id="plot"></div>
+      <canvas id="plot"></canvas>
     </div>
     <div id="UI-panel">
       <div class="sequence-panel" title="ミッションシーケンス">
