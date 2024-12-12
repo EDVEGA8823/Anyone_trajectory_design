@@ -55,10 +55,13 @@ function get_planet_elements(T, n) {
     return [a, e, i, W, w, E]
 }
 
+function change_coordinate(v){
+    return new THREE.Vector3(v.x,v.z,-v.y)
+}
 function get_orbit(elements) {
     pos = [100]
     for (let i = 0; i < 100; i++) {
-        pos[i] = get_planets_pos_E(elements, 2 * Math.PI * i / 99).mul(1 / AU)
+        pos[i] = change_coordinate(get_planets_pos_E(elements, 2 * Math.PI * i / 99).multiplyScalar(1 / AU))
     }
     return pos
 }
@@ -75,12 +78,12 @@ function get_planets_pos_E(elements, E) {
     let w = elements[4]
     // console.log(E)
 
-    var P_hat = new Vector(
+    var P_hat = new THREE.Vector3(
         Math.cos(w) * Math.cos(W) - Math.sin(w) * Math.sin(W) * Math.cos(i),
         Math.cos(w) * Math.sin(W) + Math.sin(w) * Math.cos(W) * Math.cos(i),
         Math.sin(w) * Math.sin(i)
     );
-    var Q_hat = new Vector(
+    var Q_hat = new THREE.Vector3(
         -Math.sin(w) * Math.cos(W) - Math.cos(w) * Math.sin(W) * Math.cos(i),
         -Math.sin(w) * Math.sin(W) + Math.cos(w) * Math.cos(W) * Math.cos(i),
         Math.cos(w) * Math.sin(i)
@@ -88,7 +91,8 @@ function get_planets_pos_E(elements, E) {
 
     p = a * (1 - e * e)
     r_n = a * (1 - e * Math.cos(E))
-    r = Vector.add(P_hat.mul(a * (Math.cos(E) - e)), Q_hat.mul(Math.sqrt(a * p) * Math.sin(E)))
+    r =new THREE.Vector3()
+    r.addVectors(P_hat.multiplyScalar(a * (Math.cos(E) - e)), Q_hat.multiplyScalar(Math.sqrt(a * p) * Math.sin(E)))
 
     return r
     // return rotate_x(x, y, i, w, W)

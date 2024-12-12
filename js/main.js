@@ -65,7 +65,9 @@ function calc() {
   for (let i = 0; i < planet_num; i++) {
     let elements = get_planet_elements(dates[0], i);
     let orbit = get_orbit(elements);
-    let pos = get_planets_pos(elements).mul(1 / AU);
+    let pos = change_coordinate(
+      get_planets_pos(elements).multiplyScalar(1 / AU)
+    );
     planet_pos[i] = pos;
     planet_orbits[i] = orbit;
   }
@@ -73,16 +75,27 @@ function calc() {
 }
 function update_plot() {
   let [planet_pos, planet_orbits] = calc();
-  d = get_data(planet_pos, planet_orbits, planet_list);
-  Plotly.react("plot", d, layout);
+  i=0;
+  planet_orbits.forEach((orbit) => {
+    // createLine(orbit, 0x000000);
+    updateLine(orbit_lines[i], orbit);
+    i++;
+  });
+//   createPoints(planet_pos);
 }
 function make_plot() {
   let [planet_pos, planet_orbits] = calc();
-  d = get_data(planet_pos, planet_orbits, planet_list);
-  Plotly.newPlot("plot", d, layout);
+  planet_orbits.forEach((orbit) => {
+    orbit_lines.push(createLine(orbit, 0x000000));
+  });
+//   createPoints(planet_pos);
+  console.log(orbit_lines);
+
+  //   d = get_data(planet_pos, planet_orbits, planet_list);
+  //   Plotly.newPlot("plot", d, layout);
 }
 
-// make_plot();
+make_plot();
 updateLayout();
 
 make_launch_sequence();

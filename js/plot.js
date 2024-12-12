@@ -1,196 +1,4 @@
-// // // function get_line_data(data){
-// // //     data.forEach(line => {
-
-// // //     });
-// // // }
-// // // ３次元散布図を描画
-// // function get_data(pos, lines, p_list) {
-// //   let data_x = [],
-// //     data_y = [],
-// //     data_z = [];
-// //   for (let i = 0; i < pos.length; i++) {
-// //     data_x.push(pos[i][0]);
-// //     data_y.push(pos[i][1]);
-// //     data_z.push(pos[i][2]);
-// //   }
-// //   var data = [
-// //     {
-// //       x: [0, 0],
-// //       y: [0, 0],
-// //       z: [-max, max],
-// //       mode: "maekers",
-// //       type: "scatter3d",
-// //       marker: {
-// //         color: "rgba(0, 0, 0,0)",
-// //       },
-// //     },
-// //     {
-// //       x: [0],
-// //       y: [0],
-// //       z: [0],
-// //       mode: "maekers",
-// //       type: "scatter3d",
-// //       marker: {
-// //         color: "orange",
-// //         size: 5,
-// //       },
-// //     },
-// //   ];
-
-// //   data2 = lines.map(function (line, index) {
-// //     // 各線のx, y, zを抽出
-// //     var x = line.map((point) => point[0]);
-// //     var y = line.map((point) => point[1]);
-// //     var z = line.map((point) => point[2]);
-
-// //     return {
-// //       x: x,
-// //       y: y,
-// //       z: z,
-// //       mode: "lines",
-// //       type: "scatter3d",
-// //       name: "Line " + (index + 1), // 線の名前
-// //       line: {
-// //         width: 5, // 線の太さ
-// //         // color: "rgb(200, 200, 200)", // 線の色
-// //       },
-// //     };
-// //   });
-// //   data = data2.concat(data);
-// //   data = data.concat({
-// //     x: data_x,
-// //     y: data_y,
-// //     z: data_z,
-// //     mode: "markers+text",
-// //     type: "scatter3d",
-// //     marker: {
-// //       size: 3,
-// //       color: "rgb(50, 50, 50)",
-// //     },
-// //     textfont: {
-// //       color: "black",
-// //       size: 20,
-// //     },
-// //     text: p_list,
-// //   });
-// //   return data;
-// // }
-
-// // // data=data2
-// // // data.concat( );
-// // // console.log(data)
-// // // console.log(data2)
-
-// // max=50
-// // var layout = {
-// //   scene: {
-// //     camera: {
-// //       eye: { x: 0, y: -0.0001, z: 0.04 }, // カメラの位置（ズームを調整）
-// //     },
-// //     xaxis: {
-// //       // nticks: max*2,
-// //       range: [-max, max],
-// //       showspikes: false,
-// //     },
-// //     yaxis: {
-// //       // nticks: max*2,
-// //       range: [-max, max],
-// //       showspikes: false,
-// //     },
-// //     zaxis: {
-// //       // nticks: 48,
-// //       // range: [-max, max],
-// //       showspikes: false,
-// //     },
-// //   },
-// //   aspectratio: {
-// //     x: 1,
-// //     y: 1,
-// //     z: 1,
-// //   },
-// //   height: 630,
-// //   width: 700,
-// //   margin: {
-// //     l: 20, // 左余白 (default: 80)
-// //     r: 20, // 右余白 (default: 80)
-// //     t: 0, // 上余白 (default: 100)
-// //     b: 0, // 下余白 (default: 80)
-// //   },
-// //   showlegend: false,
-// //   hovermode: false,
-// // };
-// // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-// // import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-
-
-// // // データの設定
-// // // var data = [
-// // //     {
-// // //       x: [1, 2, 3, 4, 5],
-// // //       y: [10, 15, 13, 17, 14],
-// // //       z: [5, 6, 7, 8, 9],
-// // //       mode: 'markers',
-// // //       type: 'scatter3d'
-// // //     }
-// // //   ];
-
-// // //   // カメラの設定
-// // //   var layout = {
-// // //     scene: {
-// // //       camera: {
-// // //         eye: { x: 1, y: 1, z: 0 } // カメラの位置（ズームを調整）
-// // //       },
-// // //       xaxis: { range: [0, 6] },
-// // //       yaxis: { range: [10, 20] },
-// // //       zaxis: { range: [4, 10] }
-// // //     }
-// // //   };
-
-// // //   // プロットを作成
-// // //   Plotly.newPlot('myDiv', data, layout);
-// // import * as THREE from "three";
-
-
-
-// // シーンを作成
-// const scene = new THREE.Scene();
-
-// // カメラを作成
-// const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 500 );
-// camera.position.set( 0, 0, 100 );
-// camera.lookAt( 0, 0, 0 );
-
-// const material = new THREE.LineBasicMaterial( { color: 0xffffff } );
-
-// const geometry = new THREE.BufferGeometry();
-// const positions = new Float32Array(100 * 3); // 頂点データ用の配列
-// geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-
-
-// const points = [];
-// points.push( new THREE.Vector3( - 10, 0, 0 ) );
-// points.push( new THREE.Vector3( 0, 10, 0 ) );
-// points.push( new THREE.Vector3( 10, 0, 0 ) );
-// // const geometry = new THREE.BufferGeometry().setFromPoints( points );
-// const line = new THREE.Line( geometry, material );
-// scene.add(line);
-// renderer.render(scene, camera); // レンダリング
-
-
-// // アニメーション処理
-// function animate(){
-//   requestAnimationFrame(animate);
-//   controls.update();  //制御の更新処理
-//   renderer.render(scene, camera);
-// }
-// animate();
-
-
-// renderer.setSize(window.innerWidth, window.innerHeight);
-// document.body.appendChild(renderer.domElement);
-
-
+const orbit_lines = [];
 // サイズを指定
 const width = 630;
 const height = 700;
@@ -198,7 +6,7 @@ const height = 700;
 // レンダラーを作成
 const renderer = new THREE.WebGLRenderer({
   canvas: document.querySelector("#plot"),
-  antialias: true
+  antialias: true,
 });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(width, height);
@@ -206,119 +14,263 @@ renderer.setSize(width, height);
 // 複数の線を管理する配列
 // 基本設定
 const scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0xffffff);
 // テクスチャローダーを作成して画像を読み込む
 const loader = new THREE.TextureLoader();
-loader.setCrossOrigin('anonymous'); // クロスオリジン設定
+loader.setCrossOrigin("anonymous"); // クロスオリジン設定
 
-const backgroundTexture =loader.load('./textures/hipp8.jpg');
+const backgroundTexture = loader.load("./textures/hipp8.jpg");
 
-const sphere = new THREE.Mesh(
-    new THREE.IcosahedronGeometry( 100, 15 ),
-    new THREE.MeshPhongMaterial({
-      map: backgroundTexture,
-    }),
-  );
-  sphere.geometry.scale(-1, 1, 1); //表面を内側に向ける
-  scene.add(sphere);
-
-const camera = new THREE.PerspectiveCamera(15, 1, 0.1, 1000);
-camera.position.z = 5;
+// const camera = new THREE.PerspectiveCamera(15, 1, 1, 1000);
+// camera.position.z = 5;
+const camera = new THREE.PerspectiveCamera(90, width / height, 0.1, 50000);
+camera.position.set(0, 1, 0);
 const lines = [];
+// 光源------------------
+const aLight = new THREE.AmbientLight(0xffffff, 1); // 環境光源
+scene.add(aLight);
 
+const labelRenderer = new THREE.CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+
+// document.body.appendChild(labelRenderer.domElement);
+//球体
+// const sphere = new THREE.Mesh(
+//     new THREE.IcosahedronGeometry( 25000, 30 ),
+//     new THREE.MeshPhongMaterial({
+//       map: backgroundTexture
+//     }),
+//   );
+//   sphere.geometry.scale(-1, 1, 1); //表面を内側に向ける
+//   sphere.rotation.z = -Math.PI/2; //反転
+//   scene.add(sphere);
 // 線を作成する関数
-function createLine(initialPoints, color = 0x0000ff) {
-    const positions = new Float32Array(initialPoints.length * 3);
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+function createLine(initialPoints, c = 0x0000ff) {
+  const positions = new Float32Array(initialPoints.length * 3);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
-    // 初期データを設定
-    initialPoints.forEach((point, i) => {
-        positions[i * 3] = point.x;
-        positions[i * 3 + 1] = point.y;
-        positions[i * 3 + 2] = point.z;
-    });
+  // 初期データを設定
+  initialPoints.forEach((point, i) => {
+    positions[i * 3] = point.x;
+    positions[i * 3 + 1] = point.y;
+    positions[i * 3 + 2] = point.z;
+  });
 
-    const material = new THREE.LineBasicMaterial({ color });
-    const line = new THREE.Line(geometry, material);
+  const material = new THREE.LineBasicMaterial({
+    color: c,
+    transparent: true,
+  });
+  const line = new THREE.Line(geometry, material);
 
-    // シーンに追加
-    scene.add(line);
+  // シーンに追加
+  scene.add(line);
 
-    // 管理配列に追加
-    lines.push({ line, positions, geometry });
+  // 管理配列に追加
+  return { line, positions, geometry };
 }
 
 // 線を更新する関数
-function updateLine(index, newPoints) {
-    const lineData = lines[index];
-    if (!lineData) {
-        console.warn(`線 ${index} が見つかりません`);
-        return;
-    }
+function updateLine(lineData, newPoints) {
+  const { positions, geometry } = lineData;
+  if (newPoints.length > positions.length / 3) {
+    console.warn("新しい頂点数が多すぎます。ジオメトリを再生成してください。");
+    return;
+  }
 
-    const { positions, geometry } = lineData;
+  // 頂点データを更新
+  newPoints.forEach((point, i) => {
+    positions[i * 3] = point.x;
+    positions[i * 3 + 1] = point.y;
+    positions[i * 3 + 2] = point.z;
+  });
 
-    if (newPoints.length > positions.length / 3) {
-        console.warn('新しい頂点数が多すぎます。ジオメトリを再生成してください。');
-        return;
-    }
+  // 残りのデータをクリア（線が短くなった場合に不要なデータを無効化）
+  for (let i = newPoints.length * 3; i < positions.length; i++) {
+    positions[i] = 0;
+  }
 
-    // 頂点データを更新
-    newPoints.forEach((point, i) => {
-        positions[i * 3] = point.x;
-        positions[i * 3 + 1] = point.y;
-        positions[i * 3 + 2] = point.z;
-    });
-
-    // 残りのデータをクリア（線が短くなった場合に不要なデータを無効化）
-    for (let i = newPoints.length * 3; i < positions.length; i++) {
-        positions[i] = 0;
-    }
-
-    // 更新通知
-    geometry.attributes.position.needsUpdate = true;
+  // 更新通知
+  geometry.attributes.position.needsUpdate = true;
 }
-const controls = new THREE.OrbitControls( camera, renderer.domElement );
-controls.enablePan=false;
-controls.maxDistance = 500;
+
+// 点を管理する配列
+const pointsArray = [];
+
+function createPlanets(){
+
+}
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enablePan = false;
+controls.maxDistance = 100;
 // 描画ループ
 function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
 }
 animate();
 
-// 例：線を作成
-createLine([
-    new THREE.Vector3(-50, 0, 0),
-    new THREE.Vector3(50, 0, 0)
-], 0xffffff);
+const axis = [
+  createLine(
+    [new THREE.Vector3(-50, 0, 0), new THREE.Vector3(50, 0, 0)],
+    0xcccccc
+  ),
+  createLine(
+    [new THREE.Vector3(0, 50, 0), new THREE.Vector3(0, -50, 0)],
+    0xcccccc
+  ),
+  createLine(
+    [new THREE.Vector3(0, 0, -50), new THREE.Vector3(0, 0, 50)],
+    0xcccccc
+  ),
+];
+const xticks0_1 = [];
+const yticks0_1 = [];
+const zticks0_1 = [];
 
-createLine([
-    new THREE.Vector3(0, 50, 0),
-    new THREE.Vector3(0, -50, 0)
-], 0x00ff00);
-createLine([
-    new THREE.Vector3(0, 0, -50),
-    new THREE.Vector3(0, 0, 50)
-], 0x00ff00);
+const xticks1 = [];
+const yticks1 = [];
+const zticks1 = [];
+
+const xticks5 = [];
+const yticks5 = [];
+const zticks5 = [];
+
+for (let i = -5; i < 5; i = i + 0.1) {
+  xticks0_1.push(
+    createLine(
+      [new THREE.Vector3(i, 0, -0.05), new THREE.Vector3(i, 0, 0.05)],
+      0xcccccc
+    )
+  );
+  yticks0_1.push(
+    createLine(
+      [new THREE.Vector3(0, i, -0.05), new THREE.Vector3(0, i, 0.05)],
+      0xcccccc
+    )
+  );
+  zticks0_1.push(
+    createLine(
+      [new THREE.Vector3(-0.05, 0, i), new THREE.Vector3(0.05, 0, i)],
+      0xcccccc
+    )
+  );
+}
+for (let i = -20; i < 20; i = i + 1) {
+  if (i == 0) continue;
+
+  xticks1.push(
+    createLine(
+      [new THREE.Vector3(i, 0, -0.2), new THREE.Vector3(i, 0, 0.2)],
+      0xcccccc
+    )
+  );
+  yticks1.push(
+    createLine(
+      [new THREE.Vector3(0, i, -0.2), new THREE.Vector3(0, i, 0.2)],
+      0xcccccc
+    )
+  );
+  zticks1.push(
+    createLine(
+      [new THREE.Vector3(-0.2, 0, i), new THREE.Vector3(0.2, 0, i)],
+      0xcccccc
+    )
+  );
+}
+for (let i = -50; i < 50; i = i + 5) {
+  if (i == 0) continue;
+  xticks5.push(
+    createLine(
+      [new THREE.Vector3(i, 0, -1), new THREE.Vector3(i, 0, 1)],
+      0xcccccc
+    )
+  );
+  yticks5.push(
+    createLine(
+      [new THREE.Vector3(0, i, -1), new THREE.Vector3(0, i, 1)],
+      0xcccccc
+    )
+  );
+  zticks5.push(
+    createLine(
+      [new THREE.Vector3(-1, 0, i), new THREE.Vector3(1, 0, i)],
+      0xcccccc
+    )
+  );
+}
+console.log(axis);
 
 function updateLayout() {
-    h = window.innerHeight - 90;
-    w = window.innerWidth / 2;
-    if (window.innerWidth < window.innerHeight) {
-      h = window.innerWidth - 90;
-      w = window.innerWidth;
-    }
-    renderer.setSize(w, h);
-    renderer.render(scene, camera); // レンダリング
-  
+  // const angle = cameraDirection.angleTo(lineDirection);
+
+  h = window.innerHeight - 90;
+  w = window.innerWidth / 2;
+  if (window.innerWidth < window.innerHeight) {
+    h = window.innerWidth - 90;
+    w = window.innerWidth;
   }
-  
-  // // // 初回のレイアウト更新
-  
-  // // // ウィンドウリサイズに対応
-  window.addEventListener("resize", updateLayout);
+  renderer.setSize(w, h);
+  renderer.render(scene, camera); // レンダリング
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+function update_camera() {
+  const direction = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+  dist = camera.position.length();
+  axis[1].line.material.opacity = Math.cos(direction.y * 1.5);
+
+  //   ang=Math.atan2(camera.position.z,camera.position.x)
+  for (let i = 0; i < yticks0_1.length; i++) {
+    // xticks[i].positions[2]=dist*0.1;
+    // xticks[i].geometry.attributes.position.needsUpdate = true;
+    yticks0_1[i].positions[0] = (-camera.position.z / dist) * 0.05;
+    yticks0_1[i].positions[2] = (camera.position.x / dist) * 0.05;
+
+    yticks0_1[i].positions[3] = (camera.position.z / dist) * 0.05;
+    yticks0_1[i].positions[5] = (-camera.position.x / dist) * 0.05;
+    yticks0_1[i].geometry.attributes.position.needsUpdate = true;
+
+    xticks0_1[i].line.material.opacity = 1 - dist * 0.3;
+    yticks0_1[i].line.material.opacity =
+      Math.cos(direction.y * 1.5) - dist * 0.3;
+    zticks0_1[i].line.material.opacity = 1 - dist * 0.3;
+  }
+  for (let i = 0; i < yticks1.length; i++) {
+    yticks1[i].positions[0] = (-camera.position.z / dist) * 0.2;
+    yticks1[i].positions[2] = (camera.position.x / dist) * 0.2;
+
+    yticks1[i].positions[3] = (camera.position.z / dist) * 0.2;
+    yticks1[i].positions[5] = (-camera.position.x / dist) * 0.2;
+    yticks1[i].geometry.attributes.position.needsUpdate = true;
+
+    xticks1[i].line.material.opacity = 1 - dist * 0.06;
+    yticks1[i].line.material.opacity =
+      Math.cos(direction.y * 1.5) - dist * 0.06;
+    zticks1[i].line.material.opacity = 1 - dist * 0.06;
+  }
+  for (let i = 0; i < yticks5.length; i++) {
+    yticks5[i].positions[0] = -camera.position.z / dist;
+    yticks5[i].positions[2] = camera.position.x / dist;
+
+    yticks5[i].positions[3] = camera.position.z / dist;
+    yticks5[i].positions[5] = -camera.position.x / dist;
+    yticks5[i].line.material.opacity = Math.cos(direction.y * 1.5);
+    yticks5[i].geometry.attributes.position.needsUpdate = true;
+  }
+  // console.log(direction);
+}
+controls.addEventListener("change", update_camera);
+
+// // // 初回のレイアウト更新
+
+// // // ウィンドウリサイズに対応
+window.addEventListener("resize", updateLayout);
 // // 例：線を動的に更新
 // setTimeout(() => {
 //     updateLine(0, [
@@ -333,3 +285,4 @@ function updateLayout() {
 //         new THREE.Vector3(-2, -2, 0)
 //     ]);
 // }, 4000);
+
