@@ -81,15 +81,19 @@ function update_plot() {
     updateLine(orbit_lines[i], orbit);
     i++;
   });
-//   createPoints(planet_pos);
+  update_planets(planet_pos);
 }
 function make_plot() {
   let [planet_pos, planet_orbits] = calc();
+  createPlanets(planet_pos);
+
   planet_orbits.forEach((orbit) => {
     orbit_lines.push(createLine(orbit, 0x000000));
   });
-//   createPoints(planet_pos);
-  console.log(orbit_lines);
+  console.log(planet_speres);
+  
+  
+//   console.log(orbit_lines);
 
   //   d = get_data(planet_pos, planet_orbits, planet_list);
   //   Plotly.newPlot("plot", d, layout);

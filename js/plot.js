@@ -1,4 +1,6 @@
 const orbit_lines = [];
+const planet_speres = [];
+
 // サイズを指定
 const width = 630;
 const height = 700;
@@ -25,7 +27,7 @@ const backgroundTexture = loader.load("./textures/hipp8.jpg");
 // const camera = new THREE.PerspectiveCamera(15, 1, 1, 1000);
 // camera.position.z = 5;
 const camera = new THREE.PerspectiveCamera(90, width / height, 0.1, 50000);
-camera.position.set(0, 1, 0);
+camera.position.set(0, 1.5, 0);
 const lines = [];
 // 光源------------------
 const aLight = new THREE.AmbientLight(0xffffff, 1); // 環境光源
@@ -43,6 +45,22 @@ scene.add(aLight);
 //   sphere.rotation.z = -Math.PI/2; //反転
 //   scene.add(sphere);
 // 線を作成する関数
+function createPlanets(planet_pos) {
+    const sphereGeometry = new THREE.SphereGeometry(0.02, 32, 32); // 半径0.5の球
+    const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0x44aa88 });
+    planet_pos.forEach((pos) => {
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.set(pos.x, pos.y, pos.z);
+      scene.add(sphere);
+      planet_speres.push(sphere);
+    });
+}
+function update_planets(planet_pos) {
+    planet_pos.forEach((pos, i) => {
+        planet_speres[i].position.set(pos.x, pos.y, pos.z);
+    });
+    }
+
 function createLine(initialPoints, c = 0x0000ff) {
   const positions = new Float32Array(initialPoints.length * 3);
   const geometry = new THREE.BufferGeometry();
@@ -95,7 +113,6 @@ function updateLine(lineData, newPoints) {
 // 点を管理する配列
 const pointsArray = [];
 
-function createPlanets() {}
 const plot_area = document.getElementById("graph-panel");
 
 const labelRenderer = new THREE.CSS2DRenderer();
@@ -245,25 +262,11 @@ for (let i = -50; i < 50; i++) {
 
   axis[1].line.add(Label_z);
   Label_z.layers.set(0);
+
+
 }
 
-console.log();
-// n=0
-// for (let i = -50; i < 50; i++) {
-//     if(i%5==0)continue;
-
-// xticks1[].line.layers.enableAll();
-// const moonLabel = new THREE.CSS2DObject( moonDiv );
-// console.log(moonLabel);
-// moonLabel.position.set( i, 0, 0.25 );
-// moonLabel.layers.set( 0 );
-// xticks1[1].line.add( moonLabel );
-
-// }
-
 function updateLayout() {
-  // const angle = cameraDirection.angleTo(lineDirection);
-
   h = window.innerHeight - 90;
   w = window.innerWidth / 2;
   if (window.innerWidth < window.innerHeight) {
@@ -280,14 +283,11 @@ function update_camera() {
   const direction = new THREE.Vector3();
   camera.getWorldDirection(direction);
   dist = camera.position.length();
-  axis[0].line.material.opacity = Math.cos(direction.x * 1.5);
-  axis[1].line.material.opacity = Math.cos(direction.y * 1.5);
-  axis[2].line.material.opacity = Math.cos(direction.z * 1.5);
+  axis[0].line.material.opacity = 1-Math.abs(direction.x) ;
+  axis[1].line.material.opacity = 1-Math.abs(direction.y) ;
+  axis[2].line.material.opacity = 1-Math.abs(direction.z) ;
 
-  //   ang=Math.atan2(camera.position.z,camera.position.x)
   for (let i = 0; i < yticks0_1.length; i++) {
-    // xticks[i].positions[2]=dist*0.1;
-    // xticks[i].geometry.attributes.position.needsUpdate = true;
     yticks0_1[i].positions[0] = (-camera.position.z / dist) * 0.05;
     yticks0_1[i].positions[2] = (camera.position.x / dist) * 0.05;
 
@@ -295,12 +295,9 @@ function update_camera() {
     yticks0_1[i].positions[5] = (-camera.position.x / dist) * 0.05;
     yticks0_1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks0_1[i].line.material.opacity =
-      Math.cos(direction.x * 1.5) - dist * 0.3;
-    yticks0_1[i].line.material.opacity =
-      Math.cos(direction.y * 1.5) - dist * 0.3;
-    zticks0_1[i].line.material.opacity =
-      Math.cos(direction.z * 1.5) - dist * 0.3;
+    xticks0_1[i].line.material.opacity = 1-Math.abs(direction.x)  - dist * 0.3;
+    yticks0_1[i].line.material.opacity = 1-Math.abs(direction.y)  - dist * 0.3;
+    zticks0_1[i].line.material.opacity = 1-Math.abs(direction.z)  - dist * 0.3;
   }
   for (let i = 0; i < yticks1.length; i++) {
     yticks1[i].positions[0] = (-camera.position.z / dist) * 0.2;
@@ -310,12 +307,9 @@ function update_camera() {
     yticks1[i].positions[5] = (-camera.position.x / dist) * 0.2;
     yticks1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks1[i].line.material.opacity =
-      Math.cos(direction.x * 1.5) - dist * 0.06;
-    yticks1[i].line.material.opacity =
-      Math.cos(direction.y * 1.5) - dist * 0.06;
-    zticks1[i].line.material.opacity =
-      Math.cos(direction.z * 1.5) - dist * 0.06;
+    xticks1[i].line.material.opacity = 1-Math.abs(direction.x)  - dist * 0.06;
+    yticks1[i].line.material.opacity = 1-Math.abs(direction.y)  - dist * 0.06;
+    zticks1[i].line.material.opacity = 1-Math.abs(direction.z)  - dist * 0.06;
   }
   for (let i = 0; i < yticks5.length; i++) {
     yticks5[i].positions[0] = -camera.position.z / dist;
@@ -325,9 +319,9 @@ function update_camera() {
     yticks5[i].positions[5] = -camera.position.x / dist;
     yticks5[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks5[i].line.material.opacity = Math.cos(direction.x * 1.5);
-    yticks5[i].line.material.opacity = Math.cos(direction.y * 1.5);
-    zticks5[i].line.material.opacity = Math.cos(direction.z * 1.5);
+    xticks5[i].line.material.opacity = 1-Math.abs(direction.x) ;
+    yticks5[i].line.material.opacity = 1-Math.abs(direction.y) ;
+    zticks5[i].line.material.opacity = 1-Math.abs(direction.z) ;
   }
   au_labels_x = document.getElementsByClassName("label_1au_x");
   au_labels_y = document.getElementsByClassName("label_1au_y");
@@ -379,13 +373,14 @@ function update_camera() {
       1-Math.abs(direction.z) 
     );
   }
-  //   au_label.style.color= rgba( 0, 0, 0,  1 - dist * 0.06 );
-  console.log(direction);
+  for(i=0;i<planet_speres.length;i++){
+    planet_speres[i].scale.set(dist/1.5,dist/1.5,dist/1.5);
+  }
 }
 controls.addEventListener("change", update_camera);
 
 // // // 初回のレイアウト更新
-
+update_camera()
 // // // ウィンドウリサイズに対応
 window.addEventListener("resize", updateLayout);
 function animate() {
@@ -394,17 +389,3 @@ function animate() {
   labelRenderer.render(scene, camera);
 }
 animate();
-// // 例：線を動的に更新
-// setTimeout(() => {
-//     updateLine(0, [
-//         new THREE.Vector3(0, 0, 0),
-//         new THREE.Vector3(2, 0, 0)
-//     ]);
-// }, 2000);
-
-// setTimeout(() => {
-//     updateLine(1, [
-//         new THREE.Vector3(0, 0, 0),
-//         new THREE.Vector3(-2, -2, 0)
-//     ]);
-// }, 4000);
