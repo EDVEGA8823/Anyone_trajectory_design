@@ -335,3 +335,63 @@ label {
   border-width: 10px 0 10px 10px;
   border-color: transparent transparent transparent #fb3c3c;
 } */
+.label_1au_x {
+    color: #000000;
+    font-family: sans-serif;
+    padding: 2px;
+    font-size: 10pt;
+    --opacity:1;
+    opacity: var(--opacity);
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.label_5au_x {
+    color: #000000;
+    font-family: sans-serif;
+    font-size: 10pt;
+
+    --opacity:1;
+    opacity: var(--opacity);
+    padding: 2px;
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.label_1au_y {
+    color: #000000;
+    font-family: sans-serif;
+    padding: 2px;
+    font-size: 10pt;
+    --opacity:0;
+    opacity: var(--opacity);
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.label_5au_y {
+    color: #000000;
+    font-family: sans-serif;
+    padding: 2px;
+    font-size: 10pt;
+    --opacity:0;
+    opacity: var(--opacity);
+    color: rgba(0, 0, 0, 0.4);
+}
+.label_1au_z {
+    color: #000000;
+    font-family: sans-serif;
+    padding: 2px;
+    font-size: 10pt;
+    --opacity:1;
+    opacity: var(--opacity);
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.label_5au_z {
+    color: #000000;
+    font-family: sans-serif;
+    font-size: 10pt;
+
+    --opacity:1;
+    opacity: var(--opacity);
+    padding: 2px;
+    color: rgba(0, 0, 0, 0.4);
+}
