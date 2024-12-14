@@ -44,22 +44,39 @@ scene.add(aLight);
 //   sphere.geometry.scale(-1, 1, 1); //表面を内側に向ける
 //   sphere.rotation.z = -Math.PI/2; //反転
 //   scene.add(sphere);
-// 線を作成する関数
+
 function createPlanets(planet_pos) {
-    const sphereGeometry = new THREE.SphereGeometry(0.02, 32, 32); // 半径0.5の球
-    const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0x44aa88 });
-    planet_pos.forEach((pos) => {
-      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-      sphere.position.set(pos.x, pos.y, pos.z);
-      scene.add(sphere);
-      planet_speres.push(sphere);
-    });
+  const sphereGeometry = new THREE.SphereGeometry(0.02, 32, 32); // 半径0.5の球
+  const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0xddaa44 });
+  sphereMaterial.transparent = false;
+  planet_pos.forEach((pos,i) => {
+
+
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+    const planetDiv = document.createElement("div");
+    planetDiv.className = "label_planet";
+    planetDiv.textContent = planet_list[i];
+    planetDiv.style.backgroundColor = "transparent";
+    planetDiv.style.marginTop = "-1.2em";
+
+    const planetLabel = new THREE.CSS2DObject(planetDiv);
+    planetLabel.position.set(0, 0, 0);
+    // planetLabel.center.set(0, 0);
+    sphere.add(planetLabel);
+    planetLabel.layers.set(0);
+
+    sphere.position.set(pos.x, pos.y, pos.z);
+    
+    scene.add(sphere);
+    planet_speres.push(sphere);
+  });
 }
 function update_planets(planet_pos) {
-    planet_pos.forEach((pos, i) => {
-        planet_speres[i].position.set(pos.x, pos.y, pos.z);
-    });
-    }
+  planet_pos.forEach((pos, i) => {
+    planet_speres[i].position.set(pos.x, pos.y, pos.z);
+  });
+}
 
 function createLine(initialPoints, c = 0x0000ff) {
   const positions = new Float32Array(initialPoints.length * 3);
@@ -78,7 +95,8 @@ function createLine(initialPoints, c = 0x0000ff) {
     transparent: true,
   });
   const line = new THREE.Line(geometry, material);
-
+  line.material.depthTest = false;
+  
   // シーンに追加
   scene.add(line);
 
@@ -262,8 +280,6 @@ for (let i = -50; i < 50; i++) {
 
   axis[1].line.add(Label_z);
   Label_z.layers.set(0);
-
-
 }
 
 function updateLayout() {
@@ -283,9 +299,9 @@ function update_camera() {
   const direction = new THREE.Vector3();
   camera.getWorldDirection(direction);
   dist = camera.position.length();
-  axis[0].line.material.opacity = 1-Math.abs(direction.x) ;
-  axis[1].line.material.opacity = 1-Math.abs(direction.y) ;
-  axis[2].line.material.opacity = 1-Math.abs(direction.z) ;
+  axis[0].line.material.opacity = 1 - Math.abs(direction.x);
+  axis[1].line.material.opacity = 1 - Math.abs(direction.y);
+  axis[2].line.material.opacity = 1 - Math.abs(direction.z);
 
   for (let i = 0; i < yticks0_1.length; i++) {
     yticks0_1[i].positions[0] = (-camera.position.z / dist) * 0.05;
@@ -295,9 +311,9 @@ function update_camera() {
     yticks0_1[i].positions[5] = (-camera.position.x / dist) * 0.05;
     yticks0_1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks0_1[i].line.material.opacity = 1-Math.abs(direction.x)  - dist * 0.3;
-    yticks0_1[i].line.material.opacity = 1-Math.abs(direction.y)  - dist * 0.3;
-    zticks0_1[i].line.material.opacity = 1-Math.abs(direction.z)  - dist * 0.3;
+    xticks0_1[i].line.material.opacity = 1 - Math.abs(direction.x) - dist * 0.3;
+    yticks0_1[i].line.material.opacity = 1 - Math.abs(direction.y) - dist * 0.3;
+    zticks0_1[i].line.material.opacity = 1 - Math.abs(direction.z) - dist * 0.3;
   }
   for (let i = 0; i < yticks1.length; i++) {
     yticks1[i].positions[0] = (-camera.position.z / dist) * 0.2;
@@ -307,9 +323,9 @@ function update_camera() {
     yticks1[i].positions[5] = (-camera.position.x / dist) * 0.2;
     yticks1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks1[i].line.material.opacity = 1-Math.abs(direction.x)  - dist * 0.06;
-    yticks1[i].line.material.opacity = 1-Math.abs(direction.y)  - dist * 0.06;
-    zticks1[i].line.material.opacity = 1-Math.abs(direction.z)  - dist * 0.06;
+    xticks1[i].line.material.opacity = 1 - Math.abs(direction.x) - dist * 0.06;
+    yticks1[i].line.material.opacity = 1 - Math.abs(direction.y) - dist * 0.06;
+    zticks1[i].line.material.opacity = 1 - Math.abs(direction.z) - dist * 0.06;
   }
   for (let i = 0; i < yticks5.length; i++) {
     yticks5[i].positions[0] = -camera.position.z / dist;
@@ -319,9 +335,9 @@ function update_camera() {
     yticks5[i].positions[5] = -camera.position.x / dist;
     yticks5[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks5[i].line.material.opacity = 1-Math.abs(direction.x) ;
-    yticks5[i].line.material.opacity = 1-Math.abs(direction.y) ;
-    zticks5[i].line.material.opacity = 1-Math.abs(direction.z) ;
+    xticks5[i].line.material.opacity = 1 - Math.abs(direction.x);
+    yticks5[i].line.material.opacity = 1 - Math.abs(direction.y);
+    zticks5[i].line.material.opacity = 1 - Math.abs(direction.z);
   }
   au_labels_x = document.getElementsByClassName("label_1au_x");
   au_labels_y = document.getElementsByClassName("label_1au_y");
@@ -334,53 +350,44 @@ function update_camera() {
     const au_label = au_labels_x[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.x) - dist * 0.04 +1
+      -Math.abs(direction.x) - dist * 0.04 + 1
     );
   }
   for (let i = 0; i < au_labels_y.length; i++) {
     const au_label = au_labels_y[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.y) - dist * 0.04 +1
+      -Math.abs(direction.y) - dist * 0.04 + 1
     );
   }
   for (let i = 0; i < au_labels_z.length; i++) {
     const au_label = au_labels_z[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.z) - dist * 0.04 +1
+      -Math.abs(direction.z) - dist * 0.04 + 1
     );
   }
   for (let i = 0; i < au_labels_5_x.length; i++) {
-    const au_label_5 = au_labels_5_x[i];    
-    au_label_5.style.setProperty(
-        "--opacity",
-        1-Math.abs(direction.x) 
-      );
+    const au_label_5 = au_labels_5_x[i];
+    au_label_5.style.setProperty("--opacity", 1 - Math.abs(direction.x));
   }
   for (let i = 0; i < au_labels_5_y.length; i++) {
     const au_label_5 = au_labels_5_y[i];
-    au_label_5.style.setProperty(
-      "--opacity",
-      1-Math.abs(direction.y) 
-    );
+    au_label_5.style.setProperty("--opacity", 1 - Math.abs(direction.y));
   }
 
   for (let i = 0; i < au_labels_5_z.length; i++) {
     const au_label_5 = au_labels_5_z[i];
-    au_label_5.style.setProperty(
-      "--opacity",
-      1-Math.abs(direction.z) 
-    );
+    au_label_5.style.setProperty("--opacity", 1 - Math.abs(direction.z));
   }
-  for(i=0;i<planet_speres.length;i++){
-    planet_speres[i].scale.set(dist/1.5,dist/1.5,dist/1.5);
+  for (i = 0; i < planet_speres.length; i++) {
+    planet_speres[i].scale.set(dist / 1.5, dist / 1.5, dist / 1.5);
   }
 }
 controls.addEventListener("change", update_camera);
 
 // // // 初回のレイアウト更新
-update_camera()
+update_camera();
 // // // ウィンドウリサイズに対応
 window.addEventListener("resize", updateLayout);
 function animate() {

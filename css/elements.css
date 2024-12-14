@@ -395,3 +395,12 @@ label {
     padding: 2px;
     color: rgba(0, 0, 0, 0.4);
 }
+.label_planet {
+    color: #000000;
+    font-family: sans-serif;
+    padding: 2px;
+    font-size: 10pt;
+    --opacity:1;
+    opacity: var(--opacity);
+    color: rgba(0, 0, 0, 1);
+}
