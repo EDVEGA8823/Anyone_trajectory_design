@@ -1,6 +1,48 @@
-const math = require('mathjs');
-const cephes = require('cephes');
+// const math = require('mathjs');
 const pi = Math.PI;
+
+
+function pochhammer(x, n) {
+    if (n === 0) return 1; // (x)_0 = 1
+    let result = 1;
+    for (let i = 0; i < n; i++) {
+        result *= (x + i);
+    }
+    return result;
+}
+
+
+
+function factorial(n) {
+    if (n === 0 || n === 1) return 1; // 0! = 1, 1! = 1
+    let result = 1;
+    for (let i = 2; i <= n; i++) {
+        result *= i;
+    }
+    return result;
+}
+
+function hyp2f1(a, b, c, z, tolerance = 1e-10, maxIterations = 100) {
+    if (z >= 1) {
+        throw new Error("Convergence not guaranteed for |z| >= 1");
+    }
+
+    let sum = 1; // 初項 (n = 0 のとき)
+    for (let n = 1; n < maxIterations; n++) {
+        const term = (pochhammer(a, n) * pochhammer(b, n)) /
+                     (pochhammer(c, n) * factorial(n)) *
+                     Math.pow(z, n);
+        sum += term;
+
+        if (Math.abs(term) < tolerance) {
+            break;
+        }
+    }
+
+    return sum;
+}
+
+
 
 /**
  * Solves Lambert problem using Dario Izzo's devised algorithm and based on python implementation
@@ -25,7 +67,7 @@ const pi = Math.PI;
  * @param {number} atol Absolute tolerance.
  * @param {number} rtol Relative tolerance.
  */
-const solver = async (
+function lambert_probrem (
   mu,
   r1,
   r2,
@@ -36,8 +78,7 @@ const solver = async (
   maxiter = 35,
   atol = 1e-5,
   rtol = 1e-7
-) => {
-  await cephes.compiled;
+) {
 
   // Check that input parameters are safe
   validateGravitationalParam(mu);
@@ -106,6 +147,7 @@ const validateGravitationalParam = (mu) => {
 };
 
 const validatePositions = (r1, r2) => {
+
   validatePosition(r1);
   validatePosition(r2);
   if (r1.filter(e => r2.includes(e)).length === 3) throw new Error('Initial and final positions can not be the same');
@@ -135,7 +177,7 @@ const _findXY = (ll, T, M, maxiter, atol, rtol, low_path) => {
   // For abs(ll) == 1 the derivative is not continuous
   if (Math.abs(ll) >= 1) throw new Error('Derivative is not continuous');
 
-  const M_max = Math.floor(T / Math.PI);
+   M_max = Math.floor(T / Math.PI);
   const T_00 = Math.acos(ll) + ll * Math.sqrt(1 - Math.pow(ll, 2)) // T_xM
 
   // Refine maximum number of revolutions if necessary
@@ -183,7 +225,7 @@ const _tofEquationY = (x, y, T0, ll, M) => {
   if (M == 0 && Math.sqrt(0.6) < x && x < Math.sqrt(1.4)) {
     const eta = y - ll * x;
     const S_1 = (1 - ll - x * eta) * 0.5;
-    const Q = 4 / 3 * cephes.hyp2f1(3, 1, 5 / 2, S_1);
+    const Q = 4 / 3 * hyp2f1(3, 1, 5 / 2, S_1);
     T_ = (Math.pow(eta, 3) * Q + 4 * ll * eta) * 0.5;
   } else {
     const psi = _computePsi(x, y, ll);
@@ -308,4 +350,4 @@ const _householder = (p0, T0, ll, M, atol, rtol, maxiter) => {
   throw new Error('Failed to converge');
 };
 
-module.exports = solver;
+// module.exports = solver;

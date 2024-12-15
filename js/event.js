@@ -46,7 +46,6 @@ U_1month.addEventListener("click", function () {
 });
 U_1year.addEventListener("click", function () {
   d = JulianToDate(dates[0]);
-  console.log(d.getYear());
   d.setFullYear(d.getFullYear() + 1);
   dates[0] = DateToJulian(d);
   Update_time();

@@ -14,6 +14,7 @@ planet_list = [
 ];
 dates = [tmp_date];
 planets = [2];
+arcs=[];
 
 function make_launch_sequence() {
   const sequence = document.getElementById("sequence");
@@ -65,9 +66,7 @@ function calc() {
   for (let i = 0; i < planet_num; i++) {
     let elements = get_planet_elements(dates[0], i);
     let orbit = get_orbit(elements);
-    let pos = change_coordinate(
-      get_planets_pos(elements).multiplyScalar(1 / AU)
-    );
+    let pos = get_planets_pos(elements);
     planet_pos[i] = pos;
     planet_orbits[i] = orbit;
   }
@@ -75,13 +74,23 @@ function calc() {
 }
 function update_plot() {
   let [planet_pos, planet_orbits] = calc();
-  i=0;
+  i = 0;
+  update_planets(planet_pos);
+
   planet_orbits.forEach((orbit) => {
     // createLine(orbit, 0x000000);
     updateLine(orbit_lines[i], orbit);
     i++;
   });
-  update_planets(planet_pos);
+  v = lambert_probrem(
+    MU_SUN,
+    planet_pos[2],
+    planet_pos[3],
+    86400 * 200
+  );
+  par=ic2par(planet_pos[2],v[0],MU_SUN);
+  orbit=get_orbit(par);
+  updateLine(arcs[0], orbit);
 }
 function make_plot() {
   let [planet_pos, planet_orbits] = calc();
@@ -90,10 +99,11 @@ function make_plot() {
   planet_orbits.forEach((orbit) => {
     orbit_lines.push(createLine(orbit, 0x000000));
   });
-  console.log(planet_speres);
-  
-  
-//   console.log(orbit_lines);
+  points=Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
+  arcs.push(createLine(points, 0x000000));
+  //   console.log(planet_speres);
+
+  //   console.log(orbit_lines);
 
   //   d = get_data(planet_pos, planet_orbits, planet_list);
   //   Plotly.newPlot("plot", d, layout);

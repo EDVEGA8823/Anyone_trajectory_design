@@ -66,7 +66,7 @@ function createPlanets(planet_pos) {
     sphere.add(planetLabel);
     planetLabel.layers.set(0);
 
-    sphere.position.set(pos.x, pos.y, pos.z);
+    sphere.position.set(pos[0]/AU, pos[2]/AU, -pos[1]/AU);
     
     scene.add(sphere);
     planet_speres.push(sphere);
@@ -74,7 +74,7 @@ function createPlanets(planet_pos) {
 }
 function update_planets(planet_pos) {
   planet_pos.forEach((pos, i) => {
-    planet_speres[i].position.set(pos.x, pos.y, pos.z);
+    planet_speres[i].position.set(pos[0]/AU, pos[2]/AU, -pos[1]/AU);
   });
 }
 
@@ -115,8 +115,8 @@ function updateLine(lineData, newPoints) {
   // 頂点データを更新
   newPoints.forEach((point, i) => {
     positions[i * 3] = point.x;
-    positions[i * 3 + 1] = point.y;
-    positions[i * 3 + 2] = point.z;
+    positions[i * 3 + 1] =point.y;
+    positions[i * 3 + 2] =point.z;
   });
 
   // 残りのデータをクリア（線が短くなった場合に不要なデータを無効化）
@@ -157,6 +157,7 @@ const axis = [
     0xaaaaaa
   ),
 ];
+
 const xticks0_1 = [];
 const yticks0_1 = [];
 const zticks0_1 = [];
