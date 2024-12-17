@@ -1,5 +1,6 @@
 const orbit_lines = [];
 const planet_speres = [];
+camera_dist = 1.5;
 
 // サイズを指定
 const width = 630;
@@ -26,14 +27,13 @@ const backgroundTexture = loader.load("./textures/hipp8.jpg");
 
 // const camera = new THREE.PerspectiveCamera(15, 1, 1, 1000);
 // camera.position.z = 5;
-const camera = new THREE.PerspectiveCamera(90, width / height, 0.1, 50000);
+const camera = new THREE.PerspectiveCamera(90, width / height, 0.01, 50000);
 camera.position.set(0, 1.5, 0);
 const lines = [];
 // 光源------------------
 const aLight = new THREE.AmbientLight(0xffffff, 1); // 環境光源
 scene.add(aLight);
 
-// document.body.appendChild(labelRenderer.domElement);
 //球体
 // const sphere = new THREE.Mesh(
 //     new THREE.IcosahedronGeometry( 25000, 30 ),
@@ -44,6 +44,7 @@ scene.add(aLight);
 //   sphere.geometry.scale(-1, 1, 1); //表面を内側に向ける
 //   sphere.rotation.z = -Math.PI/2; //反転
 //   scene.add(sphere);
+
 
 function createPlanets(planet_pos) {
   const sphereGeometry = new THREE.SphereGeometry(0.02, 32, 32); // 半径0.5の球
@@ -70,6 +71,7 @@ function createPlanets(planet_pos) {
     
     scene.add(sphere);
     planet_speres.push(sphere);
+    sphere.name=String(i);
   });
 }
 function update_planets(planet_pos) {
@@ -299,41 +301,41 @@ function updateLayout() {
 function update_camera() {
   const direction = new THREE.Vector3();
   camera.getWorldDirection(direction);
-  dist = camera.position.length();
+  camera_dist = camera.position.length();
   axis[0].line.material.opacity = 1 - Math.abs(direction.x);
   axis[1].line.material.opacity = 1 - Math.abs(direction.y);
   axis[2].line.material.opacity = 1 - Math.abs(direction.z);
 
   for (let i = 0; i < yticks0_1.length; i++) {
-    yticks0_1[i].positions[0] = (-camera.position.z / dist) * 0.05;
-    yticks0_1[i].positions[2] = (camera.position.x / dist) * 0.05;
+    yticks0_1[i].positions[0] = (-camera.position.z / camera_dist) * 0.05;
+    yticks0_1[i].positions[2] = (camera.position.x / camera_dist) * 0.05;
 
-    yticks0_1[i].positions[3] = (camera.position.z / dist) * 0.05;
-    yticks0_1[i].positions[5] = (-camera.position.x / dist) * 0.05;
+    yticks0_1[i].positions[3] = (camera.position.z / camera_dist) * 0.05;
+    yticks0_1[i].positions[5] = (-camera.position.x / camera_dist) * 0.05;
     yticks0_1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks0_1[i].line.material.opacity = 1 - Math.abs(direction.x) - dist * 0.3;
-    yticks0_1[i].line.material.opacity = 1 - Math.abs(direction.y) - dist * 0.3;
-    zticks0_1[i].line.material.opacity = 1 - Math.abs(direction.z) - dist * 0.3;
+    xticks0_1[i].line.material.opacity = 1 - Math.abs(direction.x) - camera_dist * 0.3;
+    yticks0_1[i].line.material.opacity = 1 - Math.abs(direction.y) - camera_dist * 0.3;
+    zticks0_1[i].line.material.opacity = 1 - Math.abs(direction.z) - camera_dist * 0.3;
   }
   for (let i = 0; i < yticks1.length; i++) {
-    yticks1[i].positions[0] = (-camera.position.z / dist) * 0.2;
-    yticks1[i].positions[2] = (camera.position.x / dist) * 0.2;
+    yticks1[i].positions[0] = (-camera.position.z / camera_dist) * 0.2;
+    yticks1[i].positions[2] = (camera.position.x / camera_dist) * 0.2;
 
-    yticks1[i].positions[3] = (camera.position.z / dist) * 0.2;
-    yticks1[i].positions[5] = (-camera.position.x / dist) * 0.2;
+    yticks1[i].positions[3] = (camera.position.z / camera_dist) * 0.2;
+    yticks1[i].positions[5] = (-camera.position.x / camera_dist) * 0.2;
     yticks1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks1[i].line.material.opacity = 1 - Math.abs(direction.x) - dist * 0.06;
-    yticks1[i].line.material.opacity = 1 - Math.abs(direction.y) - dist * 0.06;
-    zticks1[i].line.material.opacity = 1 - Math.abs(direction.z) - dist * 0.06;
+    xticks1[i].line.material.opacity = 1 - Math.abs(direction.x) - camera_dist * 0.06;
+    yticks1[i].line.material.opacity = 1 - Math.abs(direction.y) - camera_dist * 0.06;
+    zticks1[i].line.material.opacity = 1 - Math.abs(direction.z) - camera_dist * 0.06;
   }
   for (let i = 0; i < yticks5.length; i++) {
-    yticks5[i].positions[0] = -camera.position.z / dist;
-    yticks5[i].positions[2] = camera.position.x / dist;
+    yticks5[i].positions[0] = -camera.position.z / camera_dist;
+    yticks5[i].positions[2] = camera.position.x / camera_dist;
 
-    yticks5[i].positions[3] = camera.position.z / dist;
-    yticks5[i].positions[5] = -camera.position.x / dist;
+    yticks5[i].positions[3] = camera.position.z / camera_dist;
+    yticks5[i].positions[5] = -camera.position.x / camera_dist;
     yticks5[i].geometry.attributes.position.needsUpdate = true;
 
     xticks5[i].line.material.opacity = 1 - Math.abs(direction.x);
@@ -351,21 +353,21 @@ function update_camera() {
     const au_label = au_labels_x[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.x) - dist * 0.04 + 1
+      -Math.abs(direction.x) - camera_dist * 0.04 + 1
     );
   }
   for (let i = 0; i < au_labels_y.length; i++) {
     const au_label = au_labels_y[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.y) - dist * 0.04 + 1
+      -Math.abs(direction.y) - camera_dist * 0.04 + 1
     );
   }
   for (let i = 0; i < au_labels_z.length; i++) {
     const au_label = au_labels_z[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.z) - dist * 0.04 + 1
+      -Math.abs(direction.z) - camera_dist * 0.04 + 1
     );
   }
   for (let i = 0; i < au_labels_5_x.length; i++) {
@@ -382,7 +384,7 @@ function update_camera() {
     au_label_5.style.setProperty("--opacity", 1 - Math.abs(direction.z));
   }
   for (i = 0; i < planet_speres.length; i++) {
-    planet_speres[i].scale.set(dist / 1.5, dist / 1.5, dist / 1.5);
+    planet_speres[i].scale.set(camera_dist / 1.5, camera_dist / 1.5, camera_dist / 1.5);
   }
 }
 controls.addEventListener("change", update_camera);

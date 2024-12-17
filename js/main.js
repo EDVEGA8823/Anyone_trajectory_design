@@ -1,5 +1,6 @@
 tmp_date = DateToJulian(new Date());
 planet_num = 9;
+planet_elements=[];
 
 planet_list = [
   "水星",
@@ -15,6 +16,8 @@ planet_list = [
 dates = [tmp_date];
 planets = [2];
 arcs=[];
+selected_planet = 2;
+is_selected = false;
 
 function make_launch_sequence() {
   const sequence = document.getElementById("sequence");
@@ -65,6 +68,7 @@ function calc() {
   let planet_orbits = [planet_num];
   for (let i = 0; i < planet_num; i++) {
     let elements = get_planet_elements(dates[0], i);
+    planet_elements[i] = elements;
     let orbit = get_orbit(elements);
     let pos = get_planets_pos(elements);
     planet_pos[i] = pos;
@@ -89,6 +93,8 @@ function update_plot() {
     86400 * 200
   );
   par=ic2par(planet_pos[2],v[0],MU_SUN);
+  console.log(planet_pos[2],v[0])
+  console.log(par)
   orbit=get_orbit(par);
   updateLine(arcs[0], orbit);
 }
