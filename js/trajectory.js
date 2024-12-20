@@ -47,7 +47,7 @@ function get_planet_elements(T, n) {
 
   let a = X[0];
   let e = X[1];
-  let i = X[2];
+  let i = X[2]//Math.abs();
   let w = X[4] - X[5];
   let W = X[5];
   let L = X[3];
@@ -185,4 +185,7 @@ function nu2E(nu, e) {
 function kepler_equation(a, e, E, μ) {
   if (a > 0) return math.sqrt(a ** 3 / μ) * (E - e * math.sin(E));
   else return math.sqrt((-a) ** 3 / μ) * (e * math.sinh(E) - E);
+}
+function get_peariod(a, μ) {
+  return 2 * Math.PI * Math.sqrt(a ** 3 / μ);
 }

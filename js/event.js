@@ -129,7 +129,7 @@ old_time = 0;
 old_E = 0;
 // マウスを動かしたときのイベント
 function handleMouseDown(event) {
-  // selected_planet=8
+    selected_planet = 8;
   old_time = dates[0];
   old_E = planet_elements[selected_planet][5];
   const element = event.currentTarget;
@@ -154,25 +154,6 @@ function handleMouseDown(event) {
   if (dist < 0.1 * camera_dist) {
     controls.enableRotate = false;
     is_change_time = true;
-  }
-  //   console.log(raycaster.ray)
-
-  //   // その光線とぶつかったオブジェクトを得る
-  //   const intersects = raycaster.intersectObjects(scene.children);
-  // intersects.forEach(obj => {
-  //     if(obj.object.name ==selected_planet){
-  //         console.log(planet_elements[obj.object.name][2]);
-  //         controls.enableRotate=false;
-  //         // orbit_plane.rotation.y = planet_elements[obj.object.name][3];
-  //     }
-  // });
-}
-function handleMouseUp(event) {
-  controls.enableRotate = true;
-  is_change_time = false;
-}
-function handleMouseMove(event) {
-  if (is_change_time) {
     const element = event.currentTarget;
     // canvas要素上のXY座標
     const x = event.clientX - element.offsetLeft;
@@ -194,15 +175,73 @@ function handleMouseMove(event) {
     u = raycaster.ray.direction;
     x_0 = raycaster.ray.origin;
     p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
-    nu = -P_hat.angleTo(p) * Math.sign(P_hat.cross(p).z);
+    old_nu = -P_hat.angleTo(p) * Math.sign(P_hat.cross(p).z);
+    rev_count = 0;
+  }
+  //   console.log(raycaster.ray)
+
+  //   // その光線とぶつかったオブジェクトを得る
+  //   const intersects = raycaster.intersectObjects(scene.children);
+  // intersects.forEach(obj => {
+  //     if(obj.object.name ==selected_planet){
+  //         console.log(planet_elements[obj.object.name][2]);
+  //         controls.enableRotate=false;
+  //         // orbit_plane.rotation.y = planet_elements[obj.object.name][3];
+  //     }
+  // });
+}
+function handleMouseUp(event) {
+  controls.enableRotate = true;
+  is_change_time = false;
+}
+old_nu = 0;
+rev_count = 0;
+
+function handleMouseMove(event) {
+  if (is_change_time) {
+    const element = event.currentTarget;
+    // canvas要素上のXY座標
+    const x = event.clientX - element.offsetLeft;
+    const y = event.clientY - element.offsetTop;
+    // canvas要素の幅・高さ
+    const w = element.offsetWidth;
+    const h = element.offsetHeight;
+
+    // -1〜+1の範囲で現在のマウス座標を登録する
+    mouse.x = (x / w) * 2 - 1;
+    mouse.y = -(y / h) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    vec = get_W_hat(planet_elements[selected_planet]);
+    W_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
+    vec = get_P_hat(planet_elements[selected_planet]);
+    P_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
+    // console.log(P_hat)
+    // if (P_hat.y < 0) {
+    //   P_hat = P_hat.multiplyScalar(-1);
+    // }
+    u = raycaster.ray.direction;
+    x_0 = raycaster.ray.origin;
+
+    p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
+    // console.log(new THREE.Vector3().copy(p));
+
+    nu = -P_hat.angleTo(p) * -Math.sign(P_hat.cross(p).dot(W_hat));
+
+    if (old_nu > 2 && nu < -2) rev_count += 1;
+    if (old_nu < -2 && nu > 2) rev_count -= 1;
+
+    // console.log(rev_count);
 
     a = planet_elements[selected_planet][0];
     e = planet_elements[selected_planet][1];
 
-    E = nu2E(nu, e) - old_E;
-    console.log(kepler_equation(a, e, E, MU_SUN) / 86400);
-    dates[0] = old_time + kepler_equation(a, e, E, MU_SUN) / 86400;
+    old_dE = old_E - Math.floor(old_E / 2 / Math.PI) * 2 * Math.PI;
+    // E = nu2E(nu, e) - old_dE + 2 * Math.PI * (rev_count + 1);
+    dates[0] =
+      old_time + (kepler_equation(a, e, nu2E(nu, e), MU_SUN) - kepler_equation(a, e, old_dE, MU_SUN) + get_peariod(a, MU_SUN) * rev_count) / 86400;
+
     Update_time();
+    old_nu = nu;
     // planet_speres[selected_planet].position.copy(p)
   }
 }

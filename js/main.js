@@ -93,8 +93,8 @@ function update_plot() {
     86400 * 200
   );
   par=ic2par(planet_pos[2],v[0],MU_SUN);
-  console.log(planet_pos[2],v[0])
-  console.log(par)
+//   console.log(planet_pos[2],v[0])
+//   console.log(par)
   orbit=get_orbit(par);
   updateLine(arcs[0], orbit);
 }
