@@ -404,3 +404,8 @@ label {
     opacity: var(--opacity);
     color: rgba(0, 0, 0, 1);
 }
+
+.launch{
+    /* visibility: hidden; */
+    display: none;
+}

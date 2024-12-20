@@ -16,17 +16,23 @@ planet_list = [
 dates = [tmp_date];
 planets = [2];
 arcs=[];
-selected_planet = 2;
+selected_planet = 3;
 is_selected = false;
 
+const Mode={
+    "None":0,
+    "Select":1,
+}
+mode=Mode.None;
+
 function make_launch_sequence() {
-  const sequence = document.getElementById("sequence");
-  sequence.innerHTML =
-    `<div class="sequence" title="打上げ"><span>` +
-    planet_list[planets[0]] +
-    `</span> <span>` +
-    JulianToDate(dates[0]).toLocaleDateString() +
-    `</span> </div>`;
+//   const sequence = document.getElementById("sequence");
+//   sequence.innerHTML =
+//     `<div class="sequence" title="打上げ"><span>` +
+//     planet_list[planets[0]] +
+//     `</span> <span>` +
+//     JulianToDate(dates[0]).toLocaleDateString() +
+//     `</span> </div>`;
 }
 
 function make_launch_propaty() {
@@ -96,7 +102,7 @@ function update_plot() {
 //   console.log(planet_pos[2],v[0])
 //   console.log(par)
   orbit=get_orbit(par);
-  updateLine(arcs[0], orbit);
+//   updateLine(arcs[0], orbit);
 }
 function make_plot() {
   let [planet_pos, planet_orbits] = calc();

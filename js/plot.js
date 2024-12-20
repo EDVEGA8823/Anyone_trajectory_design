@@ -1,6 +1,6 @@
 const orbit_lines = [];
 const planet_speres = [];
-camera_dist = 1.5;
+camera_dist = 7;
 
 // サイズを指定
 const width = 630;
@@ -27,8 +27,8 @@ const backgroundTexture = loader.load("./textures/hipp8.jpg");
 
 // const camera = new THREE.PerspectiveCamera(15, 1, 1, 1000);
 // camera.position.z = 5;
-const camera = new THREE.PerspectiveCamera(90, width / height, 0.01, 50000);
-camera.position.set(0, 1.5, 0);
+const camera = new THREE.PerspectiveCamera(30, width / height, 0.01, 50000);
+camera.position.set(0, 7, 0);
 const lines = [];
 // 光源------------------
 const aLight = new THREE.AmbientLight(0xffffff, 1); // 環境光源
@@ -44,11 +44,16 @@ scene.add(aLight);
 //   sphere.geometry.scale(-1, 1, 1); //表面を内側に向ける
 //   sphere.rotation.z = -Math.PI/2; //反転
 //   scene.add(sphere);
-
+const sunGeometry = new THREE.SphereGeometry(0.07, 32, 32); // 半径0.5の球
+const sunMaterial = new THREE.MeshStandardMaterial({ color: 0xeeee22 });
+sun = new THREE.Mesh(sunGeometry, sunMaterial);
+scene.add(sun)
 
 function createPlanets(planet_pos) {
   const sphereGeometry = new THREE.SphereGeometry(0.02, 32, 32); // 半径0.5の球
   const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0xddaa44 });
+
+
   sphereMaterial.transparent = false;
   planet_pos.forEach((pos,i) => {
 
@@ -142,7 +147,7 @@ labelRenderer.domElement.style.top = "75px";
 plot_area.appendChild(labelRenderer.domElement);
 const controls = new THREE.OrbitControls(camera, labelRenderer.domElement);
 controls.enablePan = false;
-controls.maxDistance = 100;
+controls.maxDistance = 200;
 // 描画ループ
 
 const axis = [
@@ -308,15 +313,15 @@ function update_camera() {
 
   for (let i = 0; i < yticks0_1.length; i++) {
     yticks0_1[i].positions[0] = (-camera.position.z / camera_dist) * 0.05;
-    yticks0_1[i].positions[2] = (camera.position.x / camera_dist) * 0.05;
+    yticks0_1[i].positions[2] = (camera.position.x / camera_dist) *  0.05;
 
-    yticks0_1[i].positions[3] = (camera.position.z / camera_dist) * 0.05;
+    yticks0_1[i].positions[3] = (camera.position.z / camera_dist) *  0.05;
     yticks0_1[i].positions[5] = (-camera.position.x / camera_dist) * 0.05;
     yticks0_1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks0_1[i].line.material.opacity = 1 - Math.abs(direction.x) - camera_dist * 0.3;
-    yticks0_1[i].line.material.opacity = 1 - Math.abs(direction.y) - camera_dist * 0.3;
-    zticks0_1[i].line.material.opacity = 1 - Math.abs(direction.z) - camera_dist * 0.3;
+    xticks0_1[i].line.material.opacity = 1 - Math.abs(direction.x) - camera_dist * 0.1;
+    yticks0_1[i].line.material.opacity = 1 - Math.abs(direction.y) - camera_dist * 0.1;
+    zticks0_1[i].line.material.opacity = 1 - Math.abs(direction.z) - camera_dist * 0.1;
   }
   for (let i = 0; i < yticks1.length; i++) {
     yticks1[i].positions[0] = (-camera.position.z / camera_dist) * 0.2;
@@ -326,9 +331,9 @@ function update_camera() {
     yticks1[i].positions[5] = (-camera.position.x / camera_dist) * 0.2;
     yticks1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks1[i].line.material.opacity = 1 - Math.abs(direction.x) - camera_dist * 0.06;
-    yticks1[i].line.material.opacity = 1 - Math.abs(direction.y) - camera_dist * 0.06;
-    zticks1[i].line.material.opacity = 1 - Math.abs(direction.z) - camera_dist * 0.06;
+    xticks1[i].line.material.opacity = 1 - Math.abs(direction.x) - camera_dist * 0.02;
+    yticks1[i].line.material.opacity = 1 - Math.abs(direction.y) - camera_dist * 0.02;
+    zticks1[i].line.material.opacity = 1 - Math.abs(direction.z) - camera_dist * 0.02;
   }
   for (let i = 0; i < yticks5.length; i++) {
     yticks5[i].positions[0] = -camera.position.z / camera_dist;
@@ -353,21 +358,21 @@ function update_camera() {
     const au_label = au_labels_x[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.x) - camera_dist * 0.04 + 1
+      -Math.abs(direction.x) - camera_dist * 0.02 + 1
     );
   }
   for (let i = 0; i < au_labels_y.length; i++) {
     const au_label = au_labels_y[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.y) - camera_dist * 0.04 + 1
+      -Math.abs(direction.y) - camera_dist * 0.02 + 1
     );
   }
   for (let i = 0; i < au_labels_z.length; i++) {
     const au_label = au_labels_z[i];
     au_label.style.setProperty(
       "--opacity",
-      -Math.abs(direction.z) - camera_dist * 0.04 + 1
+      -Math.abs(direction.z) - camera_dist * 0.02 + 1
     );
   }
   for (let i = 0; i < au_labels_5_x.length; i++) {
@@ -384,7 +389,7 @@ function update_camera() {
     au_label_5.style.setProperty("--opacity", 1 - Math.abs(direction.z));
   }
   for (i = 0; i < planet_speres.length; i++) {
-    planet_speres[i].scale.set(camera_dist / 1.5, camera_dist / 1.5, camera_dist / 1.5);
+    planet_speres[i].scale.set(camera_dist / 7, camera_dist / 7, camera_dist / 7);
   }
 }
 controls.addEventListener("change", update_camera);
