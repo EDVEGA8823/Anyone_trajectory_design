@@ -65,15 +65,14 @@ function createPlanets(planet_pos) {
     planetDiv.textContent = planet_list[i];
     planetDiv.style.backgroundColor = "transparent";
     planetDiv.style.marginTop = "-1.2em";
+    planetDiv.style.cursor = "pointer";
 
     const planetLabel = new THREE.CSS2DObject(planetDiv);
     planetLabel.position.set(0, 0, 0);
-    // planetLabel.center.set(0, 0);
     sphere.add(planetLabel);
     planetLabel.layers.set(0);
 
     sphere.position.set(pos[0]/AU, pos[2]/AU, -pos[1]/AU);
-    
     scene.add(sphere);
     planet_speres.push(sphere);
     sphere.name=String(i);

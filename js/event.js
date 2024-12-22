@@ -9,8 +9,18 @@ let U_5day = document.getElementById("U_5day");
 let U_1month = document.getElementById("U_1month");
 let U_1year = document.getElementById("U_1year");
 
+let sequence = document.getElementById("sequence");
+
+sequence.addEventListener("click", (event) => {
+  if(event.target.className=="add_sequence"){
+    // add_planet(event.target.id);
+    mission_sequence.add(0, 0, tmp_date);
+    console.log(mission_sequence);
+  }
+});
+
 function Update_time() {
-  date_time.value = JulianToDate(dates[0])
+  date_time.value = JulianToDate(tmp_date)
     .toLocaleDateString("ja-JP", {
       year: "numeric",
       month: "2-digit",
@@ -19,56 +29,58 @@ function Update_time() {
       minute: "2-digit",
     })
     .replaceAll("/", "-");
+
   update_plot();
-  make_launch_sequence();
+  //   change_sequence();
 }
+Update_time();
 
 date_time.addEventListener("change", function () {
-  dates[0] = DateToJulian(new Date(date_time.value));
+  tmp_date = DateToJulian(new Date(date_time.value));
   update_plot();
-  make_launch_sequence();
+  //   change_sequence();
   Update_time();
 });
 
 U_1day.addEventListener("click", function () {
-  dates[0] += 1;
+  tmp_date += 1;
   Update_time();
 });
 U_5day.addEventListener("click", function () {
-  dates[0] += 5;
+  tmp_date += 5;
   Update_time();
 });
 U_1month.addEventListener("click", function () {
-  d = JulianToDate(dates[0]);
+  d = JulianToDate(tmp_date);
   d.setMonth(d.getMonth() + 1);
-  dates[0] = DateToJulian(d);
+  tmp_date = DateToJulian(d);
   Update_time();
 });
 U_1year.addEventListener("click", function () {
-  d = JulianToDate(dates[0]);
+  d = JulianToDate(tmp_date);
   d.setFullYear(d.getFullYear() + 1);
-  dates[0] = DateToJulian(d);
+  tmp_date = DateToJulian(d);
   Update_time();
 });
 
 D_1day.addEventListener("click", function () {
-  dates[0] -= 1;
+  tmp_date -= 1;
   Update_time();
 });
 D_5day.addEventListener("click", function () {
-  dates[0] -= 5;
+  tmp_date -= 5;
   Update_time();
 });
 D_1month.addEventListener("click", function () {
-  d = JulianToDate(dates[0]);
+  d = JulianToDate(tmp_date);
   d.setMonth(d.getMonth() - 1);
-  dates[0] = DateToJulian(d);
+  tmp_date = DateToJulian(d);
   Update_time();
 });
 D_1year.addEventListener("click", function () {
-  d = JulianToDate(dates[0]);
+  d = JulianToDate(tmp_date);
   d.setFullYear(d.getFullYear() - 1);
-  dates[0] = DateToJulian(d);
+  tmp_date = DateToJulian(d);
   Update_time();
 });
 let change_day = [D_1year, D_1month, D_5day, D_1day, U_1day, U_5day, U_1month, U_1year];
@@ -132,7 +144,7 @@ rev_count = 1;
 // マウスを動かしたときのイベント
 function handleMouseDown(event) {
   if (event.button != 0) return;
-  old_time = dates[0];
+  old_time = tmp_date;
   const element = event.currentTarget;
   // canvas要素上のXY座標
   const x = event.clientX - element.offsetLeft;
@@ -143,7 +155,7 @@ function handleMouseDown(event) {
 
   // -1〜+1の範囲で現在のマウス座標を登録する
   mouse.x = (x / w) * 2 - 1;
-  mouse.y = -(y / h) * 2 + 1;
+  mouse.y = -(y / h) * 2 + 1 - 0.04;
 
   raycaster.setFromCamera(mouse, camera);
 
@@ -151,11 +163,11 @@ function handleMouseDown(event) {
 
   v = raycaster.ray.direction;
   x_0 = camera.position;
-  if (mode == Mode.None) {
+  if (mode == User_Mode.None) {
     for (let i = 0; i < planet_num; i++) {
       p = planet_speres[i].position;
       dist = new THREE.Vector3().subVectors(p, x_0).cross(v).length() / v.length();
-      if (dist < 0.02 * camera_dist) {
+      if (dist < 0.015 * camera_dist) {
         selected_planet = i;
         is_selected = true;
         break;
@@ -164,6 +176,8 @@ function handleMouseDown(event) {
   }
   //   console.log(dist);
   if (is_selected) {
+    // console.log();
+    planet_speres[selected_planet].children[0].element.style.color = "red";
     old_E = planet_elements[selected_planet][5];
     controls.enableRotate = false;
     is_change_time = true;
@@ -192,6 +206,8 @@ function handleMouseDown(event) {
   // });
 }
 function handleMouseUp(event) {
+  if (event.button != 0) return;
+  planet_speres[selected_planet].children[0].element.style.color = "black";
   controls.enableRotate = true;
   is_change_time = false;
 }
@@ -208,7 +224,8 @@ function handleMouseMove(event) {
 
     // -1〜+1の範囲で現在のマウス座標を登録する
     mouse.x = (x / w) * 2 - 1;
-    mouse.y = -(y / h) * 2 + 1;
+    mouse.y = -(y / h) * 2 + 1 - 0.04;
+
     raycaster.setFromCamera(mouse, camera);
     vec = get_W_hat(planet_elements[selected_planet]);
     W_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
@@ -226,12 +243,20 @@ function handleMouseMove(event) {
     if (old_nu < -2 && nu > 2) rev_count -= 1;
     a = planet_elements[selected_planet][0];
     e = planet_elements[selected_planet][1];
+    // console.log(rev_count)
 
     old_dE = old_E - Math.round(old_E / 2 / Math.PI) * 2 * Math.PI;
 
-    dates[0] =
+    pre_time = tmp_date;
+    tmp_date =
       old_time + (kepler_equation(a, e, nu2E(nu, e), MU_SUN) - kepler_equation(a, e, old_dE, MU_SUN) + get_peariod(a, MU_SUN) * rev_count) / 86400;
-
+    if (tmp_date - pre_time > get_peariod(a, MU_SUN) / 86400) {
+      tmp_date = tmp_date - get_peariod(a, MU_SUN) / 86400;
+    }
+    if (pre_time - tmp_date > get_peariod(a, MU_SUN) / 86400) {
+      tmp_date = tmp_date + get_peariod(a, MU_SUN) / 86400;
+    }
+    // console.log( nu2E(nu, e), old_dE);
     Update_time();
     old_nu = nu;
   }

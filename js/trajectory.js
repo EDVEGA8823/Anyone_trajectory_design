@@ -47,7 +47,7 @@ function get_planet_elements(T, n) {
 
   let a = X[0];
   let e = X[1];
-  let i = X[2]//Math.abs();
+  let i = X[2]; //Math.abs();
   let w = X[4] - X[5];
   let W = X[5];
   let L = X[3];
@@ -188,4 +188,21 @@ function kepler_equation(a, e, E, μ) {
 }
 function get_peariod(a, μ) {
   return 2 * Math.PI * Math.sqrt(a ** 3 / μ);
+}
+
+class Mission {
+  planet_nums = [];
+  dates = [];
+  types = [];
+
+  add(idx, planet_num, date) {
+    this.planet_nums.splice(idx, 0, planet_num);
+    this.dates.splice(idx, 0, date);
+    if (idx == 0) {
+      this.types.splice(idx, 0, Sequence_Type.Launch);
+      if (this.types.length > 1) this.types[1] = Sequence_Type.flyby;
+    } else {
+      this.types.splice(idx, 0, Sequence_Type.None);
+    }
+  }
 }
