@@ -1,10 +1,4 @@
-const orbit_lines = [];
-const planet_speres = [];
-camera_dist = 7;
 
-// サイズを指定
-const width = 630;
-const height = 700;
 
 // レンダラーを作成
 const renderer = new THREE.WebGLRenderer({
@@ -318,9 +312,9 @@ function update_camera() {
     yticks0_1[i].positions[5] = (-camera.position.x / camera_dist) * 0.05;
     yticks0_1[i].geometry.attributes.position.needsUpdate = true;
 
-    xticks0_1[i].line.material.opacity = 1 - Math.abs(direction.x) - camera_dist * 0.1;
-    yticks0_1[i].line.material.opacity = 1 - Math.abs(direction.y) - camera_dist * 0.1;
-    zticks0_1[i].line.material.opacity = 1 - Math.abs(direction.z) - camera_dist * 0.1;
+    xticks0_1[i].line.material.opacity = 1 - Math.abs(direction.x) - camera_dist * 0.06;
+    yticks0_1[i].line.material.opacity = 1 - Math.abs(direction.y) - camera_dist * 0.06;
+    zticks0_1[i].line.material.opacity = 1 - Math.abs(direction.z) - camera_dist * 0.06;
   }
   for (let i = 0; i < yticks1.length; i++) {
     yticks1[i].positions[0] = (-camera.position.z / camera_dist) * 0.2;

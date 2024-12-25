@@ -8,6 +8,8 @@
   <script src="./js/lib/math.js"></script>
   <script src="./js/lib/lambert_probrem.js"></script>
   <script src="./js/trajectory.js"></script>
+
+    <script src="./js/global_var.js"></script>
 </head>
 <!-- Google tag (gtag.js) -->
 <script
@@ -31,11 +33,14 @@
       <canvas id="plot"></canvas>
     </div>
     <div id="UI-panel">
-      <div class="sequence-panel" title="ミッションシーケンス">
+        <div class="sequence-panel-wrapper">
+            <div class="sequence-panel-title">ミッションシーケンス</div>
+      <div class="sequence-panel">
         <div id="sequence">
             <div class="add_sequence" id="0">+ シーケンスを追加</div>
         </div>
       </div>
+    </div>
       <div class="control-panel" title="操作パネル">
         <div class="row box launch">
           <div class="red">打上げ</div>

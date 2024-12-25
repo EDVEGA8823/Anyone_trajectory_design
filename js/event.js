@@ -12,10 +12,12 @@ let U_1year = document.getElementById("U_1year");
 let sequence = document.getElementById("sequence");
 
 sequence.addEventListener("click", (event) => {
-  if(event.target.className=="add_sequence"){
+  if (event.target.className == "add_sequence") {
     // add_planet(event.target.id);
-    mission_sequence.add(0, 0, tmp_date);
-    console.log(mission_sequence);
+    mission_sequence.add(Number(event.target.id), tmp_date);
+    // add_sequence(Number(event.target.id));
+    change_sequence();
+    // console.log(mission_sequence);
   }
 });
 
@@ -125,22 +127,55 @@ for (let i = 0; i < change_day.length; i++) {
 }
 function clicked_plots() {}
 
-// canvas 要素の参照を取得する
-// const plot = document.querySelector('#plot');
-// マウス座標管理用のベクトルを作成
-const mouse = new THREE.Vector2();
 // マウスイベントを登録
 plot_area.addEventListener("mousedown", handleMouseDown);
 plot_area.addEventListener("mouseup", handleMouseUp);
 plot_area.addEventListener("mousemove", handleMouseMove);
 
-is_change_time = false;
-const raycaster = new THREE.Raycaster();
+plot_area.addEventListener("touchstart", handleTouchStart);
+plot_area.addEventListener("touchend", handleTouchEnd);
+plot_area.addEventListener("touchmove", handleTouchMove);
 
-old_time = 0;
-old_E = 0;
-old_nu = 0;
-rev_count = 1;
+function handleTouchStart(event) {
+    if (event.touches.length != 1) return;
+    old_time = tmp_date;
+    const element = event.currentTarget;
+    // canvas要素上のXY座標
+    const x = event.touches[0].clientX - element.offsetLeft;
+    const y = event.touches[0].clientY - element.offsetTop;
+    // canvas要素の幅・高さ
+    const w = element.offsetWidth;
+    const h = element.offsetHeight;
+  
+    // -1〜+1の範囲で現在のマウス座標を登録する
+    mouse.x = (x / w) * 2 - 1;
+    mouse.y = -(y / h) * 2 + 1 - 0.04;
+  
+    Select_planet();
+}
+function handleTouchMove(event) {
+    // if (event.touches.length != 1) return;
+    const element = event.currentTarget;
+    // canvas要素上のXY座標
+    const x = event.touches[0].clientX - element.offsetLeft;
+    const y = event.touches[0].clientY - element.offsetTop;
+    // canvas要素の幅・高さ
+    const w = element.offsetWidth;
+    const h = element.offsetHeight;
+  
+    // -1〜+1の範囲で現在のマウス座標を登録する
+    mouse.x = (x / w) * 2 - 1;
+    mouse.y = -(y / h) * 2 + 1 - 0.04;
+
+    Dlag_planet();
+}
+function handleTouchEnd(event) {
+    if (event.touches.length != 0) return;
+    planet_speres[selected_planet].children[0].element.style.color = "black";
+    controls.enableRotate = true;
+    is_change_time = false;
+}
+
 // マウスを動かしたときのイベント
 function handleMouseDown(event) {
   if (event.button != 0) return;
@@ -157,59 +192,7 @@ function handleMouseDown(event) {
   mouse.x = (x / w) * 2 - 1;
   mouse.y = -(y / h) * 2 + 1 - 0.04;
 
-  raycaster.setFromCamera(mouse, camera);
-
-  is_selected = false;
-
-  v = raycaster.ray.direction;
-  x_0 = camera.position;
-  if (mode == User_Mode.None) {
-    for (let i = 0; i < planet_num; i++) {
-      p = planet_speres[i].position;
-      dist = new THREE.Vector3().subVectors(p, x_0).cross(v).length() / v.length();
-      if (dist < 0.015 * camera_dist) {
-        selected_planet = i;
-        is_selected = true;
-        break;
-      }
-    }
-  }
-  //   console.log(dist);
-  if (is_selected) {
-    // console.log();
-    planet_speres[selected_planet].children[0].element.style.color = "red";
-    old_E = planet_elements[selected_planet][5];
-    controls.enableRotate = false;
-    is_change_time = true;
-
-    vec = get_W_hat(planet_elements[selected_planet]);
-    W_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
-    vec = get_P_hat(planet_elements[selected_planet]);
-    P_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
-
-    u = raycaster.ray.direction;
-    x_0 = raycaster.ray.origin;
-    p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
-    old_nu = -P_hat.angleTo(p) * -Math.sign(P_hat.cross(p).dot(W_hat));
-    rev_count = 0;
-  }
-  //   console.log(raycaster.ray)
-
-  //   // その光線とぶつかったオブジェクトを得る
-  //   const intersects = raycaster.intersectObjects(scene.children);
-  // intersects.forEach(obj => {
-  //     if(obj.object.name ==selected_planet){
-  //         console.log(planet_elements[obj.object.name][2]);
-  //         controls.enableRotate=false;
-  //         // orbit_plane.rotation.y = planet_elements[obj.object.name][3];
-  //     }
-  // });
-}
-function handleMouseUp(event) {
-  if (event.button != 0) return;
-  planet_speres[selected_planet].children[0].element.style.color = "black";
-  controls.enableRotate = true;
-  is_change_time = false;
+  Select_planet();
 }
 
 function handleMouseMove(event) {
@@ -226,38 +209,13 @@ function handleMouseMove(event) {
     mouse.x = (x / w) * 2 - 1;
     mouse.y = -(y / h) * 2 + 1 - 0.04;
 
-    raycaster.setFromCamera(mouse, camera);
-    vec = get_W_hat(planet_elements[selected_planet]);
-    W_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
-    vec = get_P_hat(planet_elements[selected_planet]);
-    P_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
-
-    u = raycaster.ray.direction;
-    x_0 = raycaster.ray.origin;
-
-    p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
-
-    nu = -P_hat.angleTo(p) * -Math.sign(P_hat.cross(p).dot(W_hat));
-
-    if (old_nu > 2 && nu < -2) rev_count += 1;
-    if (old_nu < -2 && nu > 2) rev_count -= 1;
-    a = planet_elements[selected_planet][0];
-    e = planet_elements[selected_planet][1];
-    // console.log(rev_count)
-
-    old_dE = old_E - Math.round(old_E / 2 / Math.PI) * 2 * Math.PI;
-
-    pre_time = tmp_date;
-    tmp_date =
-      old_time + (kepler_equation(a, e, nu2E(nu, e), MU_SUN) - kepler_equation(a, e, old_dE, MU_SUN) + get_peariod(a, MU_SUN) * rev_count) / 86400;
-    if (tmp_date - pre_time > get_peariod(a, MU_SUN) / 86400) {
-      tmp_date = tmp_date - get_peariod(a, MU_SUN) / 86400;
-    }
-    if (pre_time - tmp_date > get_peariod(a, MU_SUN) / 86400) {
-      tmp_date = tmp_date + get_peariod(a, MU_SUN) / 86400;
-    }
-    // console.log( nu2E(nu, e), old_dE);
-    Update_time();
-    old_nu = nu;
+    Dlag_planet();
   }
 }
+function handleMouseUp(event) {
+  if (event.button != 0) return;
+  planet_speres[selected_planet].children[0].element.style.color = "black";
+  controls.enableRotate = true;
+  is_change_time = false;
+}
+

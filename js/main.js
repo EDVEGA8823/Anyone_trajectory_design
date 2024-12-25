@@ -1,57 +1,47 @@
-tmp_date = DateToJulian(new Date());
-planet_num = 9;
-planet_elements = [];
 
-planet_list = ["水星", "金星", "地球", "火星", "木星", "土星", "天王星", "海王星", "冥王星"];
-dates = [tmp_date];
-planets = [2];
-arcs = [];
-
-
-mission_sequence = new Mission();
-
-
-
-selected_planet = 3;
-is_selected = false;
-
-const User_Mode = {
-  None: 0,
-  Select: 1,
-};
-mode = User_Mode.None;
-
-const Sequence_Type = {
-    None: 0,
-    Launch: 1,
-    flyby: 2,
-    arrival: 3,
-    maneuver: 4,
-}
 
 const HTML_Add_planet = `<div class="add_planet">+ 天体を追加</div>`;
 
-function add_planet(id) {
-    console.log(id);
-    let planet_elements = document.createElement("div");
-    planet_elements.className = "sequence";
-    planet_elements.title = "打上げ";
+function add_sequence(id) {
+  let sequence_elem = document.createElement("div");
+  sequence_elem.className = "sequence";
+  sequence_elem.title = id+1 + ".  " + mission_sequence.types[id];
+  // 内側の span 要素を作成
+  const span1 = document.createElement("span");
+  if (mission_sequence.planet_nums[id] == -1) span1.textContent = "---";
+  else span1.textContent = planet_list[mission_sequence.planet_nums[id]];
 
-    // 内側の span 要素を作成
-    const span1 = document.createElement("span");
-    span1.textContent = planet_list[planets[0]];
+  const span2 = document.createElement("span");
+  span2.textContent = JulianToDate(mission_sequence.dates[id]).toLocaleDateString();
 
-    const span2 = document.createElement("span");
-    span2.textContent = JulianToDate(dates[0]).toLocaleDateString();
+  sequence_elem.appendChild(span1);
+  sequence_elem.appendChild(span2);
 
-    planet_elements.appendChild(span1);
-    planet_elements.appendChild(span2);
+  sequence.appendChild(sequence_elem);
 
-    sequence.appendChild(planet_elements);
+  let add_sequence_elem = document.createElement("div");
+  add_sequence_elem.className = "add_sequence";
+  add_sequence_elem.id = id + 1;
+  add_sequence_elem.textContent = "+ シーケンスを追加";
+  sequence.appendChild(add_sequence_elem);
 }
 function change_sequence() {
-    return
   const sequence = document.getElementById("sequence");
+
+  console.log(mission_sequence);
+  while (sequence.firstChild) {
+    sequence.removeChild(sequence.firstChild);
+  }
+  let add_sequence_elem = document.createElement("div");
+  add_sequence_elem.className = "add_sequence";
+  add_sequence_elem.id = 0;
+  add_sequence_elem.textContent = "+ シーケンスを追加";
+  sequence.appendChild(add_sequence_elem);
+
+  for (let i = 0; i < mission_sequence.count; i++) {
+    add_sequence(i);
+  }
+  return;
 
   // 1つ目の要素を作成
   let add_text = document.createElement("div");
@@ -77,12 +67,10 @@ function change_sequence() {
 
     sequence.appendChild(planet_elements);
 
-
     let add_text = document.createElement("div");
     add_text.className = "add_planet";
     add_text.textContent = "+ 天体を追加";
-  sequence.appendChild(add_text);
-
+    sequence.appendChild(add_text);
   }
   //   sequence.appendChild(p2);
 
@@ -114,8 +102,6 @@ function make_launch_propaty() {
     planets[0] = select.selectedIndex;
     change_sequence();
   });
-
-
 }
 
 function calc() {
