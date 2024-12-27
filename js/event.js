@@ -10,15 +10,62 @@ let U_1month = document.getElementById("U_1month");
 let U_1year = document.getElementById("U_1year");
 
 let sequence = document.getElementById("sequence");
+let contlol_panel = document.getElementsByClassName("control-panel")[0];
 
-sequence.addEventListener("click", (event) => {
+let sequence_panel= document.getElementsByClassName("sequence-panel")[0];
+
+// sequence_panel.addEventListener("click", (event) => {
+//     if(event)
+//     console.log("click");
+// });
+// sequence.addEventListener("click", (event) => {
+//     console.log(event.target)
+//   if (event.target.className == "add_sequence") {
+//     selected_sequence = Number(event.target.id);
+//     mission_sequence.add(selected_sequence, tmp_date);
+//     console.log(mission_sequence.types[selected_sequence]);
+//     for (i = 0; i < contlol_panel.children.length; i++) {
+//       if (contlol_panel.children[i].id == "launch") {
+//         if (mission_sequence.types[selected_sequence] == Sequence_Type.Launch) contlol_panel.children[i].style.display = "flex";
+//         else contlol_panel.children[i].style.display = "none";
+//       }
+//     }
+//     // if (mission_sequence.types[selected_sequence] == Sequence_Type.Launch) {
+//     // contlol_panel.classList.toggle("launch");
+//     // }
+//     // else
+//     // contlol_panel.classList.toggle("hide_launch");
+//   }
+  
+//   else {
+//     selected_sequence = Number(event.target.id);
+//     console.log(selected_sequence);
+//   }
+//   change_sequence();
+
+// });
+sequence_panel.addEventListener("click", (event) => {
+    console.log(event.target);
   if (event.target.className == "add_sequence") {
-    // add_planet(event.target.id);
-    mission_sequence.add(Number(event.target.id), tmp_date);
-    // add_sequence(Number(event.target.id));
-    change_sequence();
-    // console.log(mission_sequence);
+    selected_sequence = Number(event.target.id);
+    mission_sequence.add(selected_sequence, tmp_date);
+    // console.log(mission_sequence.types[selected_sequence]);
+
+  } else if (event.target.className == "sequence-panel") {
+
+    selected_sequence = -1;
+  } else {
+    selected_sequence = Number(event.target.id);
+    console.log(event.target.id);
   }
+  for (i = 0; i < contlol_panel.children.length; i++) {
+    if (contlol_panel.children[i].id == "launch") {
+      if (mission_sequence.types[selected_sequence] == Sequence_Type.Launch) contlol_panel.children[i].style.display = "flex";
+      else contlol_panel.children[i].style.display = "none";
+    }
+  }
+  change_sequence();
+
 });
 
 function Update_time() {
@@ -137,43 +184,43 @@ plot_area.addEventListener("touchend", handleTouchEnd);
 plot_area.addEventListener("touchmove", handleTouchMove);
 
 function handleTouchStart(event) {
-    if (event.touches.length != 1) return;
-    old_time = tmp_date;
-    const element = event.currentTarget;
-    // canvas要素上のXY座標
-    const x = event.touches[0].clientX - element.offsetLeft;
-    const y = event.touches[0].clientY - element.offsetTop;
-    // canvas要素の幅・高さ
-    const w = element.offsetWidth;
-    const h = element.offsetHeight;
-  
-    // -1〜+1の範囲で現在のマウス座標を登録する
-    mouse.x = (x / w) * 2 - 1;
-    mouse.y = -(y / h) * 2 + 1 - 0.04;
-  
-    Select_planet();
+  if (event.touches.length != 1) return;
+  old_time = tmp_date;
+  const element = event.currentTarget;
+  // canvas要素上のXY座標
+  const x = event.touches[0].clientX - element.offsetLeft;
+  const y = event.touches[0].clientY - element.offsetTop;
+  // canvas要素の幅・高さ
+  const w = element.offsetWidth;
+  const h = element.offsetHeight;
+
+  // -1〜+1の範囲で現在のマウス座標を登録する
+  mouse.x = (x / w) * 2 - 1;
+  mouse.y = -(y / h) * 2 + 1 - 0.04;
+
+  Select_planet();
 }
 function handleTouchMove(event) {
-    // if (event.touches.length != 1) return;
-    const element = event.currentTarget;
-    // canvas要素上のXY座標
-    const x = event.touches[0].clientX - element.offsetLeft;
-    const y = event.touches[0].clientY - element.offsetTop;
-    // canvas要素の幅・高さ
-    const w = element.offsetWidth;
-    const h = element.offsetHeight;
-  
-    // -1〜+1の範囲で現在のマウス座標を登録する
-    mouse.x = (x / w) * 2 - 1;
-    mouse.y = -(y / h) * 2 + 1 - 0.04;
+  if (!is_change_time) return;
+  const element = event.currentTarget;
+  // canvas要素上のXY座標
+  const x = event.touches[0].clientX - element.offsetLeft;
+  const y = event.touches[0].clientY - element.offsetTop;
+  // canvas要素の幅・高さ
+  const w = element.offsetWidth;
+  const h = element.offsetHeight;
 
-    Dlag_planet();
+  // -1〜+1の範囲で現在のマウス座標を登録する
+  mouse.x = (x / w) * 2 - 1;
+  mouse.y = -(y / h) * 2 + 1 - 0.04;
+
+  Dlag_planet();
 }
 function handleTouchEnd(event) {
-    if (event.touches.length != 0) return;
-    planet_speres[selected_planet].children[0].element.style.color = "black";
-    controls.enableRotate = true;
-    is_change_time = false;
+  if (event.touches.length != 0) return;
+  planet_speres[selected_planet].children[0].element.style.color = "black";
+  controls.enableRotate = true;
+  is_change_time = false;
 }
 
 // マウスを動かしたときのイベント
@@ -196,21 +243,20 @@ function handleMouseDown(event) {
 }
 
 function handleMouseMove(event) {
-  if (is_change_time) {
-    const element = event.currentTarget;
-    // canvas要素上のXY座標
-    const x = event.clientX - element.offsetLeft;
-    const y = event.clientY - element.offsetTop;
-    // canvas要素の幅・高さ
-    const w = element.offsetWidth;
-    const h = element.offsetHeight;
+  if (!is_change_time) return;
+  const element = event.currentTarget;
+  // canvas要素上のXY座標
+  const x = event.clientX - element.offsetLeft;
+  const y = event.clientY - element.offsetTop;
+  // canvas要素の幅・高さ
+  const w = element.offsetWidth;
+  const h = element.offsetHeight;
 
-    // -1〜+1の範囲で現在のマウス座標を登録する
-    mouse.x = (x / w) * 2 - 1;
-    mouse.y = -(y / h) * 2 + 1 - 0.04;
+  // -1〜+1の範囲で現在のマウス座標を登録する
+  mouse.x = (x / w) * 2 - 1;
+  mouse.y = -(y / h) * 2 + 1 - 0.04;
 
-    Dlag_planet();
-  }
+  Dlag_planet();
 }
 function handleMouseUp(event) {
   if (event.button != 0) return;
@@ -218,4 +264,3 @@ function handleMouseUp(event) {
   controls.enableRotate = true;
   is_change_time = false;
 }
-

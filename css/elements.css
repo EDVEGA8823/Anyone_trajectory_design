@@ -93,7 +93,7 @@ ul li:hover {
   margin: 2px;
 
   background: #fff;
-  padding: 10px 10px 25px 10px;
+  padding: 40px 10px 100px 10px;
   border: 3px solid #0059b3;
   overflow-y: scroll;
   z-index: 1;
@@ -279,39 +279,6 @@ label {
 .t_button:hover {
   background-color: #eae9e9;
 }
-/* .t_button::after {
-  content: "";
-  display: inline-block;
-  border-style: solid;
-  border-width: 8px 0 8px 8px;
-  border-color: transparent transparent transparent #fff;
-  display: inline-block;
-  width: 0;
-  height: 0;
-  position: absolute;
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%);
-} */
-/* #D_1year a:before {
-  display: block;
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 25px;
-  width: 0;
-  height: 0;
-  margin-top: -5px;
-  border: 5px solid transparent; 
-  border-left: 5px solid #fff;
-} */
-
-/* .t_button .triangle_R1::after {
-  display: inline-block;
-  border-style: solid;
-  border-width: 10px 0 10px 10px;
-  border-color: transparent transparent transparent #fb3c3c;
-} */
 .label_1au_x {
   color: #000000;
   font-family: sans-serif;
@@ -382,13 +349,14 @@ label {
   color: rgba(0, 0, 0, 1);
 }
 
-.launch {
-  /* visibility: hidden; */
-  display: none;
+#launch{
+    display: none;
 }
 
 .add_sequence {
   display: block;
+  /* display: flex;
+    width: 100%; */
   background-color: #d6d6d6;
   text-align: center;
   user-select: none;
@@ -399,6 +367,7 @@ label {
 }
 .sequence {
   display: flex; /* Flexboxを使用 */
+  width: 100%;
   justify-content: space-between; /* 左右端に配置 */
   flex: 1;
   position: relative; /* タイトル用に親要素定義  */

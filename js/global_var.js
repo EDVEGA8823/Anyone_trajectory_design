@@ -20,6 +20,7 @@ arcs = [];
 mission_sequence = new Mission();
 
 selected_planet = 3;
+selected_sequence = -1;
 is_selected = false;
 
 const User_Mode = {
