@@ -9,13 +9,10 @@
   <script src="./js/lib/lambert_probrem.js"></script>
   <script src="./js/trajectory.js"></script>
 
-    <script src="./js/global_var.js"></script>
+  <script src="./js/global_var.js"></script>
 </head>
 <!-- Google tag (gtag.js) -->
-<script
-  async
-  src="https://www.googletagmanager.com/gtag/js?id=G-XNQLFPS4RY"
-></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XNQLFPS4RY"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag() {
@@ -33,17 +30,25 @@
       <canvas id="plot"></canvas>
     </div>
     <div id="UI-panel">
-        <div class="sequence-panel-wrapper">
-            <div class="sequence-panel-title">ミッションシーケンス</div>
-      <div class="sequence-panel">
-        <div id="sequence">
+      <div class="sequence-panel-wrapper">
+        <div class="sequence-panel-title">ミッションシーケンス</div>
+        <div class="sequence-panel">
+          <div id="sequence">
             <div class="add_sequence" id="0">+ シーケンスを追加</div>
+          </div>
         </div>
       </div>
-    </div>
       <div class="control-panel" title="操作パネル">
-        <div class="row box" id="launch">
-          <div class="red">打上げ</div>
+        <div class="row box" id="alway">
+          <div class="column">
+            <label>シーケンス</label>
+            <div class="row">
+              <div class="red" id="sequence_type"></div>
+              <select id="sequence_propaty">
+                打上げ
+              </select>
+            </div>
+          </div>
           <div class="column">
             <label for="propaty">天体</label>
             <select id="propaty"></select>
@@ -52,12 +57,8 @@
 
         <div class="column box">
           <label for="date_time"><b>時刻</b></label>
-          <input
-            type="datetime-local"
-            id="date_time"
-            value="2024-11-20T12:00"
-          />
-          <div class="left_right">
+          <input type="datetime-local" id="date_time" value="2024-11-20T12:00" />
+          <!-- <div class="left_right">
             <span><div class="blue">ー</div></span>
             <span>時刻変更</span>
             <span><div class="red">＋</div></span>
@@ -95,19 +96,9 @@
               <div class="U_1year"></div>
               1年
             </div>
-
-            
-            <!-- <a   >a</a>
-              <a id="D_1month" class="t_button">a</a>
-              <a id="D_5day"   class="t_button">a</a>
-              <a id="D_1day"   class="t_button">a</a>
-              <a id="U_1day"   class="t_button">a</a>
-              <a id="U_5day"   class="t_button">a</a>
-              <a id="U_1month" class="t_button">a</a>
-              <a id="U_1year"  class="t_button">a</a> -->
           </div>
+        </div> -->
         </div>
-
       </div>
     </div>
   </div>

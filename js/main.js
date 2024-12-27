@@ -42,27 +42,58 @@ function change_sequence() {
   }
 }
 
-function make_launch_propaty() {
+function change_sequence_propaty() {
   const select = document.getElementById("propaty");
-  //   const select = document.querySelector('select[name="propaty"]');
+  while (select.firstChild) {
+    select.removeChild(select.firstChild);
+  }
+  let option0 = document.createElement("option");
+  option0.text = "---";
+  option0.value = -1;
+  select.add(option0);
 
   planet_list.forEach((element) => {
-    // option要素を生成
     let option = document.createElement("option");
-
-    // option要素のテキストを設定
     option.text = element;
-    // option要素の値を設定
     option.value = element;
-
-    // 生成したoption要素をselect要素に追加
     select.add(option);
   });
-  select.selectedIndex = 2;
-  select.addEventListener("change", function () {
-    mission_sequence.planet_nums[0] = select.selectedIndex;
+  select.selectedIndex = mission_sequence.planet_nums[selected_sequence] + 1;
+  select.onchange = function () {
+    mission_sequence.planet_nums[selected_sequence] = select.selectedIndex - 1;
     change_sequence();
-  });
+  };
+
+  const sequence_propaty = document.getElementById("sequence_propaty");
+  while (sequence_propaty.firstChild) {
+    sequence_propaty.removeChild(sequence_propaty.firstChild);
+  }
+
+  if (selected_sequence != 0) {
+    let option1 = document.createElement("option");
+    option1.text = "変更";
+    option1.value = "default";
+    option1.hidden = true; // hidden 属性を設定
+    option1.selected = true; // 初期選択状態に設定
+    sequence_propaty.add(option1);
+
+    Object.values(Sequence_Type).forEach((value, i) => {
+      let option = document.createElement("option");
+      option.text = value;
+      option.value = value;
+      if (i > 1) sequence_propaty.add(option);
+    });
+  }
+  const sequence_type = document.getElementById("sequence_type");
+
+  sequence_propaty.onchange = function () {
+    mission_sequence.types[selected_sequence] = sequence_propaty.value;
+    change_sequence();
+    sequence_propaty.selectedIndex = 0;
+    sequence_type.textContent = mission_sequence.types[selected_sequence];
+  };
+
+  sequence_type.textContent = mission_sequence.types[selected_sequence];
 }
 
 function calc() {
@@ -116,4 +147,4 @@ make_plot();
 updateLayout();
 
 change_sequence();
-make_launch_propaty();
+change_sequence_propaty();

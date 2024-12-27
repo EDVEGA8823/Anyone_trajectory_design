@@ -1,4 +1,4 @@
-// const math = require('mathjs');
+//lambert-orbit | Copyright © influenceth | github.com/influenceth/lambert-orbit
 const pi = Math.PI;
 
 

@@ -147,7 +147,7 @@ input {
   font-weight: bold;
 }
 label {
-  font-size: 20px;
+  font-size: 15px;
   /* line-height: 2; */
   /* font-weight: bold; */
 }
@@ -348,8 +348,23 @@ label {
   opacity: var(--opacity);
   color: rgba(0, 0, 0, 1);
 }
+#alway{
+    display: none;
+}
 
 #launch{
+    display: none;
+}
+#swingby{
+    display: none;
+}
+#flyby{
+    display: none;
+}
+#orbit{
+    display: none;
+}
+#maneuver{
     display: none;
 }
 

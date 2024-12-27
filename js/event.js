@@ -1,18 +1,18 @@
 let date_time = document.getElementById("date_time");
 
-let D_1year = document.getElementById("D_1year");
-let D_1month = document.getElementById("D_1month");
-let D_5day = document.getElementById("D_5day");
-let D_1day = document.getElementById("D_1day");
-let U_1day = document.getElementById("U_1day");
-let U_5day = document.getElementById("U_5day");
-let U_1month = document.getElementById("U_1month");
-let U_1year = document.getElementById("U_1year");
+// let D_1year = document.getElementById("D_1year");
+// let D_1month = document.getElementById("D_1month");
+// let D_5day = document.getElementById("D_5day");
+// let D_1day = document.getElementById("D_1day");
+// let U_1day = document.getElementById("U_1day");
+// let U_5day = document.getElementById("U_5day");
+// let U_1month = document.getElementById("U_1month");
+// let U_1year = document.getElementById("U_1year");
 
 let sequence = document.getElementById("sequence");
 let contlol_panel = document.getElementsByClassName("control-panel")[0];
 
-let sequence_panel= document.getElementsByClassName("sequence-panel")[0];
+let sequence_panel = document.getElementsByClassName("sequence-panel")[0];
 
 // sequence_panel.addEventListener("click", (event) => {
 //     if(event)
@@ -36,7 +36,7 @@ let sequence_panel= document.getElementsByClassName("sequence-panel")[0];
 //     // else
 //     // contlol_panel.classList.toggle("hide_launch");
 //   }
-  
+
 //   else {
 //     selected_sequence = Number(event.target.id);
 //     console.log(selected_sequence);
@@ -45,27 +45,44 @@ let sequence_panel= document.getElementsByClassName("sequence-panel")[0];
 
 // });
 sequence_panel.addEventListener("click", (event) => {
-    console.log(event.target);
   if (event.target.className == "add_sequence") {
     selected_sequence = Number(event.target.id);
     mission_sequence.add(selected_sequence, tmp_date);
     // console.log(mission_sequence.types[selected_sequence]);
-
   } else if (event.target.className == "sequence-panel") {
-
     selected_sequence = -1;
   } else {
     selected_sequence = Number(event.target.id);
-    console.log(event.target.id);
   }
   for (i = 0; i < contlol_panel.children.length; i++) {
     if (contlol_panel.children[i].id == "launch") {
       if (mission_sequence.types[selected_sequence] == Sequence_Type.Launch) contlol_panel.children[i].style.display = "flex";
       else contlol_panel.children[i].style.display = "none";
     }
+    if (contlol_panel.children[i].id == "flyby") {
+      if (mission_sequence.types[selected_sequence] == Sequence_Type.Flyby) contlol_panel.children[i].style.display = "flex";
+      else contlol_panel.children[i].style.display = "none";
+    }
+    if (contlol_panel.children[i].id == "swingby") {
+      if (mission_sequence.types[selected_sequence] == Sequence_Type.Swingby) contlol_panel.children[i].style.display = "flex";
+      else contlol_panel.children[i].style.display = "none";
+    }
+    if (contlol_panel.children[i].id == "orbit") {
+      if (mission_sequence.types[selected_sequence] == Sequence_Type.Orbit) contlol_panel.children[i].style.display = "flex";
+      else contlol_panel.children[i].style.display = "none";
+    }
+    if (contlol_panel.children[i].id == "maneuver") {
+      if (mission_sequence.types[selected_sequence] == Sequence_Type.Maneuver) contlol_panel.children[i].style.display = "flex";
+      else contlol_panel.children[i].style.display = "none";
+    }
+    if (contlol_panel.children[i].id == "alway") {
+      if (selected_sequence != -1)
+        contlol_panel.children[i].style.display = "flex";
+      else contlol_panel.children[i].style.display = "none";
+    }
   }
   change_sequence();
-
+  change_sequence_propaty();
 });
 
 function Update_time() {
@@ -84,95 +101,95 @@ function Update_time() {
 }
 Update_time();
 
-date_time.addEventListener("change", function () {
-  tmp_date = DateToJulian(new Date(date_time.value));
-  update_plot();
-  //   change_sequence();
-  Update_time();
-});
+// date_time.addEventListener("change", function () {
+//   tmp_date = DateToJulian(new Date(date_time.value));
+//   update_plot();
+//   //   change_sequence();
+//   Update_time();
+// });
 
-U_1day.addEventListener("click", function () {
-  tmp_date += 1;
-  Update_time();
-});
-U_5day.addEventListener("click", function () {
-  tmp_date += 5;
-  Update_time();
-});
-U_1month.addEventListener("click", function () {
-  d = JulianToDate(tmp_date);
-  d.setMonth(d.getMonth() + 1);
-  tmp_date = DateToJulian(d);
-  Update_time();
-});
-U_1year.addEventListener("click", function () {
-  d = JulianToDate(tmp_date);
-  d.setFullYear(d.getFullYear() + 1);
-  tmp_date = DateToJulian(d);
-  Update_time();
-});
+// U_1day.addEventListener("click", function () {
+//   tmp_date += 1;
+//   Update_time();
+// });
+// U_5day.addEventListener("click", function () {
+//   tmp_date += 5;
+//   Update_time();
+// });
+// U_1month.addEventListener("click", function () {
+//   d = JulianToDate(tmp_date);
+//   d.setMonth(d.getMonth() + 1);
+//   tmp_date = DateToJulian(d);
+//   Update_time();
+// });
+// U_1year.addEventListener("click", function () {
+//   d = JulianToDate(tmp_date);
+//   d.setFullYear(d.getFullYear() + 1);
+//   tmp_date = DateToJulian(d);
+//   Update_time();
+// });
 
-D_1day.addEventListener("click", function () {
-  tmp_date -= 1;
-  Update_time();
-});
-D_5day.addEventListener("click", function () {
-  tmp_date -= 5;
-  Update_time();
-});
-D_1month.addEventListener("click", function () {
-  d = JulianToDate(tmp_date);
-  d.setMonth(d.getMonth() - 1);
-  tmp_date = DateToJulian(d);
-  Update_time();
-});
-D_1year.addEventListener("click", function () {
-  d = JulianToDate(tmp_date);
-  d.setFullYear(d.getFullYear() - 1);
-  tmp_date = DateToJulian(d);
-  Update_time();
-});
-let change_day = [D_1year, D_1month, D_5day, D_1day, U_1day, U_5day, U_1month, U_1year];
+// D_1day.addEventListener("click", function () {
+//   tmp_date -= 1;
+//   Update_time();
+// });
+// D_5day.addEventListener("click", function () {
+//   tmp_date -= 5;
+//   Update_time();
+// });
+// D_1month.addEventListener("click", function () {
+//   d = JulianToDate(tmp_date);
+//   d.setMonth(d.getMonth() - 1);
+//   tmp_date = DateToJulian(d);
+//   Update_time();
+// });
+// D_1year.addEventListener("click", function () {
+//   d = JulianToDate(tmp_date);
+//   d.setFullYear(d.getFullYear() - 1);
+//   tmp_date = DateToJulian(d);
+//   Update_time();
+// });
+// let change_day = [D_1year, D_1month, D_5day, D_1day, U_1day, U_5day, U_1month, U_1year];
 
-let is_pushed = [null, null];
+// let is_pushed = [null, null];
 
-for (let i = 0; i < change_day.length; i++) {
-  // ボタンを押し続けたとき
-  change_day[i].addEventListener("mousedown", () => {
-    if (is_pushed[i]) return; // 既に実行中の場合はスキップ
-    is_pushed[i] = setInterval(() => {
-      change_day[i].click(); // クリックイベントを発火
-    }, 250); // 100msごとにクリック
-  });
+// for (let i = 0; i < change_day.length; i++) {
+//   // ボタンを押し続けたとき
+//   change_day[i].addEventListener("mousedown", () => {
+//     if (is_pushed[i]) return; // 既に実行中の場合はスキップ
+//     is_pushed[i] = setInterval(() => {
+//       change_day[i].click(); // クリックイベントを発火
+//     }, 250); // 100msごとにクリック
+//   });
 
-  // ボタンを離したとき
-  change_day[i].addEventListener("mouseup", () => {
-    clearInterval(is_pushed[i]); // 自動クリックを停止
-    is_pushed[i] = null;
-  });
-  change_day[i].addEventListener("mouseleave", () => {
-    clearInterval(is_pushed[i]); // 自動クリックを停止
-    is_pushed[i] = null;
-  });
+//   // ボタンを離したとき
+//   change_day[i].addEventListener("mouseup", () => {
+//     clearInterval(is_pushed[i]); // 自動クリックを停止
+//     is_pushed[i] = null;
+//   });
+//   change_day[i].addEventListener("mouseleave", () => {
+//     clearInterval(is_pushed[i]); // 自動クリックを停止
+//     is_pushed[i] = null;
+//   });
 
-  // スマホ対応 (タッチイベント)
+//   // スマホ対応 (タッチイベント)
 
-  //   change_day[i].addEventListener("to")
-  change_day[i].addEventListener("touchstart", (e) => {
-    change_day[i].click();
-    e.preventDefault(); // デフォルト動作を防止
-    if (is_pushed[i]) return;
-    is_pushed[i] = setInterval(() => {
-      change_day[i].click(); // クリックイベントを発火
-    }, 250);
-  });
+//   //   change_day[i].addEventListener("to")
+//   change_day[i].addEventListener("touchstart", (e) => {
+//     change_day[i].click();
+//     e.preventDefault(); // デフォルト動作を防止
+//     if (is_pushed[i]) return;
+//     is_pushed[i] = setInterval(() => {
+//       change_day[i].click(); // クリックイベントを発火
+//     }, 250);
+//   });
 
-  change_day[i].addEventListener("touchend", () => {
-    clearInterval(is_pushed[i]); // 自動クリックを停止
-    is_pushed[i] = null;
-  });
-}
-function clicked_plots() {}
+//   change_day[i].addEventListener("touchend", () => {
+//     clearInterval(is_pushed[i]); // 自動クリックを停止
+//     is_pushed[i] = null;
+//   });
+// }
+// function clicked_plots() {}
 
 // マウスイベントを登録
 plot_area.addEventListener("mousedown", handleMouseDown);

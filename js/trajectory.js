@@ -267,7 +267,6 @@ class Mission {
 
   add(idx, date) {
     this.types[0] = Sequence_Type.None;
-    console.log(this.count, idx, date);
     // if (idx == 0 && this.dates[0] - date < 30) {
     //   this.dates.splice(idx, 0, this.dates[0] - 30);
     // } else if (idx == this.count && date - this.dates[this.count - 1] < 30) {
