@@ -168,6 +168,11 @@ label {
   justify-content: space-between;
   align-items: center;
 }
+.row_right {
+  display: flex;
+  flex-flow: row;
+justify-content: flex-end;
+}
 .box {
   border: 1px solid #000000;
   border-radius: 10px;
@@ -348,6 +353,9 @@ label {
   opacity: var(--opacity);
   color: rgba(0, 0, 0, 1);
 }
+#not_selected {
+  display: flex;
+}
 #alway{
     display: none;
 }
@@ -413,4 +421,31 @@ label {
   left: 16px; /* タイトル右位置は1文字分 */
   border-radius: 5px; /* タイトルの角丸          */
   font-size: 16px; /* タイトルの文字サイズ    */
+}
+#sequence_type{
+    width: 200px;
+}
+#sequence_propaty{
+    width: 70px;
+}
+
+#confirm_time {
+    display: flex;
+    background-color: #488bff;
+    width: 70pt;
+    height: 25pt;
+    margin: 10px 2px 0px 10px;
+    border-radius: 5px; 
+    justify-content: center;
+    align-items: center;
+}
+#cancel_time {
+    display: flex;
+    background-color: #e8f7fb;
+    width: 70pt;
+    height: 25pt;
+    margin: 10px 2px 0px 10px;
+    border-radius: 5px; 
+    justify-content: center;
+    align-items: center;
 }

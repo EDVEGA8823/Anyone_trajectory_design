@@ -14,6 +14,9 @@ let contlol_panel = document.getElementsByClassName("control-panel")[0];
 
 let sequence_panel = document.getElementsByClassName("sequence-panel")[0];
 
+let confirm_time = document.getElementById("confirm_time");
+let cancel_time = document.getElementById("cancel_time");
+
 // sequence_panel.addEventListener("click", (event) => {
 //     if(event)
 //     console.log("click");
@@ -44,7 +47,26 @@ let sequence_panel = document.getElementsByClassName("sequence-panel")[0];
 //   change_sequence();
 
 // });
+
+confirm_time.addEventListener("click", function () {
+  mission_sequence.set_date(selected_sequence,tmp_date);
+  confirm_time.style.visibility = "hidden";
+  cancel_time.style.visibility = "hidden";
+  change_sequence();
+});
+
+cancel_time.addEventListener("click", function () {
+  tmp_date = mission_sequence.date(selected_sequence);
+  Update_time();
+  confirm_time.style.visibility = "hidden";
+  cancel_time.style.visibility = "hidden";
+});
+
 sequence_panel.addEventListener("click", (event) => {
+  handleSequencePanelClick(event);
+});
+
+function handleSequencePanelClick(event) {
   if (event.target.className == "add_sequence") {
     selected_sequence = Number(event.target.id);
     mission_sequence.add(selected_sequence, tmp_date);
@@ -54,36 +76,69 @@ sequence_panel.addEventListener("click", (event) => {
   } else {
     selected_sequence = Number(event.target.id);
   }
-  for (i = 0; i < contlol_panel.children.length; i++) {
-    if (contlol_panel.children[i].id == "launch") {
-      if (mission_sequence.types[selected_sequence] == Sequence_Type.Launch) contlol_panel.children[i].style.display = "flex";
-      else contlol_panel.children[i].style.display = "none";
-    }
-    if (contlol_panel.children[i].id == "flyby") {
-      if (mission_sequence.types[selected_sequence] == Sequence_Type.Flyby) contlol_panel.children[i].style.display = "flex";
-      else contlol_panel.children[i].style.display = "none";
-    }
-    if (contlol_panel.children[i].id == "swingby") {
-      if (mission_sequence.types[selected_sequence] == Sequence_Type.Swingby) contlol_panel.children[i].style.display = "flex";
-      else contlol_panel.children[i].style.display = "none";
-    }
-    if (contlol_panel.children[i].id == "orbit") {
-      if (mission_sequence.types[selected_sequence] == Sequence_Type.Orbit) contlol_panel.children[i].style.display = "flex";
-      else contlol_panel.children[i].style.display = "none";
-    }
-    if (contlol_panel.children[i].id == "maneuver") {
-      if (mission_sequence.types[selected_sequence] == Sequence_Type.Maneuver) contlol_panel.children[i].style.display = "flex";
-      else contlol_panel.children[i].style.display = "none";
-    }
-    if (contlol_panel.children[i].id == "alway") {
-      if (selected_sequence != -1)
-        contlol_panel.children[i].style.display = "flex";
-      else contlol_panel.children[i].style.display = "none";
-    }
-  }
+
+  updateControlPanelDisplay();
   change_sequence();
   change_sequence_propaty();
-});
+  if (selected_sequence != -1) {
+    tmp_date = mission_sequence.date(selected_sequence);
+    Update_time();
+    confirm_time.style.visibility = "hidden";
+    cancel_time.style.visibility = "hidden";
+  }
+}
+
+function updateControlPanelDisplay() {
+  //   for (i = 0; i < contlol_panel.children.length; i++) {
+  //     if (contlol_panel.children[i].id == "launch") {
+  //       if (mission_sequence.types[selected_sequence] == Sequence_Type.Launch) contlol_panel.children[i].style.display = "flex";
+  //       else contlol_panel.children[i].style.display = "none";
+  //     }
+  //     if (contlol_panel.children[i].id == "flyby") {
+  //       if (mission_sequence.types[selected_sequence] == Sequence_Type.Flyby) contlol_panel.children[i].style.display = "flex";
+  //       else contlol_panel.children[i].style.display = "none";
+  //     }
+  //     if (contlol_panel.children[i].id == "swingby") {
+  //       if (mission_sequence.types[selected_sequence] == Sequence_Type.Swingby) contlol_panel.children[i].style.display = "flex";
+  //       else contlol_panel.children[i].style.display = "none";
+  //     }
+  //     if (contlol_panel.children[i].id == "orbit") {
+  //       if (mission_sequence.types[selected_sequence] == Sequence_Type.Orbit) contlol_panel.children[i].style.display = "flex";
+  //       else contlol_panel.children[i].style.display = "none";
+  //     }
+  //     if (contlol_panel.children[i].id == "maneuver") {
+  //       if (mission_sequence.types[selected_sequence] == Sequence_Type.Maneuver) contlol_panel.children[i].style.display = "flex";
+  //       else contlol_panel.children[i].style.display = "none";
+  //     }
+  //   }
+  launch = document.getElementsByClassName("launch");
+  flyby = document.getElementsByClassName("flyby");
+  swingby = document.getElementsByClassName("swingby");
+  orbit = document.getElementsByClassName("orbit");
+  maneuver = document.getElementsByClassName("maneuver");
+  alway = document.getElementsByClassName("alway");
+
+  //   if (mission_sequence.types[selected_sequence] == Sequence_Type.Launch) launch.style.display = "flex";
+  //   else launch.style.display = "none";
+  //   if (mission_sequence.types[selected_sequence] == Sequence_Type.Flyby) flyby.style.display = "flex";
+  //   else flyby.style.display = "none";
+  //   if (mission_sequence.types[selected_sequence] == Sequence_Type.Swingby) swingby.style.display = "flex";
+  //   else swingby.style.display = "none";
+  //   if (mission_sequence.types[selected_sequence] == Sequence_Type.Orbit) orbit.style.display = "flex";
+  //   else orbit.style.display = "none";
+  //   if (mission_sequence.types[selected_sequence] == Sequence_Type.Maneuver) maneuver.style.display = "flex";
+  //   else maneuver.style.display = "none";
+  for (let i = 0; i < alway.length; i++) {
+    if (selected_sequence != -1) {
+      alway[i].style.display = "flex";
+    } else {
+      alway[i].style.display = "none";
+    }
+  }
+
+  //   else alway.style.display = "none";
+}
+updateControlPanelDisplay();
 
 function Update_time() {
   date_time.value = JulianToDate(tmp_date)
@@ -95,18 +150,19 @@ function Update_time() {
       minute: "2-digit",
     })
     .replaceAll("/", "-");
-
+  confirm_time.style.visibility = "Visible";
+  cancel_time.style.visibility = "Visible";
   update_plot();
   //   change_sequence();
 }
 Update_time();
 
-// date_time.addEventListener("change", function () {
-//   tmp_date = DateToJulian(new Date(date_time.value));
-//   update_plot();
-//   //   change_sequence();
-//   Update_time();
-// });
+date_time.addEventListener("change", function () {
+  tmp_date = DateToJulian(new Date(date_time.value));
+  update_plot();
+  //   change_sequence();
+  Update_time();
+});
 
 // U_1day.addEventListener("click", function () {
 //   tmp_date += 1;

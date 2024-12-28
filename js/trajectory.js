@@ -190,104 +190,122 @@ function get_peariod(a, μ) {
   return 2 * Math.PI * Math.sqrt(a ** 3 / μ);
 }
 
-
-
-
 function Dlag_planet() {
-    raycaster.setFromCamera(mouse, camera);
-    nu = get_nu();
-  
-    if (old_nu > 2 && nu < -2) rev_count += 1;
-    if (old_nu < -2 && nu > 2) rev_count -= 1;
-    a = planet_elements[selected_planet][0];
-    e = planet_elements[selected_planet][1];
-    // console.log(rev_count)
-  
-    old_dE = old_E - Math.round(old_E / 2 / Math.PI) * 2 * Math.PI;
-  
-    pre_time = tmp_date;
-    tmp_date =
-      old_time + (kepler_equation(a, e, nu2E(nu, e), MU_SUN) - kepler_equation(a, e, old_dE, MU_SUN) + get_peariod(a, MU_SUN) * rev_count) / 86400;
-    if (tmp_date - pre_time > get_peariod(a, MU_SUN) / 86400) {
-      tmp_date = tmp_date - get_peariod(a, MU_SUN) / 86400;
-    }
-    if (pre_time - tmp_date > get_peariod(a, MU_SUN) / 86400) {
-      tmp_date = tmp_date + get_peariod(a, MU_SUN) / 86400;
-    }
-    // console.log( nu2E(nu, e), old_dE);
-    Update_time();
-    old_nu = nu;
+  raycaster.setFromCamera(mouse, camera);
+  nu = get_nu();
+
+  if (old_nu > 2 && nu < -2) rev_count += 1;
+  if (old_nu < -2 && nu > 2) rev_count -= 1;
+  a = planet_elements[selected_planet][0];
+  e = planet_elements[selected_planet][1];
+  // console.log(rev_count)
+
+  old_dE = old_E - Math.round(old_E / 2 / Math.PI) * 2 * Math.PI;
+
+  pre_time = tmp_date;
+  tmp_date =
+    old_time + (kepler_equation(a, e, nu2E(nu, e), MU_SUN) - kepler_equation(a, e, old_dE, MU_SUN) + get_peariod(a, MU_SUN) * rev_count) / 86400;
+  if (tmp_date - pre_time > get_peariod(a, MU_SUN) / 86400) {
+    tmp_date = tmp_date - get_peariod(a, MU_SUN) / 86400;
   }
-  function Select_planet() {
-    raycaster.setFromCamera(mouse, camera);
-  
-    is_selected = false;
-  
-    v = raycaster.ray.direction;
-    x_0 = camera.position;
-    if (mode == User_Mode.None) {
-      for (let i = 0; i < planet_num; i++) {
-        p = planet_speres[i].position;
-        dist = new THREE.Vector3().subVectors(p, x_0).cross(v).length() / v.length();
-        if (dist < 0.015 * camera_dist) {
-          selected_planet = i;
-          is_selected = true;
-          break;
-        }
+  if (pre_time - tmp_date > get_peariod(a, MU_SUN) / 86400) {
+    tmp_date = tmp_date + get_peariod(a, MU_SUN) / 86400;
+  }
+  // console.log( nu2E(nu, e), old_dE);
+  Update_time();
+  old_nu = nu;
+}
+function Select_planet() {
+  raycaster.setFromCamera(mouse, camera);
+
+  is_selected = false;
+
+  v = raycaster.ray.direction;
+  x_0 = camera.position;
+  if (mode == User_Mode.None) {
+    for (let i = 0; i < planet_num; i++) {
+      p = planet_speres[i].position;
+      dist = new THREE.Vector3().subVectors(p, x_0).cross(v).length() / v.length();
+      if (dist < 0.015 * camera_dist) {
+        selected_planet = i;
+        is_selected = true;
+        break;
       }
     }
-    if (is_selected) {
-      planet_speres[selected_planet].children[0].element.style.color = "red";
-      old_E = planet_elements[selected_planet][5];
-      controls.enableRotate = false;
-      is_change_time = true;
-      get_nu();
-      old_nu = rev_count = 0;
-    }
   }
-  
-  function get_nu() {
-    vec = get_W_hat(planet_elements[selected_planet]);
-    W_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
-    vec = get_P_hat(planet_elements[selected_planet]);
-    P_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
-  
-    u = raycaster.ray.direction;
-    x_0 = raycaster.ray.origin;
-    p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
-    return -P_hat.angleTo(p) * -Math.sign(P_hat.cross(p).dot(W_hat));
+  if (is_selected) {
+    planet_speres[selected_planet].children[0].element.style.color = "red";
+    old_E = planet_elements[selected_planet][5];
+    controls.enableRotate = false;
+    is_change_time = true;
+    get_nu();
+    old_nu = rev_count = 0;
   }
-  
+}
+
+function get_nu() {
+  vec = get_W_hat(planet_elements[selected_planet]);
+  W_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
+  vec = get_P_hat(planet_elements[selected_planet]);
+  P_hat = new THREE.Vector3(vec[0], vec[2], -vec[1]);
+
+  u = raycaster.ray.direction;
+  x_0 = raycaster.ray.origin;
+  p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
+  return -P_hat.angleTo(p) * -Math.sign(P_hat.cross(p).dot(W_hat));
+}
 
 class Mission {
-  planet_nums = [];
-  dates = [];
-  types = [];
-  count = 0;
+  #m_planet_nums = [];
+  #m_dates = [];
+  #m_types = [];
+  #m_is_auto_mode = [];
+  #m_count = 0;
+  planet_num(i) {
+    return this.#m_planet_nums[i];
+  }
+  date(i) {
+    return this.#m_dates[i];
+  }
+  type(i) {
+    return this.#m_types[i];
+  }
+  is_auto_mode(i) {
+    return this.#m_is_auto_mode[i];
+  }
+  get count() {
+    return this.#m_count;
+  }
+  set_planet_num(i, num) {
+    this.#m_planet_nums[i] = num;
+  }
+  set_date(i, date) {
+    this.#m_dates[i] = date;
+  }
+  set_type(i, type) {
+    this.#m_types[i] = type;
+  }
+  set_auto_mode(i, is_auto) {
+    this.#m_is_auto_mode[i] = is_auto;
+  }
+
 
   add(idx, date) {
-    this.types[0] = Sequence_Type.None;
-    // if (idx == 0 && this.dates[0] - date < 30) {
-    //   this.dates.splice(idx, 0, this.dates[0] - 30);
-    // } else if (idx == this.count && date - this.dates[this.count - 1] < 30) {
-    //   this.dates.splice(idx, 0, this.dates[idx - 1] + 30);
-    // } else {
-    //   this.dates.splice(idx, 0, date);
-    // }
-    this.dates.splice(idx, 0, date);
-    if (this.count != 0) {
-      if (idx == 0 && this.dates[1] - this.dates[0] < 30) this.dates[0] = this.dates[1] - 30;
-      else if (idx == this.count && this.dates[this.count] - this.dates[this.count - 1] < 30)
-        this.dates[this.count] = this.dates[this.count - 1] + 30;
-      else if (this.dates[idx] > this.dates[idx - 1] || this.dates[idx] < this.dates[idx + 1])
-        this.dates[idx] = (this.dates[idx - 1] + this.dates[idx + 1]) / 2;
+    this.#m_types[0] = Sequence_Type.None;
+    this.#m_is_auto_mode.splice(idx, 0, true);
+    this.#m_dates.splice(idx, 0, date);
+    if (this.#m_count != 0) {
+      if (idx == 0 && this.#m_dates[1] - this.#m_dates[0] < 30) this.#m_dates[0] = this.#m_dates[1] - 30;
+      else if (idx == this.#m_count && this.#m_dates[this.#m_count] - this.#m_dates[this.#m_count - 1] < 30)
+        this.#m_dates[this.#m_count] = this.#m_dates[this.#m_count - 1] + 30;
+      else if (this.#m_dates[idx] > this.#m_dates[idx - 1] || this.#m_dates[idx] < this.#m_dates[idx + 1])
+        this.#m_dates[idx] = (this.#m_dates[idx - 1] + this.#m_dates[idx + 1]) / 2;
     }
 
-    if (idx == 0) this.planet_nums.splice(idx, 0, 2);
-    else this.planet_nums.splice(idx, 0, -1);
-    this.types.splice(idx, 0, Sequence_Type.None);
-    this.types[0] = Sequence_Type.Launch;
-    // }
-    this.count++;
+    if (idx == 0) this.#m_planet_nums.splice(idx, 0, 2);
+    else this.#m_planet_nums.splice(idx, 0, -1);
+    this.#m_types.splice(idx, 0, Sequence_Type.None);
+    this.#m_types[0] = Sequence_Type.Launch;
+    this.#m_count++;
   }
 }

@@ -1,15 +1,15 @@
 function add_sequence(id) {
   let sequence_elem = document.createElement("div");
   sequence_elem.className = "sequence";
-  sequence_elem.title = id + 1 + ".  " + mission_sequence.types[id];
+  sequence_elem.title = id + 1 + ".  " + mission_sequence.type(id);
   if (id == selected_sequence) sequence_elem.style.backgroundColor = "lightblue";
   // 内側の span 要素を作成
   const span1 = document.createElement("span");
-  if (mission_sequence.planet_nums[id] == -1) span1.textContent = "---";
-  else span1.textContent = planet_list[mission_sequence.planet_nums[id]];
+  if (mission_sequence.planet_num(id) == -1) span1.textContent = "---";
+  else span1.textContent = planet_list[mission_sequence.planet_num(id)];
 
   const span2 = document.createElement("span");
-  span2.textContent = JulianToDate(mission_sequence.dates[id]).toLocaleDateString();
+  span2.textContent = JulianToDate(mission_sequence.date(id)).toLocaleDateString();
 
   span1.id = id;
   span2.id = id;
@@ -49,7 +49,9 @@ function change_sequence_propaty() {
   }
   let option0 = document.createElement("option");
   option0.text = "---";
-  option0.value = -1;
+  option0.value = "default";
+  option0.hidden = true; // hidden 属性を設定
+  option0.selected = true; // 初期選択状態に設定
   select.add(option0);
 
   planet_list.forEach((element) => {
@@ -58,9 +60,9 @@ function change_sequence_propaty() {
     option.value = element;
     select.add(option);
   });
-  select.selectedIndex = mission_sequence.planet_nums[selected_sequence] + 1;
+  select.selectedIndex = mission_sequence.planet_num(selected_sequence) + 1;
   select.onchange = function () {
-    mission_sequence.planet_nums[selected_sequence] = select.selectedIndex - 1;
+    mission_sequence.set_planet_num(selected_sequence, select.selectedIndex - 1);
     change_sequence();
   };
 
@@ -81,19 +83,31 @@ function change_sequence_propaty() {
       let option = document.createElement("option");
       option.text = value;
       option.value = value;
-      if (i > 1) sequence_propaty.add(option);
+      if (i > 1) {
+        if (mission_sequence.planet_num(selected_sequence) < 10) {
+          //惑星の場合
+          if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
+            sequence_propaty.add(option);
+          }
+        } else {
+          if (value != Sequence_Type.Swingby && value != Sequence_Type.Orbit) {
+            //小天体の場合
+            sequence_propaty.add(option);
+          }
+        }
+      }
     });
   }
   const sequence_type = document.getElementById("sequence_type");
 
   sequence_propaty.onchange = function () {
-    mission_sequence.types[selected_sequence] = sequence_propaty.value;
+    mission_sequence.set_type(selected_sequence, sequence_propaty.value);
     change_sequence();
     sequence_propaty.selectedIndex = 0;
-    sequence_type.textContent = mission_sequence.types[selected_sequence];
+    sequence_type.textContent = mission_sequence.type(selected_sequence);
   };
 
-  sequence_type.textContent = mission_sequence.types[selected_sequence];
+  sequence_type.textContent = mission_sequence.type(selected_sequence);
 }
 
 function calc() {

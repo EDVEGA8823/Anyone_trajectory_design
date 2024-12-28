@@ -35,6 +35,7 @@ const Sequence_Type = {
   Swingby: "スイングバイ",
   Flyby: "フライバイ",
   Orbit: "周回軌道投入",
+  Rendezvous: "ランデブー",
   Maneuver: "マヌーバ",
 };
 
