@@ -34,9 +34,16 @@ const k_hat = [0, 0, 1];
 function solve_kepler(e, M) {
   let E = M;
   let dE = 1;
-  while (Math.abs(dE) > 1e-6) {
-    dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-    E -= dE;
+  if (e < 1) {
+    while (Math.abs(dE) > 1e-6) {
+      dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+      E -= dE;
+    }
+  } else {
+    while (Math.abs(dE) > 1e-6) {
+      dE = (e * Math.sinh(E) - E - M) / (e * Math.cosh(E) - 1);
+      E -= dE;
+    }
   }
   return E;
 }
@@ -64,13 +71,10 @@ function change_coordinate(v) {
 function get_orbit(elements) {
   pos = [100];
   for (let i = 0; i < 100; i++) {
-    p = get_planets_pos_E(elements, (2 * Math.PI * i) / 99);
-    pos[i] = new THREE.Vector3(p[0] / AU, p[2] / AU, -p[1] / AU);
+    let { r, v } = get_planets_pos_E(elements, (2 * Math.PI * i) / 99);
+    pos[i] = new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU);
   }
   return pos;
-}
-function get_planets_pos(elements) {
-  return get_planets_pos_E(elements, elements[5]);
 }
 
 function get_W_hat(elements) {
@@ -98,6 +102,10 @@ function get_Q_hat(elements) {
     Math.cos(w) * Math.sin(i),
   ];
 }
+function get_planets_pos(elements) {
+  return get_planets_pos_E(elements, elements[5]);
+}
+
 function get_planets_pos_E(elements, E) {
   let a = elements[0];
   let e = elements[1];
@@ -109,17 +117,28 @@ function get_planets_pos_E(elements, E) {
   var P_hat = get_P_hat(elements);
   var Q_hat = get_Q_hat(elements);
   r = [];
+  v = [];
   if (e < 1) {
     p = a * (1 - e * e);
     r_n = a * (1 - e * Math.cos(E));
     r = math.add(math.multiply(P_hat, a * (Math.cos(E) - e)), math.multiply(Q_hat, Math.sqrt(a * p) * Math.sin(E)));
+    r_norm = math.norm(r);
+    v = math.add(
+      math.multiply(P_hat, (-Math.sqrt(MU_SUN * a) * Math.sin(E)) / r_norm),
+      math.multiply(Q_hat, Math.sqrt(MU_SUN * p * Math.cos(E)) / r_norm)
+    );
   } else {
     p = -a * (e * e - 1);
     r_n = -a * (e * Math.cosh(E) - 1);
     r = math.add(math.multiply(P_hat, -a * (e - Math.cosh(E))), math.multiply(Q_hat, Math.sqrt(-a * p) * Math.sinh(E)));
+    r_norm = math.norm(r);
+    v = math.add(
+      math.multiply(P_hat, (Math.sqrt(MU_SUN * -a) * Math.sinh(E)) / r_norm),
+      math.multiply(Q_hat, Math.sqrt(MU_SUN * p * Math.cosh(E)) / r_norm)
+    );
   }
 
-  return r;
+  return { r, v };
   // return rotate_x(x, y, i, w, W)
 }
 function ic2par(r, v, mu) {
@@ -182,12 +201,18 @@ function nu2E(nu, e) {
   if (e < 1) return 2 * math.atan(math.sqrt((1 - e) / (1 + e)) * math.tan(nu / 2));
   else return 2 * math.atanh(math.sqrt((e - 1) / (e + 1)) * math.tan(nu / 2));
 }
+
+function E2M(E, e) {
+  if (e < 1) return E - e * math.sin(E);
+  else return e * math.sinh(E) - E;
+}
+
 function kepler_equation(a, e, E, μ) {
   if (a > 0) return math.sqrt(a ** 3 / μ) * (E - e * math.sin(E));
   else return math.sqrt((-a) ** 3 / μ) * (e * math.sinh(E) - E);
 }
 function get_peariod(a, μ) {
-  return 2 * Math.PI * Math.sqrt(a ** 3 / μ);
+  return 2 * Math.PI * Math.sqrt(Math.abs(a) ** 3 / μ);
 }
 
 function Dlag_planet() {
@@ -261,6 +286,67 @@ class Mission {
   #m_types = [];
   #m_is_auto_mode = [];
   #m_count = 0;
+
+  #m_planet_pos = [];
+  #m_planet_vel = [];
+
+  #m_s_c_pos = [];
+  #m_s_c_vel = [];
+
+  m_trajectory_arcs = [];
+
+  #calc_planet(i) {
+    if (i < 0) return;
+    if (this.#m_planet_nums[i] == -1) return;
+    let elements = get_planet_elements(this.#m_dates[i], this.#m_planet_nums[i]);
+    let { r, v } = get_planets_pos(elements);
+    this.#m_planet_pos[i] = r;
+    this.#m_planet_vel[i] = v;
+  }
+  #set_s_c(i) {
+    if (i >= this.#m_count) return;
+    if (this.#m_planet_pos[i] == undefined || this.#m_dates[i] == undefined) return;
+    this.#m_s_c_pos[i] = this.#m_planet_pos[i];
+
+    if (this.#m_is_auto_mode[i]) {
+      if (this.#m_planet_pos[i + 1] != undefined && this.#m_dates[i] != undefined) {
+        this.#m_s_c_pos[i + 1] = this.#m_planet_pos[i + 1];
+        let time_diff = this.#m_dates[i + 1] - this.#m_dates[i];
+        v = lambert_probrem(MU_SUN, this.#m_s_c_pos[i], this.#m_s_c_pos[i + 1], time_diff * 86400);
+        this.#m_s_c_vel[i] = v;
+      }
+    }
+  }
+  #update_trajectory(i) {
+    if (i >= this.#m_count) return;
+    if (this.#m_s_c_pos[i] == undefined || this.#m_s_c_vel[i] == undefined) return;
+    console.log("update_trajectory");
+
+    if (this.#m_planet_vel[i + 1] != undefined) {
+      let par = ic2par(this.#m_s_c_pos[i], this.#m_s_c_vel[i][0], MU_SUN);
+      let dt = (this.#m_dates[i + 1] - this.#m_dates[i]) * 86400;
+      let E_0 = par[5];
+      let M_0 = E2M(E_0, par[1]);
+      let dM = (dt / get_peariod(par[0], MU_SUN)) * 2 * Math.PI;
+      let M_1 = M_0 + dM;
+      let E_1 = solve_kepler(par[1], M_1);
+
+      console.log(dt, dM);
+
+      let p = [];
+      for (let j = 0; j < 100; j++) {
+        let { r, v } = get_planets_pos_E(par, E_0 + ((E_1 - E_0) * j) / 99);
+        p.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
+      }
+      this.m_trajectory_arcs[i] = p;
+    }
+  }
+  get_trajectory(i) {
+    if (this.m_trajectory_arcs[i] == undefined) return [];
+
+    return this.m_trajectory_arcs[i];
+  }
+
   planet_num(i) {
     return this.#m_planet_nums[i];
   }
@@ -278,9 +364,15 @@ class Mission {
   }
   set_planet_num(i, num) {
     this.#m_planet_nums[i] = num;
+    this.#calc_planet(i);
+    this.#set_s_c(i);
+    this.#update_trajectory(i);
   }
   set_date(i, date) {
     this.#m_dates[i] = date;
+    this.#calc_planet(i);
+    this.#set_s_c(i);
+    this.#update_trajectory(i);
   }
   set_type(i, type) {
     this.#m_types[i] = type;
@@ -288,7 +380,6 @@ class Mission {
   set_auto_mode(i, is_auto) {
     this.#m_is_auto_mode[i] = is_auto;
   }
-
 
   add(idx, date) {
     this.#m_types[0] = Sequence_Type.None;
@@ -307,5 +398,10 @@ class Mission {
     this.#m_types.splice(idx, 0, Sequence_Type.None);
     this.#m_types[0] = Sequence_Type.Launch;
     this.#m_count++;
+
+    this.#calc_planet(idx);
+
+    // this.#m_dates[10]=10
+    // console.log(this.#m_dates[-1]);
   }
 }

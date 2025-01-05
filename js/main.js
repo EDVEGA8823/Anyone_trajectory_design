@@ -117,8 +117,8 @@ function calc() {
     let elements = get_planet_elements(tmp_date, i);
     planet_elements[i] = elements;
     let orbit = get_orbit(elements);
-    let pos = get_planets_pos(elements);
-    planet_pos[i] = pos;
+    let {r,v} = get_planets_pos(elements);
+    planet_pos[i] = r;
     planet_orbits[i] = orbit;
   }
   return [planet_pos, planet_orbits];
@@ -133,11 +133,17 @@ function update_plot() {
     updateLine(orbit_lines[i], orbit);
     i++;
   });
+console.log(mission_sequence)
+//   orbit = mission_sequence.get_trajectory(0)
+if(mission_sequence.get_trajectory(0).length!=0){
+    // console.log(mission_sequence.get_trajectory(0))
+updateLine(arcs[0], mission_sequence.get_trajectory(0));
+}
+  return
   v = lambert_probrem(MU_SUN, planet_pos[2], planet_pos[3], 86400 * 200);
   par = ic2par(planet_pos[2], v[0], MU_SUN);
   //   console.log(planet_pos[2],v[0])
   //   console.log(par)
-  orbit = get_orbit(par);
   //   updateLine(arcs[0], orbit);
 }
 function make_plot() {
@@ -148,7 +154,7 @@ function make_plot() {
     orbit_lines.push(createLine(orbit, 0x000000));
   });
   points = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
-  arcs.push(createLine(points, 0x000000));
+  arcs.push(createLine(points, 0x0000ff));
   //   console.log(planet_speres);
 
   //   console.log(orbit_lines);
