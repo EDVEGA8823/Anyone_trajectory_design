@@ -56,47 +56,79 @@ ul li:hover {
 
 /* --- BOXの定義 -------------------------------------------------*/
 .control-panel {
-  flex: 2.2;
   position: relative; /* タイトル用に親要素定義  */
   display: flex; /* Flexboxを使用 */
   flex-direction: column; /* 縦方向のレイアウト */
   box-sizing: border-box; /* 罫線・余白も含む大きさ  */
-  margin: 2px; /* BOXの位置               */
   max-width: 1000px; /* BOXの最大横幅           */
   background: #fff; /* BOXの背景色             */
-  padding: 40px 10px 25px 10px; /* BOX内の余白             */
-  border: 3px solid #0059b3; /* BOXの枠線               */
+  padding: 15px 10px 25px 10px; /* BOX内の余白             */
+  height: 100%;
+}
+.right_panel {
+  flex: 2.2;
+  display: flex;
+  height: 100%;
+}
+.bold_box {
+  border: 3px solid #0059b3;
+  margin: 2px;
 }
 
-/* --- タイトル部分の定義 ----------------------------------------*/
-.control-panel::before {
-  position: absolute; /* 親からの相対位置の定義  */
-  display: inline-block; /* インラインボックス定義  */
-  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
-  line-height: 1; /* 1行の高さを初期化       */
-  background: #6eb4fa; /* タイトル背景色          */
-  color: #ffffff; /* タイトルの文字色        */
-  content: attr(title); /* タイトルに[title]を表示 */
-  font-weight: bold; /* タイトルは太字          */
-  padding: 8px 13px; /* タイトル内の余白        */
-  top: -17px; /* タイトル上位置はマイナス*/
-  left: 16px; /* タイトル右位置は1文字分 */
-  border-radius: 5px; /* タイトルの角丸          */
-  font-size: 20px; /* タイトルの文字サイズ    */
+.value_box {
+    display: flex;
+    flex-direction: column;
+    margin: 2px;
+    padding: 10px;
+    font-size: 50px;
+    line-height: 1; /* 行間を詰める */
+}
+.value_box .title {
+    font-size: 15px;
+    font-weight: bold;
+    line-height: 1; /* 行間を詰める */
+}
+.value_box .value {
+    display: flex;
+    align-items: flex-end;
+    font-size: 30px;
+    font-weight: bold;
+    line-height: 1; /* 行間を詰める */
+}
+.value_box .unit {
+    font-size: 15px;
+    margin-left: auto;
+    line-height: 1; /* 行間を詰める */
 }
 
+/* --- タイトル部分の定義 ----------------------------------------
+.control-panel::before {  position: absolute;   
+  display: inline-block;
+  box-sizing: border-box
+  line-height: 1;       
+  background: #6eb4fa;  
+  color: #ffffff;       
+  content: attr(title); 
+  font-weight: bold;    
+  padding: 8px 13px;    
+  top: -17px;           
+  left: 16px;           
+  border-radius: 5px;   
+  font-size: 20px;      
+}
+*/
 .sequence-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  margin: 2px;
+  border: 3px solid #0059b3;
 
   background: #fff;
   padding: 40px 10px 100px 10px;
-  border: 3px solid #0059b3;
   overflow-y: scroll;
   z-index: 1;
+  height: 100%;
 }
 
 /* --- タイトル部分の定義 ----------------------------------------*/
@@ -110,7 +142,7 @@ ul li:hover {
 
 .sequence-panel-title {
   /* position: relative; */
-  
+
   /* top: -17px;
   left: 16px; */
   /* background: #0059b3;
@@ -171,7 +203,7 @@ label {
 .row_right {
   display: flex;
   flex-flow: row;
-justify-content: flex-end;
+  justify-content: flex-end;
 }
 .box {
   border: 1px solid #000000;
@@ -356,24 +388,24 @@ justify-content: flex-end;
 #not_selected {
   display: flex;
 }
-#alway{
-    display: none;
+#alway {
+  display: none;
 }
 
-#launch{
-    display: none;
+#launch {
+  display: none;
 }
-#swingby{
-    display: none;
+#swingby {
+  display: none;
 }
-#flyby{
-    display: none;
+#flyby {
+  display: none;
 }
-#orbit{
-    display: none;
+#orbit {
+  display: none;
 }
-#maneuver{
-    display: none;
+#maneuver {
+  display: none;
 }
 
 .add_sequence {
@@ -422,30 +454,30 @@ justify-content: flex-end;
   border-radius: 5px; /* タイトルの角丸          */
   font-size: 16px; /* タイトルの文字サイズ    */
 }
-#sequence_type{
-    width: 200px;
+#sequence_type {
+  width: 200px;
 }
-#sequence_propaty{
-    width: 70px;
+#sequence_propaty {
+  width: 70px;
 }
 
 #confirm_time {
-    display: flex;
-    background-color: #488bff;
-    width: 70pt;
-    height: 25pt;
-    margin: 10px 2px 0px 10px;
-    border-radius: 5px; 
-    justify-content: center;
-    align-items: center;
+  display: flex;
+  background-color: #488bff;
+  width: 70pt;
+  height: 25pt;
+  margin: 10px 2px 0px 10px;
+  border-radius: 5px;
+  justify-content: center;
+  align-items: center;
 }
 #cancel_time {
-    display: flex;
-    background-color: #e8f7fb;
-    width: 70pt;
-    height: 25pt;
-    margin: 10px 2px 0px 10px;
-    border-radius: 5px; 
-    justify-content: center;
-    align-items: center;
+  display: flex;
+  background-color: #e8f7fb;
+  width: 70pt;
+  height: 25pt;
+  margin: 10px 2px 0px 10px;
+  border-radius: 5px;
+  justify-content: center;
+  align-items: center;
 }

@@ -125,8 +125,9 @@ function get_planets_pos_E(elements, E) {
     r_norm = math.norm(r);
     v = math.add(
       math.multiply(P_hat, (-Math.sqrt(MU_SUN * a) * Math.sin(E)) / r_norm),
-      math.multiply(Q_hat, Math.sqrt(MU_SUN * p * Math.cos(E)) / r_norm)
+      math.multiply(Q_hat, Math.sqrt(MU_SUN * p )* Math.cos(E) / r_norm)
     );
+
   } else {
     p = -a * (e * e - 1);
     r_n = -a * (e * Math.cosh(E) - 1);
@@ -134,7 +135,7 @@ function get_planets_pos_E(elements, E) {
     r_norm = math.norm(r);
     v = math.add(
       math.multiply(P_hat, (Math.sqrt(MU_SUN * -a) * Math.sinh(E)) / r_norm),
-      math.multiply(Q_hat, Math.sqrt(MU_SUN * p * Math.cosh(E)) / r_norm)
+      math.multiply(Q_hat, Math.sqrt(MU_SUN * p )* Math.cosh(E) / r_norm)
     );
   }
 
@@ -293,13 +294,19 @@ class Mission {
   #m_s_c_pos = [];
   #m_s_c_vel = [];
 
-  m_trajectory_arcs = [];
+  #m_trajectory_arcs = [];
+
+  get_v_inf(){
+    if(this.#m_planet_vel[0]==undefined || this.#m_s_c_vel[0]==undefined) return 0;
+    return math.norm(math.subtract(this.#m_s_c_vel[0][0],this.#m_planet_vel[0]));
+  }
 
   #calc_planet(i) {
     if (i < 0) return;
     if (this.#m_planet_nums[i] == -1) return;
     let elements = get_planet_elements(this.#m_dates[i], this.#m_planet_nums[i]);
     let { r, v } = get_planets_pos(elements);
+
     this.#m_planet_pos[i] = r;
     this.#m_planet_vel[i] = v;
   }
@@ -320,7 +327,7 @@ class Mission {
   #update_trajectory(i) {
     if (i >= this.#m_count) return;
     if (this.#m_s_c_pos[i] == undefined || this.#m_s_c_vel[i] == undefined) return;
-    console.log("update_trajectory");
+    // console.log("update_trajectory");
 
     if (this.#m_planet_vel[i + 1] != undefined) {
       let par = ic2par(this.#m_s_c_pos[i], this.#m_s_c_vel[i][0], MU_SUN);
@@ -331,20 +338,20 @@ class Mission {
       let M_1 = M_0 + dM;
       let E_1 = solve_kepler(par[1], M_1);
 
-      console.log(dt, dM);
+    //   console.log(dt, dM);
 
       let p = [];
       for (let j = 0; j < 100; j++) {
         let { r, v } = get_planets_pos_E(par, E_0 + ((E_1 - E_0) * j) / 99);
         p.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
       }
-      this.m_trajectory_arcs[i] = p;
+      this.#m_trajectory_arcs[i] = p;
     }
   }
   get_trajectory(i) {
-    if (this.m_trajectory_arcs[i] == undefined) return [];
+    if (this.#m_trajectory_arcs[i] == undefined) return [];
 
-    return this.m_trajectory_arcs[i];
+    return this.#m_trajectory_arcs[i];
   }
 
   planet_num(i) {
@@ -365,14 +372,23 @@ class Mission {
   set_planet_num(i, num) {
     this.#m_planet_nums[i] = num;
     this.#calc_planet(i);
+    this.#set_s_c(i-1);
     this.#set_s_c(i);
+    this.#set_s_c(i+1);
+    this.#update_trajectory(i-1);
     this.#update_trajectory(i);
+    this.#update_trajectory(i+1);
   }
   set_date(i, date) {
+    if (i < 0 || i >= this.#m_count) return;
     this.#m_dates[i] = date;
     this.#calc_planet(i);
+    this.#set_s_c(i-1);
     this.#set_s_c(i);
+    this.#set_s_c(i+1);
+    this.#update_trajectory(i-1);
     this.#update_trajectory(i);
+    this.#update_trajectory(i+1);
   }
   set_type(i, type) {
     this.#m_types[i] = type;

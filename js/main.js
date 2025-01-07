@@ -40,6 +40,9 @@ function change_sequence() {
   for (let i = 0; i < mission_sequence.count; i++) {
     add_sequence(i);
   }
+  v=mission_sequence.get_v_inf(selected_sequence)
+  v_inf.textContent=v.toFixed(2);
+  C3.textContent=(v*v).toFixed(2);
 }
 
 function change_sequence_propaty() {
@@ -64,6 +67,7 @@ function change_sequence_propaty() {
   select.onchange = function () {
     mission_sequence.set_planet_num(selected_sequence, select.selectedIndex - 1);
     change_sequence();
+    update_plot();
   };
 
   const sequence_propaty = document.getElementById("sequence_propaty");
@@ -133,7 +137,7 @@ function update_plot() {
     updateLine(orbit_lines[i], orbit);
     i++;
   });
-console.log(mission_sequence)
+// console.log(mission_sequence)
 //   orbit = mission_sequence.get_trajectory(0)
 if(mission_sequence.get_trajectory(0).length!=0){
     // console.log(mission_sequence.get_trajectory(0))

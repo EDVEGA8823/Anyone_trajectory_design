@@ -9,6 +9,7 @@ old_nu = 0;
 rev_count = 1;
 
 tmp_date = DateToJulian(new Date());
+old_date = tmp_date;
 planet_num = 9;
 planet_elements = [];
 

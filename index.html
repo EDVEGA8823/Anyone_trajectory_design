@@ -16,7 +16,6 @@
   math.js | Copyright (c) 2014 Arfon Smith github.com/openjournals/math-js
   three.js | Copyright © 2010-2024 three.js authors | github.com/mrdoob/three.js 
   -->
-
 </head>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XNQLFPS4RY"></script>
@@ -38,40 +37,81 @@
     </div>
     <div id="UI-panel">
       <div class="sequence-panel-wrapper">
-        <div class="sequence-panel-title">ミッションシーケンス</div>
+        <div class="sequence-panel-title\">ミッションシーケンス</div>
         <div class="sequence-panel">
           <div id="sequence">
             <div class="add_sequence" id="0">+ シーケンスを追加</div>
           </div>
         </div>
       </div>
-      <div class="control-panel" title="操作パネル">
-        <div class="row box alway">
-          <div class="column">
-            <label>シーケンス</label>
-            <div class="row">
-              <div class="red" id="sequence_type"></div>
-              <select id="sequence_propaty">
-                打上げ
-              </select>
+      <div class="right_panel column">
+        <label>操作パネル</label>
+        <div class="control-panel bold_box">
+          <div class="row box alway">
+            <div class="column">
+              <label>シーケンス</label>
+              <div class="row">
+                <div class="red" id="sequence_type"></div>
+                <select id="sequence_propaty">
+                  打上げ
+                </select>
+              </div>
+            </div>
+            <div class="column">
+              <label for="propaty">天体</label>
+              <select id="propaty"></select>
             </div>
           </div>
-          <div class="column">
-            <label for="propaty">天体</label>
-            <select id="propaty"></select>
+
+          <div class="column box">
+            <label for="date_time"><b>時刻</b></label>
+            <input type="datetime-local" id="date_time" value="2024-11-20T12:00" />
+            <div class="row_right alway">
+              <button id="confirm_time">変更</button>
+              <button id="cancel_time">キャンセル</button>
+            </div>
           </div>
         </div>
-
-        <div class="column box">
-          <label for="date_time"><b>時刻</b></label>
-          <input type="datetime-local" id="date_time" value="2024-11-20T12:00" />
-          <div class="row_right alway">
-            <button id="confirm_time">変更</button>
-            <button id="cancel_time">キャンセル</button>
+        <div class="row bold_box">
+          <div class="row">
+            <div class="value_box">
+                <div class="title">V<sub>∞</sub></div>
+                <div class="value" id="v_inf"">0</div>
+                <div class="unit">km/s</div>
+            </div>
+            <h1>(</h1>
+            <div class="value_box">
+                <div class="title">C<sub>3</sub></div>        
+                <div class="value" id="C3">0</div>
+                <div class="unit">km<sup>2</sup>/s<sup>2</sup></div>            
+            </div>
+            <h1>)</h1>
+          </div>
+          <div class="value_box">
+            <div class="title">総ΔV</div>
+            <div class="value">0</div>
+            <div class="unit">m/s</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
 
-        <!-- <div class="left_right">
+  <script src="./js/plot.js"></script>
+  <script src="./js/main.js"></script>
+  <script src="./js/event.js"></script>
+</body>
+
+<!--split-->
+<!-- <ul>
+        <li><a href=”#”>ファイル</a></li>
+        <li><a href=”#”>News</a></li>
+        <li><a href=”#”>About</a></li>
+        <li><a href=”#”>チュートリアル</a></li>
+        <li><a href=”#”>軌道をシェア</a></li>
+    </ul> -->
+
+<!-- <div class="left_right">
             <span><div class="blue">ー</div></span>
             <span>時刻変更</span>
             <span><div class="red">＋</div></span>
@@ -111,19 +151,3 @@
             </div>
           </div>
         </div> -->
-      </div>
-    </div>
-  </div>
-  <!--split-->
-  <!-- <ul>
-        <li><a href=”#”>ファイル</a></li>
-        <li><a href=”#”>News</a></li>
-        <li><a href=”#”>About</a></li>
-        <li><a href=”#”>チュートリアル</a></li>
-        <li><a href=”#”>軌道をシェア</a></li>
-    </ul> -->
-
-  <script src="./js/plot.js"></script>
-  <script src="./js/main.js"></script>
-  <script src="./js/event.js"></script>
-</body>

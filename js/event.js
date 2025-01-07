@@ -17,6 +17,9 @@ let sequence_panel = document.getElementsByClassName("sequence-panel")[0];
 let confirm_time = document.getElementById("confirm_time");
 let cancel_time = document.getElementById("cancel_time");
 
+let v_inf= document.getElementById("v_inf");
+let C3= document.getElementById("C3");
+
 // sequence_panel.addEventListener("click", (event) => {
 //     if(event)
 //     console.log("click");
@@ -49,14 +52,14 @@ let cancel_time = document.getElementById("cancel_time");
 // });
 
 confirm_time.addEventListener("click", function () {
-  mission_sequence.set_date(selected_sequence,tmp_date);
   confirm_time.style.visibility = "hidden";
   cancel_time.style.visibility = "hidden";
   change_sequence();
 });
 
 cancel_time.addEventListener("click", function () {
-  tmp_date = mission_sequence.date(selected_sequence);
+  tmp_date = old_date;
+  mission_sequence.set_date(selected_sequence,old_date);
   Update_time();
   confirm_time.style.visibility = "hidden";
   cancel_time.style.visibility = "hidden";
@@ -76,12 +79,14 @@ function handleSequencePanelClick(event) {
   } else {
     selected_sequence = Number(event.target.id);
   }
+  if(isNaN(selected_sequence)) selected_sequence = -1;
 
   updateControlPanelDisplay();
   change_sequence();
   change_sequence_propaty();
   if (selected_sequence != -1) {
     tmp_date = mission_sequence.date(selected_sequence);
+    old_date = tmp_date;
     Update_time();
     confirm_time.style.visibility = "hidden";
     cancel_time.style.visibility = "hidden";
@@ -152,14 +157,18 @@ function Update_time() {
     .replaceAll("/", "-");
   confirm_time.style.visibility = "Visible";
   cancel_time.style.visibility = "Visible";
+  mission_sequence.set_date(selected_sequence,tmp_date);
   update_plot();
+  v=mission_sequence.get_v_inf(selected_sequence)
+  v_inf.textContent=v.toFixed(2);
+  C3.textContent=(v*v).toFixed(2);
+// console.log(mission_sequence.get_v_inf(selected_sequence));
   //   change_sequence();
 }
 Update_time();
 
 date_time.addEventListener("change", function () {
   tmp_date = DateToJulian(new Date(date_time.value));
-  update_plot();
   //   change_sequence();
   Update_time();
 });
