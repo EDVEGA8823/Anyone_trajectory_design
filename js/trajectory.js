@@ -125,9 +125,8 @@ function get_planets_pos_E(elements, E) {
     r_norm = math.norm(r);
     v = math.add(
       math.multiply(P_hat, (-Math.sqrt(MU_SUN * a) * Math.sin(E)) / r_norm),
-      math.multiply(Q_hat, Math.sqrt(MU_SUN * p )* Math.cos(E) / r_norm)
+      math.multiply(Q_hat, (Math.sqrt(MU_SUN * p) * Math.cos(E)) / r_norm)
     );
-
   } else {
     p = -a * (e * e - 1);
     r_n = -a * (e * Math.cosh(E) - 1);
@@ -135,7 +134,7 @@ function get_planets_pos_E(elements, E) {
     r_norm = math.norm(r);
     v = math.add(
       math.multiply(P_hat, (Math.sqrt(MU_SUN * -a) * Math.sinh(E)) / r_norm),
-      math.multiply(Q_hat, Math.sqrt(MU_SUN * p )* Math.cosh(E) / r_norm)
+      math.multiply(Q_hat, (Math.sqrt(MU_SUN * p) * Math.cosh(E)) / r_norm)
     );
   }
 
@@ -296,9 +295,9 @@ class Mission {
 
   #m_trajectory_arcs = [];
 
-  get_v_inf(){
-    if(this.#m_planet_vel[0]==undefined || this.#m_s_c_vel[0]==undefined) return 0;
-    return math.norm(math.subtract(this.#m_s_c_vel[0][0],this.#m_planet_vel[0]));
+  get_v_inf() {
+    if (this.#m_planet_vel[0] == undefined || this.#m_s_c_vel[0] == undefined) return 0;
+    return math.norm(math.subtract(this.#m_s_c_vel[0][0], this.#m_planet_vel[0]));
   }
 
   #calc_planet(i) {
@@ -338,7 +337,7 @@ class Mission {
       let M_1 = M_0 + dM;
       let E_1 = solve_kepler(par[1], M_1);
 
-    //   console.log(dt, dM);
+      //   console.log(dt, dM);
 
       let p = [];
       for (let j = 0; j < 100; j++) {
@@ -372,23 +371,31 @@ class Mission {
   set_planet_num(i, num) {
     this.#m_planet_nums[i] = num;
     this.#calc_planet(i);
-    this.#set_s_c(i-1);
+    this.#set_s_c(i - 1);
     this.#set_s_c(i);
-    this.#set_s_c(i+1);
-    this.#update_trajectory(i-1);
+    this.#set_s_c(i + 1);
+    this.#update_trajectory(i - 1);
     this.#update_trajectory(i);
-    this.#update_trajectory(i+1);
+    this.#update_trajectory(i + 1);
   }
   set_date(i, date) {
-    if (i < 0 || i >= this.#m_count) return;
+    if (i < 0 || i >= this.#m_count) return date;
+    if (i != 0) {
+      if (date - this.#m_dates[i - 1] < 10) return (this.#m_dates[i] = this.#m_dates[i - 1] + 10);
+    }
+    if (i != this.#m_count - 1) {
+      if (this.#m_dates[i + 1] - date < 10) return (this.#m_dates[i] = this.#m_dates[i + 1] - 10);
+    }
+
     this.#m_dates[i] = date;
     this.#calc_planet(i);
-    this.#set_s_c(i-1);
+    this.#set_s_c(i - 1);
     this.#set_s_c(i);
-    this.#set_s_c(i+1);
-    this.#update_trajectory(i-1);
+    this.#set_s_c(i + 1);
+    this.#update_trajectory(i - 1);
     this.#update_trajectory(i);
-    this.#update_trajectory(i+1);
+    this.#update_trajectory(i + 1);
+    return date;
   }
   set_type(i, type) {
     this.#m_types[i] = type;
@@ -402,9 +409,9 @@ class Mission {
     this.#m_is_auto_mode.splice(idx, 0, true);
     this.#m_dates.splice(idx, 0, date);
     if (this.#m_count != 0) {
-      if (idx == 0 && this.#m_dates[1] - this.#m_dates[0] < 30) this.#m_dates[0] = this.#m_dates[1] - 30;
-      else if (idx == this.#m_count && this.#m_dates[this.#m_count] - this.#m_dates[this.#m_count - 1] < 30)
-        this.#m_dates[this.#m_count] = this.#m_dates[this.#m_count - 1] + 30;
+      if (idx == 0 && this.#m_dates[1] - this.#m_dates[0] < 50) this.#m_dates[0] = this.#m_dates[1] - 50;
+      else if (idx == this.#m_count && this.#m_dates[this.#m_count] - this.#m_dates[this.#m_count - 1] < 50)
+        this.#m_dates[this.#m_count] = this.#m_dates[this.#m_count - 1] + 50;
       else if (this.#m_dates[idx] > this.#m_dates[idx - 1] || this.#m_dates[idx] < this.#m_dates[idx + 1])
         this.#m_dates[idx] = (this.#m_dates[idx - 1] + this.#m_dates[idx + 1]) / 2;
     }
