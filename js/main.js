@@ -1,15 +1,20 @@
-function add_sequence(id) {
+import { State, Sequence_Type, PlotState } from './state.js';
+import { get_planet_elements, get_orbit, get_planets_pos, JulianToDate, Mission, AU } from './trajectory.js';
+import { initPlot, update_planets, updateLine, createLine, createPlanets, updateLayout } from './plot.js';
+import { initEvents, Update_time } from './event.js';
+
+export function add_sequence(id) {
   let sequence_elem = document.createElement("div");
   sequence_elem.className = "sequence";
-  sequence_elem.title = id + 1 + ".  " + mission_sequence.type(id);
-  if (id == selected_sequence) sequence_elem.style.backgroundColor = "lightblue";
-  // 内側の span 要素を作成
+  sequence_elem.title = id + 1 + ".  " + State.mission_sequence.type(id);
+  if (id == State.selected_sequence) sequence_elem.style.backgroundColor = "lightblue";
+  
   const span1 = document.createElement("span");
-  if (mission_sequence.planet_num(id) == -1) span1.textContent = "---";
-  else span1.textContent = planet_list[mission_sequence.planet_num(id)];
+  if (State.mission_sequence.planet_num(id) == -1) span1.textContent = "---";
+  else span1.textContent = State.planet_list[State.mission_sequence.planet_num(id)];
 
   const span2 = document.createElement("span");
-  span2.textContent = JulianToDate(mission_sequence.date(id)).toLocaleDateString();
+  span2.textContent = JulianToDate(State.mission_sequence.date(id)).toLocaleDateString();
 
   span1.id = id;
   span2.id = id;
@@ -17,6 +22,7 @@ function add_sequence(id) {
   sequence_elem.appendChild(span2);
   sequence_elem.id = id;
 
+  const sequence = document.getElementById("sequence");
   sequence.appendChild(sequence_elem);
 
   let add_sequence_elem = document.createElement("div");
@@ -25,7 +31,8 @@ function add_sequence(id) {
   add_sequence_elem.textContent = "+ シーケンスを追加";
   sequence.appendChild(add_sequence_elem);
 }
-function change_sequence() {
+
+export function change_sequence() {
   const sequence = document.getElementById("sequence");
 
   while (sequence.firstChild) {
@@ -37,15 +44,17 @@ function change_sequence() {
   add_sequence_elem.textContent = "+ シーケンスを追加";
   sequence.appendChild(add_sequence_elem);
 
-  for (let i = 0; i < mission_sequence.count; i++) {
+  for (let i = 0; i < State.mission_sequence.count; i++) {
     add_sequence(i);
   }
-  v=mission_sequence.get_v_inf(selected_sequence)
-  v_inf.textContent=v.toFixed(2);
-  C3.textContent=(v*v).toFixed(2);
+  let v = State.mission_sequence.get_v_inf(State.selected_sequence);
+  const v_inf = document.getElementById("v_inf");
+  const C3 = document.getElementById("C3");
+  v_inf.textContent = v.toFixed(2);
+  C3.textContent = (v * v).toFixed(2);
 }
 
-function change_sequence_propaty() {
+export function change_sequence_propaty() {
   const select = document.getElementById("propaty");
   while (select.firstChild) {
     select.removeChild(select.firstChild);
@@ -53,21 +62,22 @@ function change_sequence_propaty() {
   let option0 = document.createElement("option");
   option0.text = "---";
   option0.value = "default";
-  option0.hidden = true; // hidden 属性を設定
-  option0.selected = true; // 初期選択状態に設定
+  option0.hidden = true;
+  option0.selected = true;
   select.add(option0);
 
-  planet_list.forEach((element) => {
+  State.planet_list.forEach((element) => {
     let option = document.createElement("option");
     option.text = element;
     option.value = element;
     select.add(option);
   });
-  select.selectedIndex = mission_sequence.planet_num(selected_sequence) + 1;
-  select.onchange = function () {
-    mission_sequence.set_planet_num(selected_sequence, select.selectedIndex - 1);
+  select.selectedIndex = State.mission_sequence.planet_num(State.selected_sequence) + 1;
+  select.onchange = async function () {
+    await State.mission_sequence.set_planet_num(State.selected_sequence, select.selectedIndex - 1);
     change_sequence();
     update_plot();
+    toggle_planet();
   };
 
   const sequence_propaty = document.getElementById("sequence_propaty");
@@ -75,12 +85,12 @@ function change_sequence_propaty() {
     sequence_propaty.removeChild(sequence_propaty.firstChild);
   }
 
-  if (selected_sequence != 0) {
+  if (State.selected_sequence != 0) {
     let option1 = document.createElement("option");
     option1.text = "変更";
     option1.value = "default";
-    option1.hidden = true; // hidden 属性を設定
-    option1.selected = true; // 初期選択状態に設定
+    option1.hidden = true;
+    option1.selected = true;
     sequence_propaty.add(option1);
 
     Object.values(Sequence_Type).forEach((value, i) => {
@@ -88,14 +98,12 @@ function change_sequence_propaty() {
       option.text = value;
       option.value = value;
       if (i > 1) {
-        if (mission_sequence.planet_num(selected_sequence) < 10) {
-          //惑星の場合
+        if (State.mission_sequence.planet_num(State.selected_sequence) < 10) {
           if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
             sequence_propaty.add(option);
           }
         } else {
           if (value != Sequence_Type.Swingby && value != Sequence_Type.Orbit) {
-            //小天体の場合
             sequence_propaty.add(option);
           }
         }
@@ -105,70 +113,132 @@ function change_sequence_propaty() {
   const sequence_type = document.getElementById("sequence_type");
 
   sequence_propaty.onchange = function () {
-    mission_sequence.set_type(selected_sequence, sequence_propaty.value);
+    State.mission_sequence.set_type(State.selected_sequence, sequence_propaty.value);
     change_sequence();
     sequence_propaty.selectedIndex = 0;
-    sequence_type.textContent = mission_sequence.type(selected_sequence);
+    sequence_type.textContent = State.mission_sequence.type(State.selected_sequence);
   };
 
-  sequence_type.textContent = mission_sequence.type(selected_sequence);
+  sequence_type.textContent = State.mission_sequence.type(State.selected_sequence);
 }
 
-function calc() {
-  let planet_pos = [planet_num];
-  let planet_orbits = [planet_num];
-  for (let i = 0; i < planet_num; i++) {
-    let elements = get_planet_elements(tmp_date, i);
-    planet_elements[i] = elements;
+export function calc() {
+  let planet_pos = new Array(State.planet_num);
+  let planet_orbits = new Array(State.planet_num);
+  for (let i = 0; i < State.planet_num; i++) {
+    let elements = get_planet_elements(State.tmp_date, i);
+    State.planet_elements[i] = elements;
     let orbit = get_orbit(elements);
-    let {r,v} = get_planets_pos(elements);
+    let { r, v } = get_planets_pos(elements);
     planet_pos[i] = r;
     planet_orbits[i] = orbit;
   }
   return [planet_pos, planet_orbits];
 }
-function update_plot() {
+
+export function update_plot() {
   let [planet_pos, planet_orbits] = calc();
-  i = 0;
   update_planets(planet_pos);
 
-  planet_orbits.forEach((orbit) => {
-    // createLine(orbit, 0x000000);
-    updateLine(orbit_lines[i], orbit);
-    i++;
+  planet_orbits.forEach((orbit, i) => {
+    updateLine(PlotState.orbit_lines[i], orbit);
   });
-// console.log(mission_sequence)
-//   orbit = mission_sequence.get_trajectory(0)
-if(mission_sequence.get_trajectory(0).length!=0){
-    // console.log(mission_sequence.get_trajectory(0))
-updateLine(arcs[0], mission_sequence.get_trajectory(0));
+  
+  for (let i = 0; i < State.mission_sequence.count; i++) {
+    if (State.mission_sequence.get_trajectory(i).length != 0) {
+      updateLine(State.arcs[i], State.mission_sequence.get_trajectory(i));
+    }
+  }
 }
-  return
-  v = lambert_probrem(MU_SUN, planet_pos[2], planet_pos[3], 86400 * 200);
-  par = ic2par(planet_pos[2], v[0], MU_SUN);
-  //   console.log(planet_pos[2],v[0])
-  //   console.log(par)
-  //   updateLine(arcs[0], orbit);
-}
-function make_plot() {
+
+export function make_plot() {
+  // `initPlot` must be done before we add lines
   let [planet_pos, planet_orbits] = calc();
   createPlanets(planet_pos);
 
   planet_orbits.forEach((orbit) => {
-    orbit_lines.push(createLine(orbit, 0x000000));
+    PlotState.orbit_lines.push(createLine(orbit, 0x999999));
   });
-  points = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
-  arcs.push(createLine(points, 0x0000ff));
-  //   console.log(planet_speres);
-
-  //   console.log(orbit_lines);
-
-  //   d = get_data(planet_pos, planet_orbits, planet_list);
-  //   Plotly.newPlot("plot", d, layout);
 }
 
-make_plot();
-updateLayout();
+export function toggle_planet() {
+  if (State.selected_sequence != -1 && State.mission_sequence.planet_num(State.selected_sequence) != -1) {
+    for (let i = 0; i < PlotState.orbit_lines.length; i++) {
+      toggle_visibility(i, false);
+    }
+    for (let i = 0; i < 3; i++) {
+      let n = State.selected_sequence + i - 1;
+      let pos = State.mission_sequence.get_s_c_pos(n);
+      if (pos != undefined) {
+        PlotState.marker_spheres[i].visible = true;
+        PlotState.marker_spheres[i].position.set(pos[0] / AU, pos[2] / AU, -pos[1] / AU);
+      } else PlotState.marker_spheres[i].visible = false;
+    }
+  } else {
+    for (let i = 0; i < PlotState.orbit_lines.length; i++) {
+      toggle_visibility(i, true);
+    }
+    for (let i = 0; i < 3; i++) {
+      PlotState.marker_spheres[i].visible = false;
+    }
+  }
 
-change_sequence();
-change_sequence_propaty();
+  if (State.mission_sequence.planet_num(State.selected_sequence - 1) != -1) {
+    toggle_visibility(State.mission_sequence.planet_num(State.selected_sequence - 1), true);
+  }
+  if (State.mission_sequence.planet_num(State.selected_sequence) != -1) {
+    toggle_visibility(State.mission_sequence.planet_num(State.selected_sequence), true);
+  }
+  if (State.mission_sequence.planet_num(State.selected_sequence + 1) != -1) {
+    toggle_visibility(State.mission_sequence.planet_num(State.selected_sequence + 1), true);
+  }
+}
+
+export function toggle_visibility(i, visible) {
+  if (PlotState.orbit_lines[i]) PlotState.orbit_lines[i].line.visible = visible;
+  if (PlotState.planet_speres[i]) {
+    PlotState.planet_speres[i].visible = visible;
+    if (visible) {
+      PlotState.planet_speres[i].children[0].element.innerHTML = State.planet_list[i];
+    } else {
+      PlotState.planet_speres[i].children[0].element.innerHTML = "";
+    }
+  }
+}
+
+export function updateControlPanelDisplay() {
+  const alway = document.getElementsByClassName("alway");
+  for (let i = 0; i < alway.length; i++) {
+    if (State.selected_sequence != -1) {
+      alway[i].style.display = "flex";
+    } else {
+      alway[i].style.display = "none";
+    }
+  }
+}
+
+// ========================================
+// Main execution / initialization
+// ========================================
+function boot() {
+  // Initialize Mission
+  State.mission_sequence = new Mission();
+  
+  // Set up events
+  initEvents();
+
+  // Initial UI updates
+  updateControlPanelDisplay();
+  change_sequence();
+  change_sequence_propaty();
+
+  // Setup three.js 
+  initPlot();
+  make_plot();
+  updateLayout();
+  
+  // Update time for the initial load
+  Update_time();
+}
+
+boot();

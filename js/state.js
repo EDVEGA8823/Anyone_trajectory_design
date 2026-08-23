@@ -1,0 +1,60 @@
+import { DateToJulian } from './trajectory.js';
+
+export const User_Mode = {
+  None: 0,
+  Select: 1,
+};
+
+export const Sequence_Type = {
+  None: "---",
+  Launch: "打上げ",
+  Swingby: "スイングバイ",
+  Flyby: "フライバイ",
+  Orbit: "周回軌道投入",
+  Rendezvous: "ランデブー",
+  Maneuver: "マヌーバ",
+};
+
+export const State = {
+  is_change_time: false,
+  raycaster: new THREE.Raycaster(),
+  mouse: new THREE.Vector2(),
+
+  old_time: 0,
+  old_E: 0,
+  old_nu: 0,
+  rev_count: 1,
+
+  tmp_date: DateToJulian(new Date()),
+  old_date: 0, // will be initialized to tmp_date next
+  planet_num: 9,
+  planet_elements: [],
+
+  planet_list: ["水星", "金星", "地球", "火星", "木星", "土星", "天王星", "海王星", "冥王星"],
+  dates: [],
+  planets: [2],
+  arcs: [],
+
+  mission_sequence: null, // will be initialized after Mission class is imported
+
+  selected_planet: 3,
+  selected_sequence: -1,
+  is_selected: false,
+
+  mode: User_Mode.None,
+};
+State.old_date = State.tmp_date;
+State.dates = [State.tmp_date];
+
+// Plot related states
+export const PlotState = {
+  orbit_lines: [],
+  planet_speres: [],
+  camera_dist: 7,
+
+  width: 630,
+  height: 700,
+
+  marker_spheres: [],
+  marker_lines: [],
+};
