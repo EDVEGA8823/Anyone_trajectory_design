@@ -2,6 +2,7 @@ import { State, Sequence_Type, PlotState } from './state.js';
 import { get_planet_elements, get_orbit, get_planets_pos, JulianToDate, Mission, AU } from './trajectory.js';
 import { initPlot, update_planets, updateLine, createLine, createPlanets, updateLayout } from './plot.js';
 import { initEvents, Update_time } from './event.js';
+import { initBPlane, updateBPlane } from './bplane.js';
 
 export function add_sequence(id) {
   let sequence_elem = document.createElement("div");
@@ -115,6 +116,8 @@ export function change_sequence_propaty() {
   sequence_propaty.onchange = function () {
     State.mission_sequence.set_type(State.selected_sequence, sequence_propaty.value);
     change_sequence();
+    update_plot();
+    updateControlPanelDisplay();
     sequence_propaty.selectedIndex = 0;
     sequence_type.textContent = State.mission_sequence.type(State.selected_sequence);
   };
@@ -215,6 +218,29 @@ export function updateControlPanelDisplay() {
       alway[i].style.display = "none";
     }
   }
+
+  const is_swingby =
+    State.selected_sequence != -1 &&
+    State.mission_sequence &&
+    State.mission_sequence.type(State.selected_sequence) === Sequence_Type.Swingby;
+  const swingby_only = document.getElementsByClassName("swingby-only");
+  for (let i = 0; i < swingby_only.length; i++) {
+    swingby_only[i].style.display = is_swingby ? "flex" : "none";
+  }
+  if (is_swingby) updateBPlaneView();
+}
+
+// 現在選択中のシーケンスのスイングバイパラメータをB面ビューに反映する
+export function updateBPlaneView() {
+  const i = State.selected_sequence;
+  if (i == -1 || !State.mission_sequence) return;
+  const planetNum = State.mission_sequence.planet_num(i);
+  if (planetNum == -1) return;
+
+  const rp = State.mission_sequence.rp(i);
+  const beta = State.mission_sequence.beta(i);
+  const info = State.mission_sequence.get_swingby_info(i);
+  updateBPlane({ planetNum, rp, beta, vinf: info ? info.v_inf : undefined });
 }
 
 // ========================================
@@ -232,10 +258,11 @@ function boot() {
   change_sequence();
   change_sequence_propaty();
 
-  // Setup three.js 
+  // Setup three.js
   initPlot();
   make_plot();
   updateLayout();
+  initBPlane();
   
   // Update time for the initial load
   Update_time();

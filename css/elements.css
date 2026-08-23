@@ -391,6 +391,28 @@ input:focus {
   margin: 0;
 }
 
+/* ==================================================================
+   スイングバイ (B面ビュー)
+   ================================================================== */
+.bplane-row {
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+#bplane_canvas {
+  width: 180px;
+  height: 180px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.swingby-controls {
+  flex: 1;
+  min-width: 0;
+}
+
 /* シーケンス種別バッジ */
 .red {
   display: inline-flex;
