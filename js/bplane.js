@@ -2,8 +2,9 @@ import { planet_radius, planet_mu, min_flyby_rp } from './trajectory.js';
 
 // スイングバイ操作パネル用の小さな3Dビュー。
 // 通過天体を中心に、実際の双曲線軌道がB面(入射漸近線に垂直で天体中心を通る平面)を
-// 貫く様子を描画し、近点半径rp・回転角β・近点ΔV、および天体の公転方向と太陽方向を
-// 視覚化する。メインの太陽系ビュー(plot.js)とは独立した専用のシーンを持つ。
+// 貫く様子を描画し、近点半径rp・回転角β・近点ΔV、および天体の公転方向を
+// 視覚化する。太陽方向は矢印では描かず、平行光の向きとして陰影に反映する。
+// メインの太陽系ビュー(plot.js)とは独立した専用のシーンを持つ。
 //
 // 【座標系】天体半径=1の無次元スケールで描画する。描画フレームは
 //   入射漸近線の進行方向 = -Z、B面 = XY平面、β=0の基準 = +X
@@ -13,7 +14,7 @@ export let renderer, scene, camera, controls;
 
 let planetMesh, keepOutSphere, bplaneGroup, hyperbolaLine, asymptoteLine;
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine;
-let orbitLine, sunLine, sunMarker, dvArrow;
+let orbitLine, dvArrow;
 let root, sunLight;
 let lastFitDist; // 直近にカメラ距離を合わせたときのスケール
 
@@ -25,7 +26,6 @@ const COLOR_BPLANE = 0x3b6fe0;
 const COLOR_RP = 0xd6543f;
 const COLOR_BETA = 0xe0a03b;
 const COLOR_DV = 0x9b4fd8;
-const COLOR_SUN = 0xf0b429;
 const COLOR_PLANET_ORBIT = 0x4caf82;
 
 const PLANET_COLORS = [
@@ -138,14 +138,8 @@ export function initBPlane() {
   orbitLine = makeLine([new THREE.Vector3()], COLOR_PLANET_ORBIT, 0.85);
   root.add(orbitLine);
 
-  // 太陽方向
-  sunLine = makeLine([new THREE.Vector3()], COLOR_SUN, 0.85);
-  root.add(sunLine);
-  sunMarker = new THREE.Mesh(
-    new THREE.SphereGeometry(0.1, 16, 16),
-    new THREE.MeshBasicMaterial({ color: COLOR_SUN })
-  );
-  root.add(sunMarker);
+  // 太陽方向は陰影(平行光の向き)で示すので、線としては描画しない。
+  // 太陽光自体は updateBPlane 内の applyOrientation で毎回向きを更新する。
 
   // 近点ΔV。近点は天体表面のすぐ外側になることが多く、そのままだと
   // 天体に隠れてしまうので、他の線と同様に深度テストを切って手前に描く。
@@ -326,9 +320,9 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
     dvArrow.visible = false;
   }
 
-  // --- 天体の公転軌道と太陽方向 ---
+  // --- 天体の公転方向・太陽方向(陰影用)・天の北極方向 ---
   const haveFrame = iHat && jHat && kHat;
-  let vHat, sHat;
+  let vHat, sHat, northHat;
 
   if (haveFrame && planetVel) {
     const vn = Math.hypot(planetVel[0], planetVel[1], planetVel[2]);
@@ -342,25 +336,16 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
 
   if (haveFrame && planetPos) {
     const rn = Math.hypot(planetPos[0], planetPos[1], planetPos[2]);
-    if (rn > 1e-12) {
-      // 天体から見た太陽の方向 = -r_pla
-      sHat = toDrawing([-planetPos[0] / rn, -planetPos[1] / rn, -planetPos[2] / rn], iHat, jHat, kHat);
-      const L = extent * 1.35;
-      setLinePoints(sunLine, [new THREE.Vector3(), sHat.clone().multiplyScalar(L)]);
-      sunMarker.position.copy(sHat.clone().multiplyScalar(L));
-      sunMarker.scale.setScalar(Math.max(extent * 0.5, 1));
-      sunLine.visible = true;
-      sunMarker.visible = true;
-    } else {
-      sunLine.visible = false;
-      sunMarker.visible = false;
-    }
-  } else {
-    sunLine.visible = false;
-    sunMarker.visible = false;
+    // 天体から見た太陽の方向 = -r_pla。線には描かず、陰影(平行光)にのみ使う。
+    if (rn > 1e-12) sHat = toDrawing([-planetPos[0] / rn, -planetPos[1] / rn, -planetPos[2] / rn], iHat, jHat, kHat);
   }
 
-  applyOrientation(vHat, sHat);
+  if (haveFrame) {
+    // 黄道面の法線(=天の北極方向)。太陽系全体で共通の固定ベクトル[0,0,1]。
+    northHat = toDrawing([0, 0, 1], iHat, jHat, kHat);
+  }
+
+  applyOrientation(vHat, sHat, northHat);
 
   // 全体が画角に収まる距離を求める。規模が大きく変わったときだけ距離を
   // 合わせ直し、それ以外はユーザーのズーム操作を尊重する。
@@ -374,21 +359,22 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
 }
 
 /**
- * 中身をまとめて回転させ、表示の基準を天体の公転方向と太陽方向に合わせる。
- *   公転方向        -> 画面右 (+X)
- *   太陽方向の直交成分 -> 画面上 (+Y)
- *   公転面の法線     -> 手前   (+Z)
+ * 中身をまとめて回転させ、表示の基準を天の北極方向と天体の公転方向に合わせる。
+ *   天の北極方向(黄道面の法線, 固定)        -> 画面上 (+Y)
+ *   公転方向の北極直交成分                  -> 画面右 (+X)
+ *   (X,Y)の外積                            -> 手前   (+Z)
+ * 太陽方向は(北極とは無関係に)実際の向きのまま矢印で表示する。
  * 平行光も太陽方向に置き直す(rootの子なので回転後も太陽側から当たる)。
- * どちらかのベクトルが無い/縮退している場合は回転を掛けない。
+ * ベクトルが無い/北極と公転方向がほぼ平行(縮退)の場合は回転を掛けない。
  */
-function applyOrientation(vHat, sHat) {
-  if (!vHat || !sHat) return;
+function applyOrientation(vHat, sHat, northHat) {
+  if (!vHat || !northHat) return;
 
-  const x = vHat.clone().normalize();
-  // 太陽方向から公転方向成分を抜いたものを画面上方向にする
-  const y = sHat.clone().addScaledVector(x, -sHat.dot(x));
-  if (y.lengthSq() < 1e-12) return; // 太陽方向と公転方向が平行(通常起こらない)
-  y.normalize();
+  const y = northHat.clone().normalize();
+  // 公転方向から北極成分を抜いたものを画面右方向にする
+  const x = vHat.clone().addScaledVector(y, -vHat.dot(y));
+  if (x.lengthSq() < 1e-12) return; // 公転方向が北極とほぼ平行(縮退。極軌道など)
+  x.normalize();
   const z = new THREE.Vector3().crossVectors(x, y).normalize();
 
   // x,y,zを行にした行列が、描画フレーム -> 表示フレーム の回転になる
@@ -401,8 +387,10 @@ function applyOrientation(vHat, sHat) {
   root.setRotationFromMatrix(m);
 
   // 光源は回転前(root内)の座標で置くので、描画フレームでの太陽方向をそのまま使う
-  sunLight.position.copy(sHat).setLength(50);
-  sunLight.target.position.set(0, 0, 0);
+  if (sHat) {
+    sunLight.position.copy(sHat).setLength(50);
+    sunLight.target.position.set(0, 0, 0);
+  }
 }
 
 function setOrbitVisible(visible) {
@@ -420,6 +408,4 @@ function setOrbitVisible(visible) {
 
 function setContextVisible(visible) {
   orbitLine.visible = visible;
-  sunLine.visible = visible;
-  sunMarker.visible = visible;
 }
