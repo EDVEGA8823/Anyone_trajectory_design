@@ -115,8 +115,14 @@ export function initPlot() {
   controls.addEventListener("change", update_camera);
   window.addEventListener("resize", updateLayout);
 
-  update_camera();
   updateLayout();
+  // CSS2DObjectのDOM要素はCSS2DRendererが一度レンダリングするまで実際の
+  // document には挿入されない。update_camera()は document.getElementsByClassName
+  // でラベル要素を取得して不透明度を設定するため、先に一度描画しておかないと
+  // 初期状態ではラベルがまだ見つからず設定が空振りしてしまう
+  // (=カメラを操作するまで軸ラベルの透明化が効かない不具合の原因だった)。
+  labelRenderer.render(scene, camera);
+  update_camera();
   animate();
 }
 
