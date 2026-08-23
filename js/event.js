@@ -187,7 +187,11 @@ function Select_planet() {
   
   if (State.mode == User_Mode.None) {
     for (let i = 0; i < State.planet_num; i++) {
-        if(!PlotState.planet_speres[i]) continue;
+        // 非表示中(toggle_planetで隠された惑星)はヒットテスト対象から除外する。
+        // 位置は非表示でも毎フレーム更新され続けるため、除外しないと見えていない
+        // 惑星がクリックを奪ってしまい、時刻変更が発動せずカメラ回転にフォール
+        // スルーする不具合の原因になっていた。
+        if(!PlotState.planet_speres[i] || !PlotState.planet_speres[i].visible) continue;
       let p = PlotState.planet_speres[i].position;
       let dist = new THREE.Vector3().subVectors(p, x_0).cross(v).length() / v.length();
       if (dist < 0.015 * PlotState.camera_dist) {
@@ -199,15 +203,18 @@ function Select_planet() {
   }
   
   if (State.is_selected) {
-    if (State.mission_sequence.planet_num(State.selected_sequence) == -1 || State.selected_planet == State.mission_sequence.planet_num(State.selected_sequence)) {
-      PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "red";
-      State.old_E = State.planet_elements[State.selected_planet][5];
-      if(controls) controls.enableRotate = false;
-      State.is_change_time = true;
-      get_nu();
-      State.old_nu = 0;
-      State.rev_count = 0;
-    }
+    // シーケンスに割り当てられた惑星と一致するかで発動を制限していたが、
+    // リファクタリング前には無かった制約で、一致しない(が見えている)惑星を
+    // クリックすると時刻変更が発動せずカメラ回転にフォールスルーしてしまう
+    // 不具合の原因だったため撤去し、惑星をクリックしたら常に時刻変更モードに
+    // 入る元の挙動に戻す。
+    PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "red";
+    State.old_E = State.planet_elements[State.selected_planet][5];
+    if(controls) controls.enableRotate = false;
+    State.is_change_time = true;
+    get_nu();
+    State.old_nu = 0;
+    State.rev_count = 0;
   }
 }
 
