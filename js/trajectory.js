@@ -333,6 +333,17 @@ export class Mission {
     return math.norm(math.subtract(this.#m_s_c_vel[0][0], this.#m_planet_vel[0]));
   }
 
+  // 自動スイングバイの近点ΔVを合計したもの [km/s]。
+  // (手動スイングバイはdv_periapsis=0として扱う。将来マヌーバノードのΔVもここに加算する想定)
+  get_total_dv() {
+    let total = 0;
+    for (let i = 0; i < this.#m_count; i++) {
+      const info = this.#m_swingby_info[i];
+      if (info && info.dv_periapsis) total += info.dv_periapsis;
+    }
+    return total;
+  }
+
   #calc_planet(i) {
     if (i < 0 || i >= this.#m_count) return;
     if (this.#m_planet_nums[i] == -1) return;
@@ -343,9 +354,80 @@ export class Mission {
     this.#m_planet_vel[i] = v;
   }
 
-  // スイングバイノードiの出発速度を、前レグの到着速度を双曲線で曲げて求める。
-  // (MGA: ランベール問題を自由に解くのではなく、物理的に出発速度が決まる)
-  #calc_swingby(i) {
+  // 入射V∞ベクトルを基準にした正規直交基底 (i_hat, j_hat, k_hat) を作る。
+  // j_hat は天体の公転面(v_pla方向)を基準に取る(swingby()と同じ流儀)。
+  #frame(v_inf_in_vec, v_inf_in, v_pla) {
+    const i_hat = math.divide(v_inf_in_vec, v_inf_in);
+    let j_hat = math.cross(i_hat, v_pla);
+    let j_norm = math.norm(j_hat);
+    if (j_norm < 1e-9) {
+      const ref = Math.abs(i_hat[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+      j_hat = math.cross(i_hat, ref);
+      j_norm = math.norm(j_hat);
+    }
+    j_hat = math.divide(j_hat, j_norm);
+    const k_hat = math.cross(i_hat, j_hat);
+    return { i_hat, j_hat, k_hat };
+  }
+
+  // 自動モード: 前後2本のランベール弧から「入射V∞」と「出射に必要なV∞」を求め、
+  // 向きの差はスイングバイの幾何(rp, beta)で、大きさの差は近点でのΔV(パワード・
+  // フライバイ)で埋めて軌道を厳密に接続する。rp・beta・近点ΔVは計算結果(表示用)
+  // であり、軌道自体(#m_s_c_vel)はランベール解のまま変えない。
+  #calc_swingby_auto(i) {
+    this.#m_swingby_info[i] = undefined;
+    if (i <= 0 || i >= this.#m_count) return;
+
+    const v_in = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][1] : undefined;
+    const v_out = this.#m_s_c_vel[i] != undefined ? this.#m_s_c_vel[i][0] : undefined;
+    const v_pla = this.#m_planet_vel[i];
+    const n = this.#m_planet_nums[i];
+    if (v_in == undefined || v_out == undefined || v_pla == undefined || n == undefined || n == -1) return;
+    const mu_pla = planet_mu[n];
+    if (mu_pla == undefined) return;
+
+    const v_inf_in_vec = math.subtract(v_in, v_pla);
+    const v_inf_in = math.norm(v_inf_in_vec);
+    const v_inf_out_vec = math.subtract(v_out, v_pla);
+    const v_inf_out = math.norm(v_inf_out_vec);
+    if (v_inf_in < 1e-9 || v_inf_out < 1e-9) return;
+
+    const { i_hat, j_hat, k_hat } = this.#frame(v_inf_in_vec, v_inf_in, v_pla);
+    const out_hat = math.divide(v_inf_out_vec, v_inf_out);
+
+    // 入射方向と出射に必要な方向のなす角 = 実現すべき曲げ角
+    const cos_delta = Math.max(-1, Math.min(1, math.dot(i_hat, out_hat)));
+    const delta = Math.acos(cos_delta);
+    const beta = Math.atan2(math.dot(out_hat, k_hat), math.dot(out_hat, j_hat));
+
+    // 曲げ角deltaを実現するrp (入射V∞のエネルギーを基準にする)
+    let rp;
+    if (delta > 1e-9) {
+      const e_needed = 1 / Math.sin(delta / 2);
+      const a = -mu_pla / (v_inf_in * v_inf_in);
+      rp = a * (1 - e_needed);
+    }
+
+    // 近点でのΔV: rp一定のまま、近点速度をv_inf_in用からv_inf_out用に
+    // 変えるのに必要な速さの差 (エネルギー方程式 v_p^2 = v_inf^2 + 2mu/rp より)
+    let dv_periapsis = 0;
+    if (rp != undefined && rp > 0) {
+      const vp_before = Math.sqrt(v_inf_in * v_inf_in + (2 * mu_pla) / rp);
+      const vp_after = Math.sqrt(v_inf_out * v_inf_out + (2 * mu_pla) / rp);
+      dv_periapsis = Math.abs(vp_after - vp_before);
+    }
+
+    this.#m_rp[i] = rp;
+    this.#m_beta[i] = beta;
+    this.#m_swingby_info[i] = { v_inf_in, v_inf_out, delta, beta, rp, dv_periapsis, mode: "auto" };
+  }
+
+  // 手動モード: ユーザーが指定したrp・betaで双曲線に沿って曲げるだけ (近点ΔV無し)。
+  // 純粋な無推力フライバイなので次の天体に正確に到達する保証はなく、
+  // ユーザーが手でrp/betaを詰めて繋げにいくためのモード。
+  // (MGA-1DSMはこれとは別物で、レグ途中のDSM位置を変数に加えて
+  //  DSM以降をランベールで解き、次の天体に正確に繋げる方式。将来別途実装する)
+  #calc_swingby_manual(i) {
     this.#m_swingby_info[i] = undefined;
     if (i <= 0 || i >= this.#m_count) return;
 
@@ -363,7 +445,16 @@ export class Mission {
       const result = swingby(v_in, v_pla, rp, beta, mu_pla);
       // 到着速度(index 1)は #update_trajectory 側で実際の伝播結果から補完する
       this.#m_s_c_vel[i] = [result.v_out, undefined];
-      this.#m_swingby_info[i] = result;
+      // v_inf_in/v_inf_outは大きさ(スカラー)で揃える。無推力なので両者は等しい。
+      this.#m_swingby_info[i] = {
+        v_inf_in: result.v_inf,
+        v_inf_out: result.v_inf,
+        delta: result.delta,
+        beta,
+        rp,
+        dv_periapsis: 0,
+        mode: "manual",
+      };
     } catch (e) {
       // v_inがほぼ0など、フライバイの向きを定義できない場合は前回の値を維持する
     }
@@ -374,14 +465,24 @@ export class Mission {
     if (this.#m_planet_pos[i] == undefined || this.#m_dates[i] == undefined) return;
     this.#m_s_c_pos[i] = this.#m_planet_pos[i];
 
-    if (this.#m_types[i] === Sequence_Type.Swingby) {
-      this.#calc_swingby(i);
-    } else if (this.#m_is_auto_mode[i]) {
+    const is_swingby = this.#m_types[i] === Sequence_Type.Swingby;
+
+    if (is_swingby && !this.#m_is_auto_mode[i]) {
+      // 手動スイングバイ: ランベールを使わず、指定したrp/betaで曲げるだけ
+      this.#calc_swingby_manual(i);
+      return;
+    }
+
+    if (this.#m_is_auto_mode[i]) {
       if (this.#m_planet_pos[i + 1] != undefined && this.#m_dates[i] != undefined) {
         this.#m_s_c_pos[i + 1] = this.#m_planet_pos[i + 1];
         let time_diff = this.#m_dates[i + 1] - this.#m_dates[i];
         let v_lam = lambert_probrem(MU_SUN, this.#m_s_c_pos[i], this.#m_s_c_pos[i + 1], time_diff * 86400);
         this.#m_s_c_vel[i] = v_lam;
+      }
+      if (is_swingby) {
+        // 自動スイングバイ: 軌道はランベール解のまま、rp/beta/近点ΔVを診断情報として計算する
+        this.#calc_swingby_auto(i);
       }
     }
   }
@@ -444,7 +545,9 @@ export class Mission {
     return this.#m_s_c_pos[i];
   }
 
-  // スイングバイノードiの直近の計算結果 (v_inf, delta[曲げ角], eなど) を返す。
+  // スイングバイノードiの直近の計算結果を返す。
+  // 自動: { v_inf_in, v_inf_out, delta[曲げ角], beta, rp, dv_periapsis[近点ΔV], mode:"auto" }
+  // 手動: { v_inf_in, v_inf_out, v_out, delta, e, beta, dv_periapsis:0, mode:"manual" }
   // Swingbyノードでない、または計算できていない場合はnull。
   get_swingby_info(i) {
     return this.#m_swingby_info[i] ?? null;

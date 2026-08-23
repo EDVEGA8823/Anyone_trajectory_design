@@ -411,6 +411,64 @@ input:focus {
 .swingby-controls {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.swingby-mode {
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+.mode-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.mode-btn:hover {
+  border-color: var(--gray-300);
+}
+.mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.swingby-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: -4px;
+}
+
+.swingby-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.swingby-readout-row {
+  justify-content: space-between;
+  gap: 12px;
+}
+.swingby-readout-row span:last-child {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.swingby-inputs {
+  gap: 4px;
+}
+.swingby-inputs label {
+  margin-top: 4px;
 }
 
 /* シーケンス種別バッジ */

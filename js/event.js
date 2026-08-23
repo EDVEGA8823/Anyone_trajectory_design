@@ -4,7 +4,7 @@ import { camera, controls, createLine } from './plot.js';
 import { get_W_hat, get_P_hat, get_peariod, kepler_equation, nu2E, MU_SUN } from './trajectory.js';
 import { JulianToDate, DateToJulian } from './trajectory.js';
 
-let date_time, sequence, confirm_time, cancel_time, v_inf, C3, sequence_panel, plot_area;
+let date_time, sequence, confirm_time, cancel_time, v_inf, C3, total_dv, sequence_panel, plot_area;
 
 export function initEvents() {
   date_time = document.getElementById("date_time");
@@ -14,6 +14,7 @@ export function initEvents() {
   cancel_time = document.getElementById("cancel_time");
   v_inf = document.getElementById("v_inf");
   C3 = document.getElementById("C3");
+  total_dv = document.getElementById("total_dv");
   plot_area = document.getElementById("graph-panel");
 
   confirm_time.addEventListener("click", function () {
@@ -98,6 +99,7 @@ export function Update_time() {
   let v = State.mission_sequence.get_v_inf(State.selected_sequence);
   v_inf.textContent = v.toFixed(2);
   C3.textContent = (v * v).toFixed(2);
+  total_dv.textContent = (State.mission_sequence.get_total_dv() * 1000).toFixed(1); // km/s -> m/s
 }
 
 // --------------------- Mouse / Touch Handlers ---------------------

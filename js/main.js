@@ -53,6 +53,9 @@ export function change_sequence() {
   const C3 = document.getElementById("C3");
   v_inf.textContent = v.toFixed(2);
   C3.textContent = (v * v).toFixed(2);
+
+  const total_dv = document.getElementById("total_dv");
+  total_dv.textContent = (State.mission_sequence.get_total_dv() * 1000).toFixed(1); // km/s -> m/s
 }
 
 export function change_sequence_propaty() {
@@ -230,7 +233,7 @@ export function updateControlPanelDisplay() {
   if (is_swingby) updateBPlaneView();
 }
 
-// 現在選択中のシーケンスのスイングバイパラメータをB面ビューに反映する
+// 現在選択中のシーケンスのスイングバイパラメータをB面ビューと右側UIに反映する
 export function updateBPlaneView() {
   const i = State.selected_sequence;
   if (i == -1 || !State.mission_sequence) return;
@@ -240,7 +243,120 @@ export function updateBPlaneView() {
   const rp = State.mission_sequence.rp(i);
   const beta = State.mission_sequence.beta(i);
   const info = State.mission_sequence.get_swingby_info(i);
-  updateBPlane({ planetNum, rp, beta, vinf: info ? info.v_inf : undefined });
+  updateBPlane({ planetNum, rp, beta, vinf: info ? info.v_inf_in : undefined });
+  renderSwingbyControls();
+}
+
+const RAD2DEG = 180 / Math.PI;
+const DEG2RAD = Math.PI / 180;
+
+// スイングバイの自動/手動切り替えUIと、パラメータの表示/入力欄を描画する。
+// 自動: 前後のランベール弧を繋ぎ、向きの差はrp/betaで、大きさの差は近点ΔVで
+//       吸収して次の天体に正確に到達する (rp/beta/ΔVは計算結果)。
+// 手動: ユーザーがrp/betaを指定して曲げるだけ。無推力なので到達保証はない。
+export function renderSwingbyControls() {
+  const i = State.selected_sequence;
+  const container = document.querySelector(".swingby-controls");
+  if (!container || i == -1 || !State.mission_sequence) return;
+
+  const is_auto = State.mission_sequence.is_auto_mode(i);
+  const info = State.mission_sequence.get_swingby_info(i);
+
+  container.innerHTML = "";
+
+  const modeRow = document.createElement("div");
+  modeRow.className = "row swingby-mode";
+
+  const autoBtn = document.createElement("button");
+  autoBtn.type = "button";
+  autoBtn.textContent = "自動";
+  autoBtn.className = "mode-btn" + (is_auto ? " active" : "");
+  autoBtn.onclick = () => {
+    State.mission_sequence.set_auto_mode(i, true);
+    update_plot();
+    change_sequence();
+    updateBPlaneView();
+  };
+
+  const manualBtn = document.createElement("button");
+  manualBtn.type = "button";
+  manualBtn.textContent = "手動";
+  manualBtn.className = "mode-btn" + (!is_auto ? " active" : "");
+  manualBtn.onclick = () => {
+    State.mission_sequence.set_auto_mode(i, false);
+    update_plot();
+    change_sequence();
+    updateBPlaneView();
+  };
+
+  modeRow.appendChild(autoBtn);
+  modeRow.appendChild(manualBtn);
+  container.appendChild(modeRow);
+
+  const hint = document.createElement("div");
+  hint.className = "swingby-hint";
+  hint.textContent = is_auto
+    ? "前後のレグから逆算。差分は近点ΔVで補う"
+    : "rp・βで曲げるのみ。到達は保証されない";
+  container.appendChild(hint);
+
+  if (is_auto) {
+    const readout = document.createElement("div");
+    readout.className = "swingby-readout";
+    if (info) {
+      const rows = [
+        ["V∞ (入射)", info.v_inf_in.toFixed(3) + " km/s"],
+        ["V∞ (出射)", info.v_inf_out.toFixed(3) + " km/s"],
+        ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°"],
+        ["近点半径", info.rp != undefined ? info.rp.toFixed(0) + " km" : "-"],
+        ["近点ΔV", (info.dv_periapsis * 1000).toFixed(1) + " m/s"],
+      ];
+      rows.forEach(([label, value]) => {
+        const row = document.createElement("div");
+        row.className = "row swingby-readout-row";
+        row.innerHTML = `<span>${label}</span><span>${value}</span>`;
+        readout.appendChild(row);
+      });
+    } else {
+      readout.textContent = "前後のレグが決まると自動計算されます";
+    }
+    container.appendChild(readout);
+  } else {
+    const form = document.createElement("div");
+    form.className = "column swingby-inputs";
+    const rp = State.mission_sequence.rp(i);
+    const beta = State.mission_sequence.beta(i);
+
+    const rpLabel = document.createElement("label");
+    rpLabel.textContent = "近点半径 rp [km]";
+    const rpInput = document.createElement("input");
+    rpInput.type = "number";
+    rpInput.step = "100";
+    rpInput.value = rp != undefined ? rp.toFixed(0) : "";
+    rpInput.onchange = () => {
+      State.mission_sequence.set_rp(i, Number(rpInput.value));
+      update_plot();
+      updateBPlaneView();
+    };
+
+    const betaLabel = document.createElement("label");
+    betaLabel.textContent = "回転角 β [deg]";
+    const betaInput = document.createElement("input");
+    betaInput.type = "number";
+    betaInput.step = "5";
+    betaInput.value = (beta * RAD2DEG).toFixed(1);
+    betaInput.onchange = () => {
+      State.mission_sequence.set_beta(i, Number(betaInput.value) * DEG2RAD);
+      update_plot();
+      updateBPlaneView();
+    };
+
+    form.appendChild(rpLabel);
+    form.appendChild(rpInput);
+    form.appendChild(betaLabel);
+    form.appendChild(betaInput);
+    container.appendChild(form);
+  }
 }
 
 // ========================================
