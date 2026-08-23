@@ -1,6 +1,10 @@
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/elements.css" />
   <script src="https://unpkg.com/three@0.142.0/build/three.min.js"></script>
   <script src="https://unpkg.com/three@0.142.0/examples/js/controls/OrbitControls.js"></script>
@@ -35,7 +39,7 @@
     </div>
     <div id="UI-panel">
       <div class="sequence-panel-wrapper">
-        <div class="sequence-panel-title\">ミッションシーケンス</div>
+        <div class="sequence-panel-title">ミッションシーケンス</div>
         <div class="sequence-panel">
           <div id="sequence">
             <div class="add_sequence" id="0">+ シーケンスを追加</div>
@@ -74,16 +78,16 @@
           <div class="row">
             <div class="value_box">
                 <div class="title">打上げV<sub>∞</sub></div>
-                <div class="value" id="v_inf"">0</div>
+                <div class="value" id="v_inf">0</div>
                 <div class="unit">km/s</div>
             </div>
-            <h1>(</h1>
+            <span class="paren">(</span>
             <div class="value_box">
-                <div class="title">C<sub>3</sub></div>        
+                <div class="title">C<sub>3</sub></div>
                 <div class="value" id="C3">0</div>
-                <div class="unit">km<sup>2</sup>/s<sup>2</sup></div>            
+                <div class="unit">km<sup>2</sup>/s<sup>2</sup></div>
             </div>
-            <h1>)</h1>
+            <span class="paren">)</span>
           </div>
           <div class="value_box">
             <div class="title">総ΔV</div>

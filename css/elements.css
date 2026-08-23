@@ -1,364 +1,471 @@
 @charset "UTF-8";
-/* CSSを書くところ */
-h1 {
-  color: black;
-}
-/* h3 {
-        margin: 2px;
-      } */
 
-ul {
-  display: table;
-  margin-left: auto;
+/* ==================================================================
+   Design tokens
+   ================================================================== */
+:root {
+  --gray-50: #fafafa;
+  --gray-100: #f3f4f6;
+  --gray-150: #ebecef;
+  --gray-200: #e3e4e8;
+  --gray-300: #d1d3d9;
+  --gray-400: #a1a4ad;
+  --gray-500: #71747c;
+  --gray-600: #52545c;
+  --gray-700: #3c3e45;
+  --gray-800: #26272b;
+  --gray-900: #17181a;
+
+  --accent: #3b6fe0;
+  --accent-strong: #2451b8;
+  --accent-soft: #eaf0fd;
+  --danger: #d6543f;
+  --danger-soft: #fbebe8;
+
+  --bg: var(--gray-100);
+  --surface: #ffffff;
+  --surface-muted: var(--gray-50);
+  --border: var(--gray-200);
+  --text: var(--gray-900);
+  --text-muted: var(--gray-500);
+
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  --shadow-sm: 0 1px 2px rgba(23, 24, 26, 0.05), 0 1px 1px rgba(23, 24, 26, 0.04);
+  --shadow-md: 0 10px 28px rgba(23, 24, 26, 0.09);
+
+  --font: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --header-height: 64px;
+  --canvas-padding: 24px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
   padding: 0;
-  width: 40%;
-  text-align: center;
 }
 
-ul li {
-  display: table-cell;
-  min-width: 10px;
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-ul li a {
-  display: block;
-  width: 100%;
-  padding: 10px 0;
-  text-decoration: none;
-  color: #555;
+/* ==================================================================
+   Header
+   ================================================================== */
+h1 {
+  height: var(--header-height);
+  margin: 0;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  background: var(--gray-900);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
-ul li.current {
-  background-color: #deebf7;
-}
-ul li:hover {
-  background-color: #eae9e9;
+.paren {
+  font-size: 26px;
+  font-weight: 300;
+  color: var(--gray-300);
+  display: flex;
+  align-items: center;
 }
 
+/* ==================================================================
+   Page layout
+   ================================================================== */
 #main_area {
   margin: 0;
   display: flex;
-  flex-direction: row; /* 横方向に配置 */
-  height: calc(100vh - 90px); /* 画面全体の高さに設定 */
+  flex-direction: row;
+  height: calc(100vh - var(--header-height));
 }
+
 #graph-panel {
-  flex: 1; /* 左側を幅の50%に設定 */
+  position: relative;
+  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  padding: var(--canvas-padding);
+}
+
+#plot {
+  display: block;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  background: var(--surface);
 }
 
 #UI-panel {
-  flex: 1; /* 左側を幅の50%に設定 */
-  display: flex;
-}
-
-/* --- BOXの定義 -------------------------------------------------*/
-.control-panel {
-  position: relative; /* タイトル用に親要素定義  */
-  display: flex; /* Flexboxを使用 */
-  flex-direction: column; /* 縦方向のレイアウト */
-  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
-  max-width: 1000px; /* BOXの最大横幅           */
-  background: #fff; /* BOXの背景色             */
-  padding: 15px 10px 25px 10px; /* BOX内の余白             */
-  height: 100%;
-}
-.right_panel {
-  flex: 2.2;
-  display: flex;
-  height: 100%;
-}
-.bold_box {
-  border: 3px solid #0059b3;
-  margin: 2px;
-}
-
-.value_box {
-    display: flex;
-    flex-direction: column;
-    margin: 2px;
-    padding: 10px;
-    font-size: 50px;
-    line-height: 1; /* 行間を詰める */
-}
-.value_box .title {
-    font-size: 15px;
-    font-weight: bold;
-    line-height: 1; /* 行間を詰める */
-}
-.value_box .value {
-    display: flex;
-    align-items: flex-end;
-    font-size: 30px;
-    font-weight: bold;
-    line-height: 1; /* 行間を詰める */
-}
-.value_box .unit {
-    font-size: 15px;
-    margin-left: auto;
-    line-height: 1; /* 行間を詰める */
-}
-
-
-.sequence-panel {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  border: 3px solid #0059b3;
-
-  background: #fff;
-  padding: 40px 10px 100px 10px;
-  overflow-y: scroll;
-  z-index: 1;
-  height: 100%;
+  gap: 16px;
+  padding: 20px 20px 20px 0;
+  min-width: 0;
+  overflow-x: auto;
 }
 
-/* --- タイトル部分の定義 ----------------------------------------*/
+/* モバイル用のメディアクエリ */
+@media (max-aspect-ratio: 1/1) {
+  #main_area {
+    flex-direction: column;
+    flex: 0 0 auto;
+    height: auto;
+  }
+  #UI-panel {
+    padding: 0 20px 20px 20px;
+    flex-direction: column;
+  }
+}
+
+/* ==================================================================
+   Cards / panels
+   ================================================================== */
 .sequence-panel-wrapper {
   flex: 1;
   display: flex;
   max-width: 1000px;
   min-width: 250px;
   flex-flow: column;
+  gap: 10px;
 }
 
 .sequence-panel-title {
-  /* position: relative; */
-
-  /* top: -17px;
-  left: 16px; */
-  /* background: #0059b3;
-  color: #ffffff;
-  font-weight: bold;
-  padding: 17px 13px;
-  border-radius: 5px;
-  font-size: 20px;
-  height: 20px; */
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-left: 4px;
 }
 
-/* モバイル用のメディアクエリ */
-@media (max-aspect-ratio: 1/1) {
-  #main_area {
-    flex-direction: column; /* 縦方向のレイアウト */
-    flex: 0 0 auto; /* サイズを自動調整 */
-    height: auto; /* 高さは自動調整 */
-  }
-}
-
-#panel-title1 {
-  position: absolute;
-  top: -10px;
-}
-
-select {
-  border: 1px solid;
-  font-size: 20px;
-  font-weight: bold;
-}
-input {
-  border: 1px solid;
-  font-size: 30px;
-  font-weight: bold;
-}
-label {
-  font-size: 15px;
-  /* line-height: 2; */
-  /* font-weight: bold; */
-}
-.column {
+.sequence-panel {
+  flex: 1;
   display: flex;
-  flex-flow: column;
-  justify-content: center;
-  /* align-items: center; */
+  flex-direction: column;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  overflow-y: auto;
+  z-index: 1;
+  height: 100%;
 }
-.row-center {
+
+.right_panel {
+  flex: 2.2;
   display: flex;
-  flex-flow: row;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-width: 0;
 }
-.row {
+
+.bold_box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  margin: 0;
+  min-width: 0;
+}
+
+.control-panel {
+  position: relative;
   display: flex;
-  flex-flow: row;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+  max-width: 1000px;
+  height: 100%;
+  min-width: 0;
 }
-.row_right {
+
+/* ==================================================================
+   Stat tiles (V∞ / C3 / ΔV)
+   ================================================================== */
+.value_box {
   display: flex;
-  flex-flow: row;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
-.box {
-  border: 1px solid #000000;
-  border-radius: 10px;
-  padding: 10px;
-  margin: 2px;
+
+.value_box .title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
 }
-.left_right {
+
+.value_box .value {
   display: flex;
-  flex-flow: row;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-  /* font-size: 20px; */
-  margin-left: 20px;
-  margin-right: 20px;
-}
-.red {
-  color: red;
-  font-size: 30;
-  font-weight: bold;
-}
-.blue {
-  color: rgb(0, 60, 255);
-  font-size: 30;
-  font-weight: bold;
+  align-items: flex-end;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.15;
 }
 
-
-.label_1au_x {
-  color: #000000;
-  font-family: sans-serif;
-  padding: 2px;
-  font-size: 10pt;
-  --opacity: 1;
-  opacity: var(--opacity);
-  color: rgba(0, 0, 0, 0.4);
+.value_box .unit {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
-.label_5au_x {
-  color: #000000;
-  font-family: sans-serif;
-  font-size: 10pt;
-
-  --opacity: 1;
-  opacity: var(--opacity);
-  padding: 2px;
-  color: rgba(0, 0, 0, 0.4);
-}
-
-.label_1au_y {
-  color: #000000;
-  font-family: sans-serif;
-  padding: 2px;
-  font-size: 10pt;
-  --opacity: 0;
-  opacity: var(--opacity);
-  color: rgba(0, 0, 0, 0.4);
-}
-
-.label_5au_y {
-  color: #000000;
-  font-family: sans-serif;
-  padding: 2px;
-  font-size: 10pt;
-  --opacity: 0;
-  opacity: var(--opacity);
-  color: rgba(0, 0, 0, 0.4);
-}
-.label_1au_z {
-  color: #000000;
-  font-family: sans-serif;
-  padding: 2px;
-  font-size: 10pt;
-  --opacity: 1;
-  opacity: var(--opacity);
-  color: rgba(0, 0, 0, 0.4);
-}
-
-.label_5au_z {
-  color: #000000;
-  font-family: sans-serif;
-  font-size: 10pt;
-
-  --opacity: 1;
-  opacity: var(--opacity);
-  padding: 2px;
-  color: rgba(0, 0, 0, 0.4);
-}
-.label_planet {
-  color: #000000;
-  font-family: sans-serif;
-  padding: 2px;
-  font-size: 10pt;
-  --opacity: 1;
-  opacity: var(--opacity);
-  color: rgba(0, 0, 0, 1);
-}
-
-
+/* ==================================================================
+   Mission sequence cards
+   ================================================================== */
 .add_sequence {
   display: block;
-  /* display: flex;
-    width: 100%; */
-  background-color: #d6d6d6;
+  background: var(--surface-muted);
+  border: 1.5px dashed var(--gray-300);
+  border-radius: var(--radius-md);
   text-align: center;
+  color: var(--text-muted);
   user-select: none;
-  padding: 3px;
-  margin: 3px;
+  padding: 8px;
+  margin: 8px 0;
   cursor: pointer;
   font-size: 12px;
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
-.sequence {
-  display: flex; /* Flexboxを使用 */
-  width: 100%;
-  justify-content: space-between; /* 左右端に配置 */
-  flex: 1;
-  position: relative; /* タイトル用に親要素定義  */
-  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
-  margin: 2px; /* BOXの位置               */
-  max-width: 500px; /* BOXの最大横幅           */
-  background: #fff; /* BOXの背景色             */
-  padding: 20px 20px 15px 20px; /* BOX内の余白             */
-  border: 3px solid #0059b3; /* BOXの枠線               */
-  font-weight: bold;
-  margin-top: 20px;
-  margin-bottom: 8px;
-  cursor: pointer;
+.add_sequence:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
-/* --- タイトル部分の定義 ----------------------------------------*/
+.sequence {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+  position: relative;
+  box-sizing: border-box;
+  margin: 22px 0 6px 0;
+  max-width: 500px;
+  background: var(--surface);
+  padding: 16px 18px 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.sequence:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--gray-300);
+}
+.sequence.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* タイトル部分（連番 + シーケンス種別） */
 .sequence::before {
-  position: absolute; /* 親からの相対位置の定義  */
-  display: inline-block; /* インラインボックス定義  */
-  box-sizing: border-box; /* 罫線・余白も含む大きさ  */
-  line-height: 1; /* 1行の高さを初期化       */
-  background: #0059b3; /* タイトル背景色          */
-  color: #ffffff; /* タイトルの文字色        */
-  content: attr(title); /* タイトルに[title]を表示 */
-  font-weight: bold; /* タイトルは太字          */
-  padding: 8px 13px; /* タイトル内の余白        */
-  top: -17px; /* タイトル上位置はマイナス*/
-  left: 16px; /* タイトル右位置は1文字分 */
-  border-radius: 5px; /* タイトルの角丸          */
-  font-size: 16px; /* タイトルの文字サイズ    */
+  position: absolute;
+  display: inline-block;
+  box-sizing: border-box;
+  line-height: 1;
+  background: var(--gray-800);
+  color: #ffffff;
+  content: attr(title);
+  font-weight: 600;
+  padding: 6px 12px;
+  top: -14px;
+  left: 14px;
+  border-radius: 999px;
+  font-size: 12px;
 }
-#sequence_type {
-  width: 200px;
+.sequence.selected::before {
+  background: var(--accent);
 }
+
 #sequence_propaty {
   width: 70px;
 }
 
-#confirm_time {
-  display: flex;
-  background-color: #488bff;
-  width: 70pt;
-  height: 25pt;
-  margin: 10px 2px 0px 10px;
-  border-radius: 5px;
-  justify-content: center;
-  align-items: center;
+/* ==================================================================
+   Form controls
+   ================================================================== */
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
+
+select,
+input {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+select:focus,
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.column {
+  display: flex;
+  flex-flow: column;
+  gap: 6px;
+  justify-content: center;
+  min-width: 0;
+}
+.row {
+  display: flex;
+  flex-flow: row wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 0;
+}
+.row_right {
+  display: flex;
+  flex-flow: row;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  padding: 12px;
+  margin: 0;
+}
+
+/* シーケンス種別バッジ */
+.red {
+  display: inline-flex;
+  align-items: center;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.blue {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* ==================================================================
+   Buttons
+   ================================================================== */
+button {
+  font-family: var(--font);
+}
+
+#confirm_time,
 #cancel_time {
   display: flex;
-  background-color: #e8f7fb;
-  width: 70pt;
-  height: 25pt;
-  margin: 10px 2px 0px 10px;
-  border-radius: 5px;
   justify-content: center;
   align-items: center;
+  height: 34px;
+  padding: 0 16px;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+#confirm_time {
+  background: var(--accent);
+  color: #ffffff;
+}
+#confirm_time:hover {
+  background: var(--accent-strong);
+}
+#cancel_time {
+  background: var(--surface);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+#cancel_time:hover {
+  background: var(--gray-150);
+  color: var(--text);
+}
+
+/* ==================================================================
+   3D plot overlay labels (three.js CSS2DObject)
+   ================================================================== */
+.label_1au_x,
+.label_1au_y,
+.label_1au_z {
+  color: var(--gray-500);
+  font-family: var(--font);
+  padding: 2px;
+  font-size: 10px;
+  --opacity: 1;
+  opacity: var(--opacity);
+}
+
+.label_5au_x,
+.label_5au_y,
+.label_5au_z {
+  color: var(--gray-500);
+  font-family: var(--font);
+  font-size: 10px;
+  padding: 2px;
+  --opacity: 1;
+  opacity: var(--opacity);
+}
+
+.label_planet {
+  color: var(--gray-800);
+  font-family: var(--font);
+  font-weight: 600;
+  padding: 2px;
+  font-size: 11px;
+  --opacity: 1;
+  opacity: var(--opacity);
 }

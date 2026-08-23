@@ -7,7 +7,7 @@ export function add_sequence(id) {
   let sequence_elem = document.createElement("div");
   sequence_elem.className = "sequence";
   sequence_elem.title = id + 1 + ".  " + State.mission_sequence.type(id);
-  if (id == State.selected_sequence) sequence_elem.style.backgroundColor = "lightblue";
+  if (id == State.selected_sequence) sequence_elem.classList.add("selected");
   
   const span1 = document.createElement("span");
   if (State.mission_sequence.planet_num(id) == -1) span1.textContent = "---";

@@ -3,6 +3,10 @@ import { AU } from './trajectory.js';
 
 export let renderer, scene, camera, sun, labelRenderer, controls;
 
+// css/elements.css の --header-height / --canvas-padding と一致させること
+const HEADER_HEIGHT = 64;
+const CANVAS_PADDING = 24;
+
 const axis = [];
 const xticks0_1 = [], yticks0_1 = [], zticks0_1 = [];
 const xticks1 = [], yticks1 = [], zticks1 = [];
@@ -35,7 +39,8 @@ export function initPlot() {
   labelRenderer = new THREE.CSS2DRenderer();
   labelRenderer.setSize(plot_area.clientWidth, plot_area.clientHeight);
   labelRenderer.domElement.style.position = "absolute";
-  labelRenderer.domElement.style.top = "75px";
+  labelRenderer.domElement.style.top = CANVAS_PADDING + "px";
+  labelRenderer.domElement.style.left = CANVAS_PADDING + "px";
   plot_area.appendChild(labelRenderer.domElement);
 
   controls = new THREE.OrbitControls(camera, labelRenderer.domElement);
@@ -183,12 +188,22 @@ export function updateLine(lineData, newPoints) {
 }
 
 export function updateLayout() {
-  let h = window.innerHeight - 90;
-  let w = window.innerWidth / 2;
-  if (window.innerWidth < window.innerHeight) {
-    h = window.innerWidth - 90;
-    w = window.innerWidth;
+  const plot_area = document.getElementById("graph-panel");
+  // グラフパネルに実際に割り当てられた幅を基準にする
+  // (UI-panel側の内容量次第で幅の配分は50:50から変わり得るため、
+  //  window.innerWidth/2 という固定の仮定だとcanvasがはみ出す/UIパネルを隠すことがあった)
+  let w = plot_area.clientWidth - CANVAS_PADDING * 2;
+  let h;
+  // CSS側のメディアクエリ (max-aspect-ratio: 1/1) と同じ閾値 (幅<=高さ) に揃える
+  if (window.innerWidth <= window.innerHeight) {
+    // 縦長ウィンドウ: #main_area は縦積みになるので、
+    // 正方形に近い形にしつつ縦の使用可能量を超えないようにする
+    h = Math.min(w, window.innerHeight - HEADER_HEIGHT - CANVAS_PADDING * 2);
+  } else {
+    h = plot_area.clientHeight - CANVAS_PADDING * 2;
   }
+  w = Math.max(w, 50);
+  h = Math.max(h, 50);
   if (renderer && labelRenderer && camera) {
     renderer.setSize(w, h);
     labelRenderer.setSize(w, h);
