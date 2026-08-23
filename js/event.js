@@ -194,7 +194,10 @@ function Select_planet() {
         if(!PlotState.planet_speres[i] || !PlotState.planet_speres[i].visible) continue;
       let p = PlotState.planet_speres[i].position;
       let dist = new THREE.Vector3().subVectors(p, x_0).cross(v).length() / v.length();
-      if (dist < 0.015 * PlotState.camera_dist) {
+      // 当たり判定の半径。カーソルが指マークに変わる(ラベルのcursor:pointer)
+      // 領域より実際の判定が狭く、クリックしても反応しないことがあったため
+      // 元の 0.015 から拡大した。
+      if (dist < 0.03 * PlotState.camera_dist) {
         State.selected_planet = i;
         State.is_selected = true;
         break;
