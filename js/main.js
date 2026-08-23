@@ -317,6 +317,16 @@ export function renderSwingbyControls() {
         row.innerHTML = `<span>${label}</span><span>${value}</span>`;
         readout.appendChild(row);
       });
+
+      // 自動モードのrpは逆算結果なので、大気・放射線帯に突っ込む解になりうる。
+      // その場合は物理的に飛べないフライバイなので警告する。
+      if (State.mission_sequence.is_rp_violating(i)) {
+        const warn = document.createElement("div");
+        warn.className = "swingby-warn";
+        const min = State.mission_sequence.min_rp(i);
+        warn.textContent = `近点が低すぎます (下限 ${min.toFixed(0)} km)。日付を調整してください`;
+        readout.appendChild(warn);
+      }
     } else {
       readout.textContent = "前後のレグが決まると自動計算されます";
     }
@@ -327,15 +337,21 @@ export function renderSwingbyControls() {
     const rp = State.mission_sequence.rp(i);
     const beta = State.mission_sequence.beta(i);
 
+    const min_rp = State.mission_sequence.min_rp(i);
+
     const rpLabel = document.createElement("label");
     rpLabel.textContent = "近点半径 rp [km]";
     const rpInput = document.createElement("input");
     rpInput.type = "number";
     rpInput.step = "100";
+    if (min_rp != undefined) rpInput.min = String(Math.ceil(min_rp));
     rpInput.value = rp != undefined ? rp.toFixed(0) : "";
     rpInput.onchange = () => {
       State.mission_sequence.set_rp(i, Number(rpInput.value));
       update_plot();
+      // 下限でクランプされた場合は入力欄の表示も実際の値に合わせる
+      const applied = State.mission_sequence.rp(i);
+      if (applied != undefined) rpInput.value = applied.toFixed(0);
       updateBPlaneView();
     };
 
@@ -353,6 +369,12 @@ export function renderSwingbyControls() {
 
     form.appendChild(rpLabel);
     form.appendChild(rpInput);
+    if (min_rp != undefined) {
+      const note = document.createElement("div");
+      note.className = "swingby-hint";
+      note.textContent = `下限 ${min_rp.toFixed(0)} km (大気・放射線帯)`;
+      form.appendChild(note);
+    }
     form.appendChild(betaLabel);
     form.appendChild(betaInput);
     container.appendChild(form);

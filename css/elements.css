@@ -399,6 +399,13 @@ input:focus {
   flex-wrap: nowrap;
 }
 
+.bplane-view {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 #bplane_canvas {
   width: 180px;
   height: 180px;
@@ -406,6 +413,42 @@ input:focus {
   border-radius: var(--radius-md);
   background: var(--surface);
   border: 1px solid var(--border);
+  cursor: grab;
+}
+#bplane_canvas:active {
+  cursor: grabbing;
+}
+
+.bplane-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 180px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.bplane-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.bplane-legend i {
+  width: 10px;
+  height: 2px;
+  flex: 0 0 auto;
+  border-radius: 1px;
+}
+.bplane-legend .sw-orbit {
+  background: #1a1c20;
+}
+.bplane-legend .sw-rp {
+  background: #d6543f;
+}
+.bplane-legend .sw-b {
+  background: #3b6fe0;
+}
+.bplane-legend .sw-beta {
+  background: #e0a03b;
 }
 
 .swingby-controls {
@@ -462,6 +505,17 @@ input:focus {
 .swingby-readout-row span:last-child {
   color: var(--text);
   font-weight: 600;
+}
+
+.swingby-warn {
+  margin-top: 4px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .swingby-inputs {

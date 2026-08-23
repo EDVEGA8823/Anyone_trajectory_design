@@ -51,8 +51,27 @@ export const planet_radius = [
   24764, // 海王星
   1188.3, // 冥王星
 ];
-// スイングバイの近点半径のデフォルトに使う、天体表面からの最低通過高度の目安 [km]
-export const MIN_FLYBY_ALTITUDE = 200;
+// スイングバイ時に確保する、天体表面からの最低通過高度 [km]。
+// 大気(や巨大ガス惑星の場合は放射線帯・リング)を避けるための実用的な下限で、
+// 実ミッションの設定やpykepのsafe_radiusの慣習に近い値を採用している。
+export const MIN_FLYBY_ALTITUDE = [
+  200, // 水星: 大気がほぼ無いので低くてよい
+  300, // 金星: 濃密な大気
+  300, // 地球: 大気
+  200, // 火星: 希薄な大気
+  71492 * 0.5, // 木星: 強烈な放射線帯を避けるため半径の1.5倍相当を近点下限とする
+  60268 * 0.5, // 土星: リング・放射線帯を避ける
+  25559 * 0.3, // 天王星
+  24764 * 0.3, // 海王星
+  100, // 冥王星: 大気は希薄
+];
+
+// 天体nに対して許容される最小の近点半径 [km] (= 天体半径 + 最低通過高度)。
+// スイングバイのrpはこれを下回れない。
+export function min_flyby_rp(n) {
+  if (planet_radius[n] == undefined) return undefined;
+  return planet_radius[n] + MIN_FLYBY_ALTITUDE[n];
+}
 
 export const i_hat = [1, 0, 0];
 export const j_hat = [0, 1, 0];
@@ -438,7 +457,8 @@ export class Mission {
     const mu_pla = planet_mu[n];
     if (mu_pla == undefined) return;
 
-    const rp = this.#m_rp[i] ?? planet_radius[n] + MIN_FLYBY_ALTITUDE;
+    // 大気・放射線帯を避けるため、rpは天体ごとの下限を下回れない
+    const rp = Math.max(this.#m_rp[i] ?? min_flyby_rp(n), min_flyby_rp(n));
     const beta = this.#m_beta[i] ?? 0;
 
     try {
@@ -572,7 +592,23 @@ export class Mission {
 
   rp(i) {
     const n = this.#m_planet_nums[i];
-    return this.#m_rp[i] ?? (n != undefined && n != -1 ? planet_radius[n] + MIN_FLYBY_ALTITUDE : undefined);
+    if (n == undefined || n == -1) return this.#m_rp[i];
+    return this.#m_rp[i] ?? min_flyby_rp(n);
+  }
+
+  // 天体ごとに許容される最小の近点半径 [km] (大気・放射線帯の回避)
+  min_rp(i) {
+    const n = this.#m_planet_nums[i];
+    if (n == undefined || n == -1) return undefined;
+    return min_flyby_rp(n);
+  }
+
+  // 現在のrpが下限を割っているか (自動モードでは制約違反の警告表示に使う)
+  is_rp_violating(i) {
+    const min = this.min_rp(i);
+    const rp = this.rp(i);
+    if (min == undefined || rp == undefined) return false;
+    return rp < min;
   }
 
   beta(i) {
@@ -618,7 +654,9 @@ export class Mission {
   }
 
   set_rp(i, rp) {
-    this.#m_rp[i] = rp;
+    // 大気・放射線帯に突入しないよう、天体ごとの下限でクランプする
+    const min = this.min_rp(i);
+    this.#m_rp[i] = min != undefined ? Math.max(rp, min) : rp;
     this.#recompute_all();
   }
 
