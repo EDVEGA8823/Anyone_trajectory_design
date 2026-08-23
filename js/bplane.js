@@ -14,6 +14,7 @@ export let renderer, scene, camera, controls;
 let planetMesh, keepOutSphere, bplaneGroup, hyperbolaLine, asymptoteLine;
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine;
 let orbitLine, sunLine, sunMarker, dvArrow;
+let root, sunLight;
 let lastFitDist; // 直近にカメラ距離を合わせたときのスケール
 
 const CANVAS_SIZE = 180;
@@ -41,31 +42,41 @@ export function initBPlane() {
 
   scene = new THREE.Scene();
 
+  // 表示の向きは「天体の公転方向を画面右(+X)、太陽方向を画面上(+Y)」に固定する。
+  // カメラを動かすとOrbitControlsの回転軸(camera.upから一度だけ決まる)と噛み合わず、
+  // ユーザーの手動回転も打ち消してしまうため、代わりに中身をまとめて回転させる。
+  // 剛体回転なので双曲線の幾何はそのまま保たれる。
+  root = new THREE.Group();
+  scene.add(root);
+
   camera = new THREE.PerspectiveCamera(35, 1, 0.05, 5000);
-  camera.position.set(7, 5, 7);
+  // 公転面(XY)を正面から見下ろす向き。少しだけ傾けて立体感を出す
+  camera.position.set(0.3, 0.45, 1).setLength(10);
   camera.lookAt(0, 0, 0);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-  const key = new THREE.DirectionalLight(0xffffff, 0.6);
-  key.position.set(3, 5, 2);
-  scene.add(key);
+  // 陰影のコントラストを出すため環境光は控えめにし、太陽方向の平行光を強くする
+  scene.add(new THREE.AmbientLight(0xffffff, 0.16));
+  sunLight = new THREE.DirectionalLight(0xfff4e0, 2.1);
+  sunLight.position.set(0, 1, 0);
+  root.add(sunLight);
+  root.add(sunLight.target);
 
   planetMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 32, 32),
-    new THREE.MeshStandardMaterial({ color: 0x3a7bd5, roughness: 0.85 })
+    new THREE.SphereGeometry(1, 48, 48),
+    new THREE.MeshStandardMaterial({ color: 0x3a7bd5, roughness: 0.62, metalness: 0.0 })
   );
-  scene.add(planetMesh);
+  root.add(planetMesh);
 
   // 通過禁止領域 (大気・放射線帯を避けるための最小近点半径)
   keepOutSphere = new THREE.Mesh(
     new THREE.SphereGeometry(1, 24, 24),
     new THREE.MeshBasicMaterial({ color: COLOR_RP, transparent: true, opacity: 0.12, wireframe: true })
   );
-  scene.add(keepOutSphere);
+  root.add(keepOutSphere);
 
   // B面(正方形)とその外枠・グリッド
   bplaneGroup = new THREE.Group();
-  scene.add(bplaneGroup);
+  root.add(bplaneGroup);
 
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(2, 2),
@@ -109,32 +120,32 @@ export function initBPlane() {
   bplaneGroup.add(pierceMarker);
 
   hyperbolaLine = makeLine([new THREE.Vector3()], COLOR_ORBIT, 1);
-  scene.add(hyperbolaLine);
+  root.add(hyperbolaLine);
 
   asymptoteLine = makeLine([new THREE.Vector3()], COLOR_ASYMPTOTE, 0.55);
-  scene.add(asymptoteLine);
+  root.add(asymptoteLine);
 
   periapsisMarker = new THREE.Mesh(
     new THREE.SphereGeometry(0.07, 16, 16),
     new THREE.MeshBasicMaterial({ color: COLOR_RP })
   );
-  scene.add(periapsisMarker);
+  root.add(periapsisMarker);
 
   rpLine = makeLine([new THREE.Vector3()], COLOR_RP, 1);
-  scene.add(rpLine);
+  root.add(rpLine);
 
   // 天体の公転軌道 (フライバイのスケールではほぼ直線)
   orbitLine = makeLine([new THREE.Vector3()], COLOR_PLANET_ORBIT, 0.85);
-  scene.add(orbitLine);
+  root.add(orbitLine);
 
   // 太陽方向
   sunLine = makeLine([new THREE.Vector3()], COLOR_SUN, 0.85);
-  scene.add(sunLine);
+  root.add(sunLine);
   sunMarker = new THREE.Mesh(
     new THREE.SphereGeometry(0.1, 16, 16),
     new THREE.MeshBasicMaterial({ color: COLOR_SUN })
   );
-  scene.add(sunMarker);
+  root.add(sunMarker);
 
   // 近点ΔV。近点は天体表面のすぐ外側になることが多く、そのままだと
   // 天体に隠れてしまうので、他の線と同様に深度テストを切って手前に描く。
@@ -142,7 +153,7 @@ export function initBPlane() {
   dvArrow.line.material.depthTest = false;
   dvArrow.cone.material.depthTest = false;
   dvArrow.renderOrder = 2;
-  scene.add(dvArrow);
+  root.add(dvArrow);
 
   controls = new THREE.OrbitControls(camera, canvas);
   controls.enablePan = false;
@@ -317,10 +328,12 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
 
   // --- 天体の公転軌道と太陽方向 ---
   const haveFrame = iHat && jHat && kHat;
+  let vHat, sHat;
+
   if (haveFrame && planetVel) {
     const vn = Math.hypot(planetVel[0], planetVel[1], planetVel[2]);
     if (vn > 1e-12) {
-      const vHat = toDrawing([planetVel[0] / vn, planetVel[1] / vn, planetVel[2] / vn], iHat, jHat, kHat);
+      vHat = toDrawing([planetVel[0] / vn, planetVel[1] / vn, planetVel[2] / vn], iHat, jHat, kHat);
       const L = extent * 1.5;
       setLinePoints(orbitLine, [vHat.clone().multiplyScalar(-L), vHat.clone().multiplyScalar(L)]);
       orbitLine.visible = true;
@@ -331,7 +344,7 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
     const rn = Math.hypot(planetPos[0], planetPos[1], planetPos[2]);
     if (rn > 1e-12) {
       // 天体から見た太陽の方向 = -r_pla
-      const sHat = toDrawing([-planetPos[0] / rn, -planetPos[1] / rn, -planetPos[2] / rn], iHat, jHat, kHat);
+      sHat = toDrawing([-planetPos[0] / rn, -planetPos[1] / rn, -planetPos[2] / rn], iHat, jHat, kHat);
       const L = extent * 1.35;
       setLinePoints(sunLine, [new THREE.Vector3(), sHat.clone().multiplyScalar(L)]);
       sunMarker.position.copy(sHat.clone().multiplyScalar(L));
@@ -347,6 +360,8 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
     sunMarker.visible = false;
   }
 
+  applyOrientation(vHat, sHat);
+
   // 全体が画角に収まる距離を求める。規模が大きく変わったときだけ距離を
   // 合わせ直し、それ以外はユーザーのズーム操作を尊重する。
   const fitDist = (extent * 1.25) / Math.tan((camera.fov * Math.PI) / 180 / 2);
@@ -356,6 +371,38 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
     camera.position.setLength(fitDist);
     lastFitDist = fitDist;
   }
+}
+
+/**
+ * 中身をまとめて回転させ、表示の基準を天体の公転方向と太陽方向に合わせる。
+ *   公転方向        -> 画面右 (+X)
+ *   太陽方向の直交成分 -> 画面上 (+Y)
+ *   公転面の法線     -> 手前   (+Z)
+ * 平行光も太陽方向に置き直す(rootの子なので回転後も太陽側から当たる)。
+ * どちらかのベクトルが無い/縮退している場合は回転を掛けない。
+ */
+function applyOrientation(vHat, sHat) {
+  if (!vHat || !sHat) return;
+
+  const x = vHat.clone().normalize();
+  // 太陽方向から公転方向成分を抜いたものを画面上方向にする
+  const y = sHat.clone().addScaledVector(x, -sHat.dot(x));
+  if (y.lengthSq() < 1e-12) return; // 太陽方向と公転方向が平行(通常起こらない)
+  y.normalize();
+  const z = new THREE.Vector3().crossVectors(x, y).normalize();
+
+  // x,y,zを行にした行列が、描画フレーム -> 表示フレーム の回転になる
+  const m = new THREE.Matrix4().set(
+    x.x, x.y, x.z, 0,
+    y.x, y.y, y.z, 0,
+    z.x, z.y, z.z, 0,
+    0, 0, 0, 1
+  );
+  root.setRotationFromMatrix(m);
+
+  // 光源は回転前(root内)の座標で置くので、描画フレームでの太陽方向をそのまま使う
+  sunLight.position.copy(sHat).setLength(50);
+  sunLight.target.position.set(0, 0, 0);
 }
 
 function setOrbitVisible(visible) {
