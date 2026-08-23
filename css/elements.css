@@ -450,6 +450,15 @@ input:focus {
 .bplane-legend .sw-beta {
   background: #e0a03b;
 }
+.bplane-legend .sw-dv {
+  background: #9b4fd8;
+}
+.bplane-legend .sw-porbit {
+  background: #4caf82;
+}
+.bplane-legend .sw-sun {
+  background: #f0b429;
+}
 
 .swingby-controls {
   flex: 1;
@@ -505,17 +514,6 @@ input:focus {
 .swingby-readout-row span:last-child {
   color: var(--text);
   font-weight: 600;
-}
-
-.swingby-warn {
-  margin-top: 4px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.4;
 }
 
 .swingby-inputs {

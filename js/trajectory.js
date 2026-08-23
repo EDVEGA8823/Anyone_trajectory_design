@@ -419,26 +419,72 @@ export class Mission {
     const delta = Math.acos(cos_delta);
     const beta = Math.atan2(math.dot(out_hat, k_hat), math.dot(out_hat, j_hat));
 
-    // 曲げ角deltaを実現するrp (入射V∞のエネルギーを基準にする)
+    // 必要な曲げ角deltaを実現するrpを解く (パワード・フライバイ)。
+    // 近点で噴射する場合、入射側・出射側は別々の双曲線になり、それぞれ
+    // 漸近線から近点まで asin(1/e) だけ曲がるので、全体の曲げ角は
+    //   delta(rp) = asin(1/e_in(rp)) + asin(1/e_out(rp))
+    //   e_in  = 1 + rp*v_inf_in^2/mu,  e_out = 1 + rp*v_inf_out^2/mu
+    // delta(rp)はrpについて単調減少なので、二分法で解ける。
+    const turn_at = (r) =>
+      Math.asin(1 / (1 + (r * v_inf_in * v_inf_in) / mu_pla)) +
+      Math.asin(1 / (1 + (r * v_inf_out * v_inf_out) / mu_pla));
+
+    const rp_min = min_flyby_rp(n);
     let rp;
-    if (delta > 1e-9) {
-      const e_needed = 1 / Math.sin(delta / 2);
-      const a = -mu_pla / (v_inf_in * v_inf_in);
-      rp = a * (1 - e_needed);
+    let rp_clamped = false;
+
+    if (delta <= 1e-9) {
+      // 曲げ不要。安全な範囲で最も遠い(=影響の小さい)通過とみなす
+      rp = undefined;
+    } else if (turn_at(rp_min) <= delta) {
+      // 下限まで寄せても曲げ足りない -> 大気等に突入しないよう下限でクランプする
+      rp = rp_min;
+      rp_clamped = true;
+    } else {
+      // 二分法。上限は曲げ角が十分小さくなるまで広げる
+      let lo = rp_min;
+      let hi = Math.max(rp_min * 2, 1);
+      for (let k = 0; k < 200 && turn_at(hi) > delta; k++) hi *= 2;
+      for (let k = 0; k < 100; k++) {
+        const mid = 0.5 * (lo + hi);
+        if (turn_at(mid) > delta) lo = mid;
+        else hi = mid;
+      }
+      rp = 0.5 * (lo + hi);
     }
 
-    // 近点でのΔV: rp一定のまま、近点速度をv_inf_in用からv_inf_out用に
-    // 変えるのに必要な速さの差 (エネルギー方程式 v_p^2 = v_inf^2 + 2mu/rp より)
+    // 近点ΔV。曲げ角が足りている場合、入射側と出射側の近点速度は同じ向き
+    // (近点では速度は動径に垂直)なので単純な速さの差になる。
+    // 下限クランプで曲げ足りない場合は、その不足分の角度だけ向きも変える必要が
+    // あるため、余弦定理でベクトル差として求める(不足0なら上式に一致する)。
     let dv_periapsis = 0;
+    let turn_deficit = 0;
     if (rp != undefined && rp > 0) {
-      const vp_before = Math.sqrt(v_inf_in * v_inf_in + (2 * mu_pla) / rp);
-      const vp_after = Math.sqrt(v_inf_out * v_inf_out + (2 * mu_pla) / rp);
-      dv_periapsis = Math.abs(vp_after - vp_before);
+      if (rp_clamped) turn_deficit = delta - turn_at(rp);
+      const vp_in = Math.sqrt(v_inf_in * v_inf_in + (2 * mu_pla) / rp);
+      const vp_out = Math.sqrt(v_inf_out * v_inf_out + (2 * mu_pla) / rp);
+      dv_periapsis = Math.sqrt(
+        vp_in * vp_in + vp_out * vp_out - 2 * vp_in * vp_out * Math.cos(turn_deficit)
+      );
     }
 
     this.#m_rp[i] = rp;
     this.#m_beta[i] = beta;
-    this.#m_swingby_info[i] = { v_inf_in, v_inf_out, delta, beta, rp, dv_periapsis, mode: "auto" };
+    this.#m_swingby_info[i] = {
+      v_inf_in,
+      v_inf_out,
+      delta,
+      beta,
+      rp,
+      rp_min,
+      rp_clamped,
+      turn_deficit,
+      dv_periapsis,
+      i_hat,
+      j_hat,
+      k_hat,
+      mode: "auto",
+    };
   }
 
   // 手動モード: ユーザーが指定したrp・betaで双曲線に沿って曲げるだけ (近点ΔV無し)。
@@ -465,6 +511,7 @@ export class Mission {
       const result = swingby(v_in, v_pla, rp, beta, mu_pla);
       // 到着速度(index 1)は #update_trajectory 側で実際の伝播結果から補完する
       this.#m_s_c_vel[i] = [result.v_out, undefined];
+      const { i_hat, j_hat, k_hat } = this.#frame(result.v_inf_in, result.v_inf, v_pla);
       // v_inf_in/v_inf_outは大きさ(スカラー)で揃える。無推力なので両者は等しい。
       this.#m_swingby_info[i] = {
         v_inf_in: result.v_inf,
@@ -472,7 +519,13 @@ export class Mission {
         delta: result.delta,
         beta,
         rp,
+        rp_min: min_flyby_rp(n),
+        rp_clamped: rp > (this.#m_rp[i] ?? rp),
+        turn_deficit: 0,
         dv_periapsis: 0,
+        i_hat,
+        j_hat,
+        k_hat,
         mode: "manual",
       };
     } catch (e) {
@@ -603,12 +656,13 @@ export class Mission {
     return min_flyby_rp(n);
   }
 
-  // 現在のrpが下限を割っているか (自動モードでは制約違反の警告表示に使う)
-  is_rp_violating(i) {
-    const min = this.min_rp(i);
-    const rp = this.rp(i);
-    if (min == undefined || rp == undefined) return false;
-    return rp < min;
+  // 天体の太陽中心位置・速度 (B面ビューで太陽方向と公転方向を描くのに使う)
+  planet_pos(i) {
+    return this.#m_planet_pos[i];
+  }
+
+  planet_vel(i) {
+    return this.#m_planet_vel[i];
   }
 
   beta(i) {

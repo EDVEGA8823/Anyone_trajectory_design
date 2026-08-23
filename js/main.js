@@ -243,7 +243,18 @@ export function updateBPlaneView() {
   const rp = State.mission_sequence.rp(i);
   const beta = State.mission_sequence.beta(i);
   const info = State.mission_sequence.get_swingby_info(i);
-  updateBPlane({ planetNum, rp, beta, vinf: info ? info.v_inf_in : undefined });
+  updateBPlane({
+    planetNum,
+    rp,
+    beta,
+    vinf: info ? info.v_inf_in : undefined,
+    dv: info ? info.dv_periapsis : 0,
+    planetVel: State.mission_sequence.planet_vel(i),
+    planetPos: State.mission_sequence.planet_pos(i),
+    iHat: info ? info.i_hat : undefined,
+    jHat: info ? info.j_hat : undefined,
+    kHat: info ? info.k_hat : undefined,
+  });
   renderSwingbyControls();
 }
 
@@ -304,29 +315,28 @@ export function renderSwingbyControls() {
     const readout = document.createElement("div");
     readout.className = "swingby-readout";
     if (info) {
+      // rpは下限でクランプ済みなので、必要な曲げ角に届かない場合は
+      // その不足分が近点ΔVに乗る。クランプされた事実は値の脇に添えるだけにする。
+      const rpText =
+        info.rp != undefined
+          ? info.rp.toFixed(0) + " km" + (info.rp_clamped ? " (下限)" : "")
+          : "-";
       const rows = [
         ["V∞ (入射)", info.v_inf_in.toFixed(3) + " km/s"],
         ["V∞ (出射)", info.v_inf_out.toFixed(3) + " km/s"],
         ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°"],
-        ["近点半径", info.rp != undefined ? info.rp.toFixed(0) + " km" : "-"],
+        ["近点半径", rpText],
         ["近点ΔV", (info.dv_periapsis * 1000).toFixed(1) + " m/s"],
       ];
+      if (info.turn_deficit > 1e-9) {
+        rows.push(["曲げ不足", (info.turn_deficit * RAD2DEG).toFixed(1) + "°"]);
+      }
       rows.forEach(([label, value]) => {
         const row = document.createElement("div");
         row.className = "row swingby-readout-row";
         row.innerHTML = `<span>${label}</span><span>${value}</span>`;
         readout.appendChild(row);
       });
-
-      // 自動モードのrpは逆算結果なので、大気・放射線帯に突っ込む解になりうる。
-      // その場合は物理的に飛べないフライバイなので警告する。
-      if (State.mission_sequence.is_rp_violating(i)) {
-        const warn = document.createElement("div");
-        warn.className = "swingby-warn";
-        const min = State.mission_sequence.min_rp(i);
-        warn.textContent = `近点が低すぎます (下限 ${min.toFixed(0)} km)。日付を調整してください`;
-        readout.appendChild(warn);
-      }
     } else {
       readout.textContent = "前後のレグが決まると自動計算されます";
     }
