@@ -12,7 +12,7 @@ import { planet_radius, planet_mu, min_flyby_rp } from './trajectory.js';
 
 export let renderer, scene, camera, controls;
 
-let planetMesh, keepOutSphere, bplaneGroup, hyperbolaLine, asymptoteArrow, travelArrowhead;
+let planetMesh, keepOutSphere, eclipticPlane, bplaneGroup, hyperbolaLine, asymptoteArrow, travelArrowhead;
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine;
 let orbitArrow, dvArrow;
 let root, sunLight;
@@ -62,6 +62,22 @@ export function initBPlane() {
   sunLight.position.set(0, 1, 0);
   root.add(sunLight);
   root.add(sunLight.target);
+
+  // 黄道面 (天の北極方向に垂直な、太陽系全体の基準面)。ごく薄いグレーで、
+  // B面や近点のスケールに比べてずっと広く描く。法線は毎回のupdateBPlaneで
+  // northHatに合わせて向きを更新する。
+  eclipticPlane = new THREE.Mesh(
+    new THREE.CircleGeometry(1, 64),
+    new THREE.MeshBasicMaterial({
+      color: 0x8a8f99,
+      transparent: true,
+      opacity: 0.05,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+  );
+  eclipticPlane.renderOrder = -1;
+  root.add(eclipticPlane);
 
   planetMesh = new THREE.Mesh(
     new THREE.SphereGeometry(1, 48, 48),
@@ -298,7 +314,7 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   // 真近点角で切ると漸近線近くで急に遠方へ飛んでいくため、動径がビューの
   // 大きさを超えたところで切る。こうすると常に画面内に収まる。
   const p_n = a_n * (1 - e * e);
-  const rMax = halfSize * 1.5;
+  const rMax = halfSize * 2.3;
   const cosClip = (p_n / rMax - 1) / e;
   const nuMax = Math.min(Math.acos(Math.max(-1, Math.min(1, cosClip))), nu_inf * 0.995);
   const pts = [];
@@ -397,6 +413,12 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   if (haveFrame) {
     // 黄道面の法線(=天の北極方向)。太陽系全体で共通の固定ベクトル[0,0,1]。
     northHat = toDrawing([0, 0, 1], iHat, jHat, kHat);
+    // 黄道面を法線northHatに合わせて向け、シーンの規模よりずっと広く敷く
+    eclipticPlane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), northHat);
+    eclipticPlane.scale.setScalar(extent * 9);
+    eclipticPlane.visible = true;
+  } else {
+    eclipticPlane.visible = false;
   }
 
   applyOrientation(vHat, sHat, northHat);
@@ -463,4 +485,5 @@ function setOrbitVisible(visible) {
 
 function setContextVisible(visible) {
   orbitArrow.visible = visible;
+  if (!visible) eclipticPlane.visible = false;
 }

@@ -322,8 +322,8 @@ export function renderSwingbyControls() {
           ? info.rp.toFixed(0) + " km" + (info.rp_clamped ? " (下限)" : "")
           : "-";
       const rows = [
-        ["V∞ (入射)", info.v_inf_in.toFixed(3) + " km/s"],
-        ["V∞ (出射)", info.v_inf_out.toFixed(3) + " km/s"],
+        ["侵入速度", info.v_inf_in.toFixed(3) + " km/s"],
+        ["脱出速度", info.v_inf_out.toFixed(3) + " km/s"],
         ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°"],
         ["近点半径", rpText],
         ["近点ΔV", (info.dv_periapsis * 1000).toFixed(1) + " m/s"],
