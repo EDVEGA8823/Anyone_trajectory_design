@@ -41,6 +41,9 @@ export const State = {
 
   selected_planet: 3,
   selected_sequence: -1,
+  // 時刻編集の対象ノード。通常は selected_sequence と同じだが、選択中ノードの
+  // 前後のマーカーを掴むとそのノードに切り替わる(選択自体は動かさない)。
+  editing_sequence: -1,
   is_selected: false,
 
   mode: User_Mode.None,

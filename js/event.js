@@ -4,7 +4,7 @@ import { camera, controls, createLine } from './plot.js';
 import { get_W_hat, get_P_hat, get_peariod, kepler_equation, nu2E, MU_SUN } from './trajectory.js';
 import { JulianToDate, DateToJulian } from './trajectory.js';
 
-let date_time, sequence, confirm_time, cancel_time, v_inf, C3, total_dv, sequence_panel, plot_area;
+let date_time, sequence, confirm_time, cancel_time, v_inf, C3, total_dv, sequence_panel, plot_area, edit_target;
 
 export function initEvents() {
   date_time = document.getElementById("date_time");
@@ -12,6 +12,7 @@ export function initEvents() {
   sequence_panel = document.getElementsByClassName("sequence-panel")[0];
   confirm_time = document.getElementById("confirm_time");
   cancel_time = document.getElementById("cancel_time");
+  edit_target = document.getElementById("edit_target");
   v_inf = document.getElementById("v_inf");
   C3 = document.getElementById("C3");
   total_dv = document.getElementById("total_dv");
@@ -25,7 +26,7 @@ export function initEvents() {
 
   cancel_time.addEventListener("click", function () {
     State.tmp_date = State.old_date;
-    State.tmp_date = State.mission_sequence.set_date(State.selected_sequence, State.old_date);
+    State.tmp_date = State.mission_sequence.set_date(State.editing_sequence, State.old_date);
     Update_time();
     confirm_time.style.visibility = "hidden";
     cancel_time.style.visibility = "hidden";
@@ -71,18 +72,55 @@ function updateAfterAdd() {
   change_sequence();
   change_sequence_propaty();
   toggle_planet();
+  // シーケンスを選び直したら時刻編集の対象も選択中ノードに戻す
+  State.editing_sequence = -1;
+  set_edit_target(State.selected_sequence);
   if (State.selected_sequence != -1) {
-    State.tmp_date = State.mission_sequence.date(State.selected_sequence);
-    State.old_date = State.tmp_date;
     Update_time();
     confirm_time.style.visibility = "hidden";
     cancel_time.style.visibility = "hidden";
   }
+  update_edit_target_label();
+}
+
+// 時刻編集の対象ノードを切り替える。
+// 選択中のシーケンス(B面や種別を表示しているノード)とは独立に、その前後の
+// ノードの時刻も動かせるようにするための仕組み。tmp_dateは常に「編集対象
+// ノードの日付」を指すので、対象を変えたら表示時刻もそのノードに合わせる。
+function set_edit_target(n) {
+  if (State.editing_sequence !== n) {
+    State.editing_sequence = n;
+    // キャンセル用の基準は対象が変わったときだけ取り直す
+    if (n != -1) State.old_date = State.mission_sequence.date(n);
+  }
+  if (n == -1) return;
+  const date = State.mission_sequence.date(n);
+  const moved = State.tmp_date !== date;
+  State.tmp_date = date;
+  State.old_time = State.tmp_date;
+  // 表示時刻が動いたら惑星の軌道要素(State.planet_elements)を取り直す。
+  // ドラッグ開始時の離心近点角はこの時刻基準で読むため、ここで揃えておく。
+  if (moved) update_plot();
+}
+
+// どのノードの時刻を編集しているかを時刻欄の横に表示する。
+function update_edit_target_label() {
+  if (!edit_target) return;
+  const n = State.editing_sequence;
+  if (n == -1 || !State.mission_sequence || n >= State.mission_sequence.count) {
+    edit_target.textContent = "";
+    edit_target.classList.remove("other");
+    return;
+  }
+  const p = State.mission_sequence.planet_num(n);
+  const name = p == -1 ? State.mission_sequence.type(n) : State.planet_list[p];
+  edit_target.textContent = n + 1 + ". " + name;
+  edit_target.classList.toggle("other", n !== State.selected_sequence);
 }
 
 export function Update_time() {
   if (!State.mission_sequence) return;
-  State.tmp_date = State.mission_sequence.set_date(State.selected_sequence, State.tmp_date);
+  State.tmp_date = State.mission_sequence.set_date(State.editing_sequence, State.tmp_date);
   date_time.value = JulianToDate(State.tmp_date)
     .toLocaleDateString("ja-JP", {
       year: "numeric",
@@ -103,6 +141,7 @@ export function Update_time() {
   v_inf.textContent = v.toFixed(2);
   C3.textContent = (v * v).toFixed(2);
   total_dv.textContent = (State.mission_sequence.get_total_dv() * 1000).toFixed(1); // km/s -> m/s
+  update_edit_target_label();
 }
 
 // --------------------- Mouse / Touch Handlers ---------------------
@@ -138,13 +177,20 @@ function handleTouchMove(event) {
 
 function handleTouchEnd(event) {
   if (event.touches.length != 0) return;
-  if(State.selected_planet !== -1 && PlotState.planet_speres[State.selected_planet]) {
-      PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "black";
+  endDrag();
+}
+
+function endDrag() {
+  if (State.selected_planet !== -1 && PlotState.planet_speres[State.selected_planet]) {
+    PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "black";
   }
-  if(controls) controls.enableRotate = true;
+  if (controls) controls.enableRotate = true;
+  const was_dragging = State.is_change_time;
   State.is_change_time = false;
   State.is_change_maneuver = false;
   State.maneuver_conic = null;
+  // 選択中以外のノードも動かせるので、どのノードがいつになったかを一覧に反映する
+  if (was_dragging) change_sequence();
 }
 
 function handleMouseDown(event) {
@@ -178,13 +224,7 @@ function handleMouseMove(event) {
 
 function handleMouseUp(event) {
   if (event.button != 0) return;
-  if(State.selected_planet !== -1 && PlotState.planet_speres[State.selected_planet]) {
-    PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "black";
-  }
-  if(controls) controls.enableRotate = true;
-  State.is_change_time = false;
-  State.is_change_maneuver = false;
-  State.maneuver_conic = null;
+  endDrag();
 }
 
 function Select_planet() {
@@ -194,10 +234,10 @@ function Select_planet() {
   let v = State.raycaster.ray.direction;
   let x_0 = camera.position;
 
-  // マヌーバ(DSM)ノードを選択中なら、まずそのマーカーの掴み判定を行う。
-  // マヌーバは天体ではないので、掴んだら惑星とは別の経路(Drag_maneuver)で
-  // 日付を動かす。
-  if (Select_maneuver(v, x_0)) return;
+  // 選択中ノードとその前後のノードのマーカーを先に掴み判定する。
+  // マーカーは各ノードの探査機位置そのものなので、これを掴むことで
+  // 選択を切り替えずに前後ノードの時刻も動かせる。
+  if (Select_marker(v, x_0)) return;
 
   if (State.mode == User_Mode.None) {
     for (let i = 0; i < State.planet_num; i++) {
@@ -220,6 +260,10 @@ function Select_planet() {
   }
   
   if (State.is_selected) {
+    // 惑星そのものをドラッグしたときは選択中シーケンスの時刻を動かす
+    // (惑星は常に現在表示時刻の位置に描かれているので、前後ノードの時刻を
+    //  動かしたい場合はそのノードのマーカーを掴んでもらう)
+    set_edit_target(State.selected_sequence);
     // シーケンスに割り当てられた惑星と一致するかで発動を制限していたが、
     // リファクタリング前には無かった制約で、一致しない(が見えている)惑星を
     // クリックすると時刻変更が発動せずカメラ回転にフォールスルーしてしまう
@@ -228,38 +272,80 @@ function Select_planet() {
     PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "red";
     State.old_E = State.planet_elements[State.selected_planet][5];
     if(controls) controls.enableRotate = false;
+    State.is_change_maneuver = false;
+    State.maneuver_conic = null;
     State.is_change_time = true;
     get_nu();
     State.old_nu = 0;
     State.rev_count = 0;
+    update_edit_target_label();
   }
 }
 
-// マヌーバ(DSM)マーカーを掴めたら true を返す。
-function Select_maneuver(v, x_0) {
-  const i = State.selected_sequence;
-  if (i == -1 || !State.mission_sequence) return false;
-  if (State.mission_sequence.type(i) !== Sequence_Type.Maneuver) return false;
+// 選択中ノードとその前後(marker_spheres[0..2] = selected-1, selected, selected+1)の
+// マーカーを掴めたら true を返す。マーカーは各ノードの探査機位置なので、
+// 掴んだノードの時刻をそのまま動かせる。
+function Select_marker(v, x_0) {
+  const sel = State.selected_sequence;
+  if (sel == -1 || !State.mission_sequence) return false;
 
-  // マヌーバノード自身のマーカー(中央 = index 1)
-  const marker = PlotState.marker_spheres[1];
-  if (!marker || !marker.visible) return false;
+  // 重なったときは選択中ノード(index 1)を優先する
+  for (const k of [1, 0, 2]) {
+    const marker = PlotState.marker_spheres[k];
+    if (!marker || !marker.visible) continue;
 
-  const dist = new THREE.Vector3().subVectors(marker.position, x_0).cross(v).length() / v.length();
-  if (dist >= 0.03 * PlotState.camera_dist) return false;
+    const dist = new THREE.Vector3().subVectors(marker.position, x_0).cross(v).length() / v.length();
+    if (dist >= 0.03 * PlotState.camera_dist) continue;
 
-  const conic = State.mission_sequence.get_incoming_conic(i);
-  if (conic == null) return false;
+    const n = sel + k - 1;
+    if (n < 0 || n >= State.mission_sequence.count) continue;
+    if (start_drag_node(n)) return true;
+  }
+  return false;
+}
 
-  State.maneuver_conic = conic;
-  State.is_change_maneuver = true;
+// ノードnの時刻ドラッグを開始する。
+// マヌーバ(DSM)は天体を持たないので入ってくる軌道に沿って、天体を持つノードは
+// その天体の公転軌道に沿って動かす。
+function start_drag_node(n) {
+  const mission = State.mission_sequence;
+
+  if (mission.type(n) === Sequence_Type.Maneuver) {
+    const conic = mission.get_incoming_conic(n);
+    if (conic == null) return false;
+
+    set_edit_target(n);
+    State.maneuver_conic = conic;
+    State.is_change_maneuver = true;
+    State.is_change_time = true;
+    State.is_selected = true;
+    if (controls) controls.enableRotate = false;
+
+    // 掴んだ瞬間の真近点角を基準にする(以降の相対移動で日付を決める)
+    State.old_nu = get_nu_on(conic.par);
+    State.rev_count = 0;
+    update_edit_target_label();
+    return true;
+  }
+
+  const p = mission.planet_num(n);
+  if (p == -1 || !State.planet_elements[p]) return false;
+
+  set_edit_target(n);
+  State.selected_planet = p;
+  if (PlotState.planet_speres[p]) {
+    PlotState.planet_speres[p].children[0].element.style.color = "red";
+  }
+  State.old_E = State.planet_elements[p][5];
+  State.is_change_maneuver = false;
+  State.maneuver_conic = null;
   State.is_change_time = true;
   State.is_selected = true;
   if (controls) controls.enableRotate = false;
-
-  // 掴んだ瞬間の真近点角を基準にする(以降の相対移動で日付を決める)
-  State.old_nu = get_nu_on(conic.par);
+  get_nu();
+  State.old_nu = 0;
   State.rev_count = 0;
+  update_edit_target_label();
   return true;
 }
 
@@ -337,6 +423,8 @@ function Dlag_planet() {
   }
   
   Update_time();
+  // マーカー(前後ノードを含む探査機位置)をドラッグに追従させる
+  toggle_planet();
   State.old_nu = nu;
 }
 

@@ -391,6 +391,28 @@ input:focus {
   margin: 0;
 }
 
+/* 時刻を編集している対象ノードの表示 */
+.row.time-head {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.edit-target {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+/* 選択中シーケンス以外のノードを編集しているときは目立たせる */
+.edit-target.other {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
 /* ==================================================================
    スイングバイ (B面ビュー)
    ================================================================== */

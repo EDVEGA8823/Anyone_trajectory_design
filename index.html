@@ -66,7 +66,10 @@
           </div>
 
           <div class="column box">
-            <label for="date_time"><b>時刻</b></label>
+            <div class="row time-head">
+              <label for="date_time"><b>時刻</b></label>
+              <span class="edit-target" id="edit_target"></span>
+            </div>
             <input type="datetime-local" id="date_time" value="2024-11-20T12:00" />
             <div class="row_right alway">
               <button id="confirm_time">変更</button>
