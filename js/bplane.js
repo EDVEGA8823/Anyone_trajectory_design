@@ -30,6 +30,11 @@ let handlers = {}; // { onRp(rp[km]), onBeta(beta[rad]) }
 let geom = null; // 直近の描画スケール (ハンドルの配置とドラッグの換算に使う)
 const raycaster = new THREE.Raycaster();
 const HANDLE_HIT_PX = 18; // 掴み判定の半径 [画面px]
+const HANDLE_PX = 9; // ハンドルの見た目の半径 [画面px]。遠近によらず一定にする
+
+// 黄道面グリッドの現在の縮尺。基準として読み取れるよう、カメラの
+// フィットが実際に切り替わったときだけ張り直す。
+let gridExtent;
 
 // キャンバスは操作パネルの空きに合わせて伸縮する正方形。大きさは
 // 下の resizeToDisplaySize が毎フレーム決める。
@@ -86,6 +91,7 @@ export function initBPlane() {
     squareGridGeometry(1, 20),
     new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.16, depthWrite: false })
   );
+  eclipticPlane.name = "ecliptic";
   eclipticPlane.renderOrder = -1;
   root.add(eclipticPlane);
 
@@ -260,12 +266,8 @@ function updateHandles() {
   betaGuide.visible = showBeta;
   if (!ready) return;
 
-  // 掴む対象なので、ビューの縮尺に対して十分見える大きさにする
-  const size = Math.max(geom.extent * 0.075, geom.rp_n * 0.3);
-
   if (showRp) {
     rpHandle.position.copy(geom.periapsis);
-    rpHandle.scale.setScalar(size);
     // 伸び縮みする向き = 天体中心から近点へ向かう半径線
     const far = Math.max(geom.rp_n * 2.2, geom.extent * 0.8);
     setLinePoints(rpGuide, [new THREE.Vector3(), geom.P_hat.clone().multiplyScalar(far)]);
@@ -273,7 +275,6 @@ function updateHandles() {
 
   if (showBeta) {
     betaHandle.position.copy(geom.pierce);
-    betaHandle.scale.setScalar(size);
     // 回る向き = B面内の、Bベクトルの長さの円
     const pts = [];
     for (let k = 0; k <= 72; k++) {
@@ -282,6 +283,11 @@ function updateHandles() {
     }
     setLinePoints(betaGuide, pts);
   }
+
+  // 表示に切り替わった最初のフレームで大きすぎる状態が見えないよう、
+  // ここでも画面上の大きさを合わせておく
+  scaleHandleToScreen(rpHandle);
+  scaleHandleToScreen(betaHandle);
 }
 
 function setRayFromEvent(event) {
@@ -380,9 +386,12 @@ function onPointerUp() {
 }
 
 function endDrag() {
+  const was = dragging;
   dragging = null;
   if (controls) controls.enabled = true;
   if (renderer) renderer.domElement.style.cursor = "";
+  // ドラッグ中は縮尺を固定していたので、離した時点で改めて画角に合わせる
+  if (was && geom) fitCamera(geom.extent);
 }
 
 function squareGridGeometry(half, divisions) {
@@ -458,10 +467,26 @@ function resizeToDisplaySize() {
   camera.updateProjectionMatrix();
 }
 
+// ハンドルは掴む対象なので、遠近やズームによらず画面上の大きさを一定に保つ。
+// 透視投影では見かけの大きさが (世界での大きさ / カメラからの距離) に比例するので、
+// 距離に比例させた大きさを毎フレーム与える。
+function scaleHandleToScreen(handle) {
+  if (!handle || !handle.visible) return;
+  const h = renderer.domElement.clientHeight;
+  if (!h) return;
+  const dist = camera.position.distanceTo(handle.getWorldPosition(new THREE.Vector3()));
+  const halfFov = Math.tan((camera.fov * Math.PI) / 180 / 2);
+  handle.scale.setScalar((HANDLE_PX * 2 * dist * halfFov) / h);
+}
+
 function animate() {
   requestAnimationFrame(animate);
   if (renderer && camera) resizeToDisplaySize();
   if (controls) controls.update();
+  if (renderer && camera) {
+    scaleHandleToScreen(rpHandle);
+    scaleHandleToScreen(betaHandle);
+  }
   if (renderer && scene && camera) renderer.render(scene, camera);
 }
 
@@ -652,9 +677,11 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   if (haveFrame) {
     // 黄道面の法線(=天の北極方向)。太陽系全体で共通の固定ベクトル[0,0,1]。
     northHat = toDrawing([0, 0, 1], iHat, jHat, kHat);
-    // 黄道面を法線northHatに合わせて向け、シーンの規模よりずっと広く敷く
+    // 黄道面を法線northHatに合わせて向ける。大きさは空間の基準として読める
+    // よう、下のカメラのフィットが切り替わったときだけ張り直す
+    // (rpをドラッグするたびにグリッドが伸び縮みすると基準にならない)
     eclipticPlane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), northHat);
-    eclipticPlane.scale.setScalar(extent * 6);
+    if (gridExtent == undefined) setGridExtent(extent);
     eclipticPlane.visible = true;
   } else {
     eclipticPlane.visible = false;
@@ -662,17 +689,30 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
 
   applyOrientation(vHat, sHat, northHat);
 
-  // 全体が画角に収まる距離を求める。規模が大きく変わったときだけ距離を
-  // 合わせ直し、それ以外はユーザーのズーム操作を尊重する。
+  // ハンドルをドラッグしている間は縮尺を固定する。
+  // 途中でカメラが引くと同じマウス移動量が示す長さまで変わって操作しづらい。
+  // (離した時点で endDrag が改めて合わせ直す)
+  if (!dragging) fitCamera(extent);
+}
+
+// 全体が画角に収まる距離を求める。規模が大きく変わったときだけ距離を
+// 合わせ直し、それ以外はユーザーのズーム操作を尊重する。
+function fitCamera(extent) {
   const fitDist = (extent * 1.25) / Math.tan((camera.fov * Math.PI) / 180 / 2);
   controls.minDistance = fitDist * 0.25;
   controls.maxDistance = fitDist * 8;
-  // ハンドルをドラッグしている間は縮尺を固定する。
-  // 途中でカメラが引くと同じマウス移動量が示す長さまで変わって操作しづらい。
-  if (!dragging && (lastFitDist == undefined || fitDist > lastFitDist * 1.25 || fitDist < lastFitDist * 0.8)) {
+  if (lastFitDist == undefined || fitDist > lastFitDist * 1.25 || fitDist < lastFitDist * 0.8) {
     camera.position.setLength(fitDist);
     lastFitDist = fitDist;
+    setGridExtent(extent);
   }
+}
+
+// 黄道面グリッドをシーンの規模よりずっと広く敷き直す。
+// ズームやドラッグの最中には呼ばない (基準として動かないことに意味がある)
+function setGridExtent(extent) {
+  gridExtent = extent;
+  eclipticPlane.scale.setScalar(extent * 6);
 }
 
 /**
