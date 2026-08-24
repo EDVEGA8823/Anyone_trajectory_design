@@ -341,8 +341,9 @@ export function renderSwingbyControls() {
 
   container.innerHTML = "";
 
-  const modeRow = document.createElement("div");
-  modeRow.className = "row swingby-mode";
+  // 自動/手動の切り替えは見出しの横に置く (狭い数値欄の縦を使わないため)
+  const modeRow = document.getElementById("swingby_mode");
+  if (modeRow) modeRow.innerHTML = "";
 
   const autoBtn = document.createElement("button");
   autoBtn.type = "button";
@@ -366,9 +367,10 @@ export function renderSwingbyControls() {
     updateBPlaneView();
   };
 
-  modeRow.appendChild(autoBtn);
-  modeRow.appendChild(manualBtn);
-  container.appendChild(modeRow);
+  if (modeRow) {
+    modeRow.appendChild(autoBtn);
+    modeRow.appendChild(manualBtn);
+  }
 
   if (is_auto) {
     if (info) {
@@ -444,12 +446,11 @@ export function renderSwingbyControls() {
     container.appendChild(form);
 
     // 自動と同じく、フライバイの結果(速度・曲げ角)も併記する。
-    // 手動は無推力なので侵入速度と脱出速度は同じ大きさになり、目的地への
-    // 到達は直後のマヌーバ(DSM)のΔVが担う。
+    // 手動は無推力なので侵入速度と脱出速度は同じ大きさになり(1行にまとめる)、
+    // 目的地への到達は直後のマヌーバ(DSM)のΔVが担う。
     if (info) {
       const rows = [
-        ["侵入速度", info.v_inf_in.toFixed(3) + " km/s"],
-        ["脱出速度", info.v_inf_out.toFixed(3) + " km/s"],
+        ["侵入/脱出速度", info.v_inf_in.toFixed(3) + " km/s"],
         ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°"],
       ];
       const dsm = State.mission_sequence.get_dsm_info(i + 1);
