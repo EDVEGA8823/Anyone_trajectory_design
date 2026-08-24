@@ -98,7 +98,11 @@ h1 {
 
 #graph-panel {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
+  /* canvasの幅はJS側で実測値から決めるため、min-width:auto のままだと
+     「canvasが大きい → パネルが縮まない → canvasも縮まない」で固まってしまい、
+     ウィンドウを狭めたときにUIパネル側が潰れる原因になっていた */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -114,11 +118,13 @@ h1 {
 }
 
 #UI-panel {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   gap: 16px;
   padding: 20px 20px 20px 0;
-  min-width: 0;
+  /* 操作パネルが読めなくなるまで潰れないよう下限を設ける。
+     足りない分はグラフ側(min-width:0)から取る */
+  min-width: 440px;
   overflow-x: auto;
 }
 
@@ -132,6 +138,8 @@ h1 {
   #UI-panel {
     padding: 0 20px 20px 20px;
     flex-direction: column;
+    /* 縦積みなので横幅の下限は不要 (狭い端末で横スクロールが出てしまう) */
+    min-width: 0;
   }
 }
 
@@ -139,11 +147,11 @@ h1 {
    Cards / panels
    ================================================================== */
 .sequence-panel-wrapper {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   max-width: 1000px;
   /* B面プレビューを大きく取るため、シーケンス一覧側の下限を詰めている */
-  min-width: 200px;
+  min-width: 180px;
   flex-flow: column;
   gap: 10px;
 }
@@ -173,12 +181,13 @@ h1 {
 }
 
 .right_panel {
-  flex: 2.2;
+  flex: 2.2 1 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
   height: 100%;
   min-width: 0;
+  min-height: 0;
 }
 
 .bold_box {
@@ -191,6 +200,7 @@ h1 {
   min-width: 0;
 }
 
+/* 縦に余裕がないときは、下のΔV表示を潰さずこちら側をスクロールさせる */
 .control-panel {
   position: relative;
   display: flex;
@@ -198,22 +208,27 @@ h1 {
   gap: 14px;
   box-sizing: border-box;
   max-width: 1000px;
-  height: 100%;
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* ==================================================================
    Stat tiles (V∞ / C3 / ΔV)
    ================================================================== */
+/* 幅が足りないときは 総ΔV が下の行に回る。
+   V∞とC3のまとまり(.stat-group)は分断せず、常に1行に収める */
 .row.stat-bar {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
   gap: 8px;
   padding: 12px;
   overflow-x: auto;
 }
 .row.stat-group {
   flex-wrap: nowrap;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   gap: 4px;
   min-width: 0;
 }
@@ -221,7 +236,7 @@ h1 {
 .value_box {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   gap: 1px;
   margin: 0;
   padding: 6px 10px;
@@ -423,14 +438,17 @@ input:focus {
 /* ==================================================================
    スイングバイ (B面ビュー)
    ================================================================== */
+/* 幅が足りないときは数値欄がプレビューの下に回る */
 .bplane-row {
   align-items: stretch;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
-/* プレビューは残り幅いっぱいまで広げる (マウスでの操作対象なので大きく取る) */
+/* プレビューは残り幅いっぱいまで広げる (マウスでの操作対象なので大きく取る)。
+   flex-basisは折り返しの閾値も兼ねる: これに数値欄の幅が足せなくなったら
+   数値欄がプレビューの下に回る */
 .bplane-view {
-  flex: 1 1 auto;
+  flex: 1 1 150px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -440,7 +458,6 @@ input:focus {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
-  min-width: 170px;
   max-width: 460px;
   margin: 0 auto;
   border-radius: var(--radius-md);

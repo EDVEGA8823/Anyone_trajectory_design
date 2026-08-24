@@ -370,16 +370,7 @@ export function renderSwingbyControls() {
   modeRow.appendChild(manualBtn);
   container.appendChild(modeRow);
 
-  const hint = document.createElement("div");
-  hint.className = "swingby-hint";
-  hint.textContent = is_auto
-    ? "前後のレグから逆算。差分は近点ΔVで補う"
-    : "無推力で曲げ、直後のマヌーバ(DSM)で到達させる";
-  container.appendChild(hint);
-
   if (is_auto) {
-    const readout = document.createElement("div");
-    readout.className = "swingby-readout";
     if (info) {
       // rpは下限でクランプ済みなので、必要な曲げ角に届かない場合は
       // その不足分が近点ΔVに乗る。クランプされた事実は値の脇に添えるだけにする。
@@ -397,16 +388,13 @@ export function renderSwingbyControls() {
       if (info.turn_deficit > 1e-9) {
         rows.push(["曲げ不足", (info.turn_deficit * RAD2DEG).toFixed(1) + "°"]);
       }
-      rows.forEach(([label, value]) => {
-        const row = document.createElement("div");
-        row.className = "row swingby-readout-row";
-        row.innerHTML = `<span>${label}</span><span>${value}</span>`;
-        readout.appendChild(row);
-      });
+      container.appendChild(makeReadout(rows));
     } else {
+      const readout = document.createElement("div");
+      readout.className = "swingby-readout";
       readout.textContent = "前後のレグが決まると自動計算されます";
+      container.appendChild(readout);
     }
-    container.appendChild(readout);
   } else {
     const form = document.createElement("div");
     form.className = "column swingby-inputs";
@@ -454,7 +442,34 @@ export function renderSwingbyControls() {
     form.appendChild(betaLabel);
     form.appendChild(betaInput);
     container.appendChild(form);
+
+    // 自動と同じく、フライバイの結果(速度・曲げ角)も併記する。
+    // 手動は無推力なので侵入速度と脱出速度は同じ大きさになり、目的地への
+    // 到達は直後のマヌーバ(DSM)のΔVが担う。
+    if (info) {
+      const rows = [
+        ["侵入速度", info.v_inf_in.toFixed(3) + " km/s"],
+        ["脱出速度", info.v_inf_out.toFixed(3) + " km/s"],
+        ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°"],
+      ];
+      const dsm = State.mission_sequence.get_dsm_info(i + 1);
+      if (dsm) rows.push(["DSMのΔV", (dsm.dv * 1000).toFixed(1) + " m/s"]);
+      container.appendChild(makeReadout(rows));
+    }
   }
+}
+
+// [項目名, 値] の並びを、幅の狭い1カラムに積んで表示する
+function makeReadout(rows) {
+  const readout = document.createElement("div");
+  readout.className = "swingby-readout";
+  rows.forEach(([label, value]) => {
+    const row = document.createElement("div");
+    row.className = "row swingby-readout-row";
+    row.innerHTML = `<span>${label}</span><span>${value}</span>`;
+    readout.appendChild(row);
+  });
+  return readout;
 }
 
 // ========================================
