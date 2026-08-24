@@ -1,6 +1,15 @@
 import { State, Sequence_Type, PlotState } from './state.js';
 import { get_planet_elements, get_orbit, get_planets_pos, JulianToDate, Mission, AU } from './trajectory.js';
-import { initPlot, update_planets, updateLine, createLine, createPlanets, updateLayout } from './plot.js';
+import {
+  initPlot,
+  update_planets,
+  updateLine,
+  createLine,
+  createDashedLine,
+  updateDashedLine,
+  createPlanets,
+  updateLayout,
+} from './plot.js';
 import { initEvents, Update_time } from './event.js';
 import { initBPlane, updateBPlane } from './bplane.js';
 
@@ -181,7 +190,16 @@ export function make_plot() {
 }
 
 export function toggle_planet() {
-  if (State.selected_sequence != -1 && State.mission_sequence.planet_num(State.selected_sequence) != -1) {
+  // マヌーバ(DSM)ノードは天体を持たない(planet_num == -1)ので、
+  // 天体の有無だけで判定するとマーカーが出なくなる。種別も見て判定する。
+  const is_maneuver =
+    State.selected_sequence != -1 &&
+    State.mission_sequence.type(State.selected_sequence) === Sequence_Type.Maneuver;
+
+  if (
+    State.selected_sequence != -1 &&
+    (State.mission_sequence.planet_num(State.selected_sequence) != -1 || is_maneuver)
+  ) {
     for (let i = 0; i < PlotState.orbit_lines.length; i++) {
       toggle_visibility(i, false);
     }
@@ -211,6 +229,38 @@ export function toggle_planet() {
   if (State.mission_sequence.planet_num(State.selected_sequence + 1) != -1) {
     toggle_visibility(State.mission_sequence.planet_num(State.selected_sequence + 1), true);
   }
+
+  update_coast_orbit();
+}
+
+// マヌーバ(DSM)ノードを選択中は、「マヌーバを実行しなかった場合に
+// そのまま流されていく軌道」を赤い破線で表示する。
+export function update_coast_orbit() {
+  const i = State.selected_sequence;
+  const show =
+    i != -1 &&
+    State.mission_sequence &&
+    State.mission_sequence.type(i) === Sequence_Type.Maneuver;
+
+  if (!show) {
+    if (PlotState.coast_line) PlotState.coast_line.line.visible = false;
+    return;
+  }
+
+  const pts = State.mission_sequence.get_coast_orbit(i);
+  if (pts.length === 0) {
+    if (PlotState.coast_line) PlotState.coast_line.line.visible = false;
+    return;
+  }
+
+  // updateLineは余った頂点を(0,0,0)で埋めるため、確保数と実際の点数がずれると
+  // 原点へ伸びる線が描かれてしまう。点数がちょうど合うように確保する。
+  if (PlotState.coast_line == undefined || PlotState.coast_line.positions.length !== pts.length * 3) {
+    if (PlotState.coast_line) PlotState.coast_line.line.visible = false;
+    PlotState.coast_line = createDashedLine(pts.length);
+  }
+  updateDashedLine(PlotState.coast_line, pts);
+  PlotState.coast_line.line.visible = true;
 }
 
 export function toggle_visibility(i, visible) {

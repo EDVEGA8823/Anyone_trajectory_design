@@ -176,6 +176,27 @@ export function createLine(initialPoints, c = 0x0000ff, width = 2) {
   return { line, positions, geometry };
 }
 
+// 破線。LineDashedMaterialは頂点ごとの累積距離が必要なので、
+// 更新のたびに computeLineDistances() を呼び直す必要がある。
+export function createDashedLine(pointCount, c = 0xd6543f, dashSize = 0.06, gapSize = 0.04) {
+  const positions = new Float32Array(pointCount * 3);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+  const material = new THREE.LineDashedMaterial({ color: c, dashSize, gapSize, transparent: true });
+  const line = new THREE.Line(geometry, material);
+  line.material.depthTest = false;
+  line.visible = false;
+  line.computeLineDistances();
+  scene.add(line);
+  return { line, positions, geometry };
+}
+
+export function updateDashedLine(lineData, newPoints) {
+  updateLine(lineData, newPoints);
+  lineData.line.computeLineDistances();
+}
+
 export function updateLine(lineData, newPoints) {
   const { positions, geometry } = lineData;
   if (newPoints.length > positions.length / 3) {

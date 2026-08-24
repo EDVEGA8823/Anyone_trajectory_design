@@ -1,4 +1,4 @@
-import { State, User_Mode, PlotState } from './state.js';
+import { State, User_Mode, PlotState, Sequence_Type } from './state.js';
 import { change_sequence, change_sequence_propaty, toggle_planet, updateControlPanelDisplay, update_plot } from './main.js';
 import { camera, controls, createLine } from './plot.js';
 import { get_W_hat, get_P_hat, get_peariod, kepler_equation, nu2E, MU_SUN } from './trajectory.js';
@@ -143,6 +143,8 @@ function handleTouchEnd(event) {
   }
   if(controls) controls.enableRotate = true;
   State.is_change_time = false;
+  State.is_change_maneuver = false;
+  State.maneuver_conic = null;
 }
 
 function handleMouseDown(event) {
@@ -181,6 +183,8 @@ function handleMouseUp(event) {
   }
   if(controls) controls.enableRotate = true;
   State.is_change_time = false;
+  State.is_change_maneuver = false;
+  State.maneuver_conic = null;
 }
 
 function Select_planet() {
@@ -189,7 +193,12 @@ function Select_planet() {
 
   let v = State.raycaster.ray.direction;
   let x_0 = camera.position;
-  
+
+  // マヌーバ(DSM)ノードを選択中なら、まずそのマーカーの掴み判定を行う。
+  // マヌーバは天体ではないので、掴んだら惑星とは別の経路(Drag_maneuver)で
+  // 日付を動かす。
+  if (Select_maneuver(v, x_0)) return;
+
   if (State.mode == User_Mode.None) {
     for (let i = 0; i < State.planet_num; i++) {
         // 非表示中(toggle_planetで隠された惑星)はヒットテスト対象から除外する。
@@ -226,7 +235,86 @@ function Select_planet() {
   }
 }
 
+// マヌーバ(DSM)マーカーを掴めたら true を返す。
+function Select_maneuver(v, x_0) {
+  const i = State.selected_sequence;
+  if (i == -1 || !State.mission_sequence) return false;
+  if (State.mission_sequence.type(i) !== Sequence_Type.Maneuver) return false;
+
+  // マヌーバノード自身のマーカー(中央 = index 1)
+  const marker = PlotState.marker_spheres[1];
+  if (!marker || !marker.visible) return false;
+
+  const dist = new THREE.Vector3().subVectors(marker.position, x_0).cross(v).length() / v.length();
+  if (dist >= 0.03 * PlotState.camera_dist) return false;
+
+  const conic = State.mission_sequence.get_incoming_conic(i);
+  if (conic == null) return false;
+
+  State.maneuver_conic = conic;
+  State.is_change_maneuver = true;
+  State.is_change_time = true;
+  State.is_selected = true;
+  if (controls) controls.enableRotate = false;
+
+  // 掴んだ瞬間の真近点角を基準にする(以降の相対移動で日付を決める)
+  State.old_nu = get_nu_on(conic.par);
+  State.rev_count = 0;
+  return true;
+}
+
+// マヌーバを、入ってくる軌道に沿ってドラッグして日付を変える。
+function Drag_maneuver() {
+  const conic = State.maneuver_conic;
+  if (conic == null) return;
+
+  State.raycaster.setFromCamera(State.mouse, camera);
+  const par = conic.par;
+  const a = par[0];
+  const e = par[1];
+  const nu = get_nu_on(par);
+
+  // 真近点角の折り返しをまたいだら周回数を増減する(惑星ドラッグと同じ考え方)
+  if (State.old_nu > 2 && nu < -2) State.rev_count += 1;
+  if (State.old_nu < -2 && nu > 2) State.rev_count -= 1;
+  State.old_nu = nu;
+
+  // 基準時刻(前ノードの日付)からの経過時間 = 近点通過からの時間の差
+  const E_epoch = par[5];
+  const t_epoch = kepler_equation(a, e, E_epoch, MU_SUN);
+  const t_now = kepler_equation(a, e, nu2E(nu, e), MU_SUN);
+  let dt = t_now - t_epoch;
+  if (e < 1) dt += get_peariod(a, MU_SUN) * State.rev_count;
+  if (!isFinite(dt)) return;
+
+  // 前後のノードの間に収めるクランプは Mission.set_date が行う
+  // (Update_time が set_date を呼ぶので、ここでは希望日付を渡すだけでよい)
+  State.tmp_date = conic.epoch + dt / 86400;
+  Update_time();
+  // マーカー位置と「マヌーバ未実行時の軌道」をドラッグに追従させる
+  toggle_planet();
+}
+
+// 指定した軌道要素の軌道面上で、マウスレイが指す真近点角を求める。
+function get_nu_on(par) {
+  const vec1 = get_W_hat(par);
+  const W_hat = new THREE.Vector3(vec1[0], vec1[2], -vec1[1]);
+  const vec2 = get_P_hat(par);
+  const P_hat = new THREE.Vector3(vec2[0], vec2[2], -vec2[1]);
+
+  const u = State.raycaster.ray.direction.clone();
+  const x_0 = State.raycaster.ray.origin;
+  const p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
+  return -P_hat.angleTo(p) * -Math.sign(P_hat.cross(p).dot(W_hat));
+}
+
 function Dlag_planet() {
+  // マヌーバを掴んでいるときはそちらを動かす
+  if (State.is_change_maneuver) {
+    Drag_maneuver();
+    return;
+  }
+
   State.raycaster.setFromCamera(State.mouse, camera);
   let nu = get_nu();
 

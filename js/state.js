@@ -17,6 +17,8 @@ export const Sequence_Type = {
 
 export const State = {
   is_change_time: false,
+  is_change_maneuver: false, // マヌーバ(DSM)マーカーをドラッグ中か
+  maneuver_conic: null, // ドラッグ中のマヌーバが乗っている軌道 {par, epoch}
   raycaster: new THREE.Raycaster(),
   mouse: new THREE.Vector2(),
 
@@ -57,4 +59,5 @@ export const PlotState = {
 
   marker_spheres: [],
   marker_lines: [],
+  coast_line: undefined, // マヌーバ未実行時の軌道(赤い破線)
 };

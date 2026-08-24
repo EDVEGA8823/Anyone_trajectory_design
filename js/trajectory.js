@@ -395,6 +395,48 @@ export class Mission {
     return total;
   }
 
+  // マヌーバ(DSM)ノードiに入ってくる軌道(前ノードの出発状態が描く円錐曲線)の
+  // 軌道要素と、その基準時刻(前ノードの日付)を返す。
+  // マウスドラッグでマヌーバ位置(=日付)を動かすのに使う。
+  get_incoming_conic(i) {
+    if (i <= 0 || i >= this.#m_count) return null;
+    if (this.#m_types[i] !== Sequence_Type.Maneuver) return null;
+    const r = this.#m_s_c_pos[i - 1];
+    const v = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][0] : undefined;
+    if (r == undefined || v == undefined) return null;
+    const par = ic2par(r, v, MU_SUN);
+    if (!isFinite(par[0]) || !isFinite(par[1])) return null;
+    return { par, epoch: this.#m_dates[i - 1] };
+  }
+
+  // マヌーバを実行しなかった場合に、そのまま流されていく軌道の描画点。
+  // 楕円なら1周分、双曲線なら前後に適当な範囲を描く。
+  get_coast_orbit(i) {
+    const conic = this.get_incoming_conic(i);
+    if (conic == null) return [];
+    const par = conic.par;
+    const e = par[1];
+    const pts = [];
+    const N = 180;
+    if (e < 1) {
+      // 楕円: 1周分
+      for (let k = 0; k <= N; k++) {
+        const { r } = get_planets_pos_E(par, (2 * Math.PI * k) / N);
+        pts.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
+      }
+    } else {
+      // 双曲線: 現在の離心近点角の周辺を描く
+      const E0 = par[5];
+      const span = 2.5;
+      for (let k = 0; k <= N; k++) {
+        const E = E0 - span + (2 * span * k) / N;
+        const { r } = get_planets_pos_E(par, E);
+        pts.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
+      }
+    }
+    return pts;
+  }
+
   // マヌーバ(DSM)ノードiの直近の計算結果。マヌーバノードでない場合はnull。
   get_dsm_info(i) {
     return this.#m_dsm_info[i] ?? null;
