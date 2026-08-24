@@ -11,8 +11,15 @@ export function add_sequence(id) {
   if (id == State.selected_sequence) sequence_elem.classList.add("selected");
   
   const span1 = document.createElement("span");
-  if (State.mission_sequence.planet_num(id) == -1) span1.textContent = "---";
-  else span1.textContent = State.planet_list[State.mission_sequence.planet_num(id)];
+  if (State.mission_sequence.type(id) === Sequence_Type.Maneuver) {
+    // マヌーバ(DSM)は天体ではなく深宇宙の一点なので、天体名の代わりにΔVを出す
+    const dsm = State.mission_sequence.get_dsm_info(id);
+    span1.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+  } else if (State.mission_sequence.planet_num(id) == -1) {
+    span1.textContent = "---";
+  } else {
+    span1.textContent = State.planet_list[State.mission_sequence.planet_num(id)];
+  }
 
   const span2 = document.createElement("span");
   span2.textContent = JulianToDate(State.mission_sequence.date(id)).toLocaleDateString();
@@ -152,6 +159,12 @@ export function update_plot() {
   
   for (let i = 0; i < State.mission_sequence.count; i++) {
     if (State.mission_sequence.get_trajectory(i).length != 0) {
+      // Missionは手動スイングバイ時にマヌーバノードを自前で挿入するため、
+      // ノード数が増えて arcs が足りなくなることがある。足りなければここで作る。
+      if (State.arcs[i] == undefined) {
+        const points = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
+        State.arcs[i] = createLine(points, 0x0000ff);
+      }
       updateLine(State.arcs[i], State.mission_sequence.get_trajectory(i));
     }
   }
@@ -262,9 +275,12 @@ const RAD2DEG = 180 / Math.PI;
 const DEG2RAD = Math.PI / 180;
 
 // スイングバイの自動/手動切り替えUIと、パラメータの表示/入力欄を描画する。
-// 自動: 前後のランベール弧を繋ぎ、向きの差はrp/betaで、大きさの差は近点ΔVで
-//       吸収して次の天体に正確に到達する (rp/beta/ΔVは計算結果)。
-// 手動: ユーザーがrp/betaを指定して曲げるだけ。無推力なので到達保証はない。
+// 自動 (MGA): 前後のランベール弧を繋ぎ、向きの差はrp/betaで、大きさの差は
+//       近点ΔV(パワード・フライバイ)で吸収して次の天体に正確に到達する
+//       (rp/beta/ΔVは計算結果)。
+// 手動 (MGA-1DSM): ユーザーがrp/betaを指定して無推力で曲げ、直後に自動挿入される
+//       マヌーバ(DSM)ノードのΔVで次の天体へ到達させる。DSMの位置はその
+//       マヌーバノードの日付で決まる(選択して時刻を変えられる)。
 export function renderSwingbyControls() {
   const i = State.selected_sequence;
   const container = document.querySelector(".swingby-controls");
@@ -308,7 +324,7 @@ export function renderSwingbyControls() {
   hint.className = "swingby-hint";
   hint.textContent = is_auto
     ? "前後のレグから逆算。差分は近点ΔVで補う"
-    : "rp・βで曲げるのみ。到達は保証されない";
+    : "無推力で曲げ、直後のマヌーバ(DSM)で到達させる";
   container.appendChild(hint);
 
   if (is_auto) {

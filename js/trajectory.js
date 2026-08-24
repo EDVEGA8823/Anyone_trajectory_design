@@ -265,6 +265,34 @@ export function get_peariod(a, μ) {
   return 2 * Math.PI * Math.sqrt(Math.abs(a) ** 3 / μ);
 }
 
+// MGA-1DSMでDSMを打つ既定の位置 (レグの時間割合)
+export const DEFAULT_DSM_ETA = 0.5;
+
+/**
+ * 2体問題で状態ベクトル(r, v)を dt 秒だけ伝播する。
+ * 楕円・双曲線どちらにも対応する(平均近点角の進み方を場合分けする)。
+ * @returns {{r:number[], v:number[]}|undefined} 伝播後の位置・速度
+ */
+export function propagate(r0, v0, dt, mu) {
+  const par = ic2par(r0, v0, mu);
+  const a = par[0];
+  const e = par[1];
+  if (!isFinite(a) || !isFinite(e)) return undefined;
+
+  const E0 = par[5];
+  const M0 = E2M(E0, e);
+  // 平均運動 n = sqrt(mu/|a|^3)。双曲線(a<0)でも同じ形で定義できる
+  const n = Math.sqrt(mu / Math.abs(a) ** 3);
+  const M1 = M0 + n * dt;
+  const E1 = solve_kepler(e, M1);
+  if (!isFinite(E1)) return undefined;
+
+  const par1 = [a, e, par[2], par[3], par[4], E1];
+  const { r, v } = get_planets_pos_E(par1, E1);
+  if (!isFinite(r[0]) || !isFinite(v[0])) return undefined;
+  return { r, v };
+}
+
 /**
  * スイングバイ(フライバイ)による速度ベクトルの回転を計算する (MGA用、DSM無し)。
  *
@@ -344,6 +372,7 @@ export class Mission {
   #m_rp = []; // スイングバイの近点半径 [km] (Swingbyノードのみ意味を持つ)
   #m_beta = []; // スイングバイのb面内回転角 [rad] (Swingbyノードのみ意味を持つ)
   #m_swingby_info = []; // 直近に計算されたスイングバイ結果 (get_swingby_info用)
+  #m_dsm_info = []; // 直近に計算されたDSM(マヌーバ)結果 (get_dsm_info用)
 
   #m_trajectory_arcs = [];
 
@@ -352,15 +381,23 @@ export class Mission {
     return math.norm(math.subtract(this.#m_s_c_vel[0][0], this.#m_planet_vel[0]));
   }
 
-  // 自動スイングバイの近点ΔVを合計したもの [km/s]。
-  // (手動スイングバイはdv_periapsis=0として扱う。将来マヌーバノードのΔVもここに加算する想定)
+  // ミッション全体のΔVの合計 [km/s]。
+  // 自動スイングバイの近点ΔV(パワード・フライバイ)と、
+  // マヌーバノードのDSM ΔV(MGA-1DSM)を足し合わせる。
   get_total_dv() {
     let total = 0;
     for (let i = 0; i < this.#m_count; i++) {
-      const info = this.#m_swingby_info[i];
-      if (info && info.dv_periapsis) total += info.dv_periapsis;
+      const sb = this.#m_swingby_info[i];
+      if (sb && sb.dv_periapsis) total += sb.dv_periapsis;
+      const dsm = this.#m_dsm_info[i];
+      if (dsm && dsm.dv) total += dsm.dv;
     }
     return total;
+  }
+
+  // マヌーバ(DSM)ノードiの直近の計算結果。マヌーバノードでない場合はnull。
+  get_dsm_info(i) {
+    return this.#m_dsm_info[i] ?? null;
   }
 
   #calc_planet(i) {
@@ -487,13 +524,17 @@ export class Mission {
     };
   }
 
-  // 手動モード: ユーザーが指定したrp・betaで双曲線に沿って曲げるだけ (近点ΔV無し)。
-  // 純粋な無推力フライバイなので次の天体に正確に到達する保証はなく、
-  // ユーザーが手でrp/betaを詰めて繋げにいくためのモード。
-  // (MGA-1DSMはこれとは別物で、レグ途中のDSM位置を変数に加えて
-  //  DSM以降をランベールで解き、次の天体に正確に繋げる方式。将来別途実装する)
+  // 手動モード (MGA-1DSM): ユーザーが指定したrp・betaで無推力フライバイし、
+  // その後レグ途中の指定位置(eta)でDSM(深宇宙マヌーバ)を打って、そこから先を
+  // ランベールで解いて次の天体へ正確に繋げる。
+  //
+  //   スイングバイ -> [eta の割合だけ2体伝播] -> DSM -> [ランベール] -> 次の天体
+  //
+  // フライバイ自体は無推力なので侵入速度と脱出速度の大きさは等しい。
+  // 目的地への到達はDSMのΔVが担保する。設計変数は rp, beta, eta の3つ。
   #calc_swingby_manual(i) {
     this.#m_swingby_info[i] = undefined;
+    this.#m_dsm_info[i] = undefined;
     if (i <= 0 || i >= this.#m_count) return;
 
     const v_in = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][1] : undefined;
@@ -507,41 +548,96 @@ export class Mission {
     const rp = Math.max(this.#m_rp[i] ?? min_flyby_rp(n), min_flyby_rp(n));
     const beta = this.#m_beta[i] ?? 0;
 
+    let result;
     try {
-      const result = swingby(v_in, v_pla, rp, beta, mu_pla);
-      // 到着速度(index 1)は #update_trajectory 側で実際の伝播結果から補完する
-      this.#m_s_c_vel[i] = [result.v_out, undefined];
-      const { i_hat, j_hat, k_hat } = this.#frame(result.v_inf_in, result.v_inf, v_pla);
-      // v_inf_in/v_inf_outは大きさ(スカラー)で揃える。無推力なので両者は等しい。
-      this.#m_swingby_info[i] = {
-        v_inf_in: result.v_inf,
-        v_inf_out: result.v_inf,
-        delta: result.delta,
-        beta,
-        rp,
-        rp_min: min_flyby_rp(n),
-        rp_clamped: rp > (this.#m_rp[i] ?? rp),
-        turn_deficit: 0,
-        dv_periapsis: 0,
-        i_hat,
-        j_hat,
-        k_hat,
-        mode: "manual",
-      };
+      result = swingby(v_in, v_pla, rp, beta, mu_pla);
     } catch (e) {
       // v_inがほぼ0など、フライバイの向きを定義できない場合は前回の値を維持する
+      return;
     }
+
+    const { i_hat, j_hat, k_hat } = this.#frame(result.v_inf_in, result.v_inf, v_pla);
+    this.#m_swingby_info[i] = {
+      v_inf_in: result.v_inf,
+      v_inf_out: result.v_inf,
+      delta: result.delta,
+      beta,
+      rp,
+      rp_min: min_flyby_rp(n),
+      rp_clamped: rp > (this.#m_rp[i] ?? rp),
+      turn_deficit: 0,
+      dv_periapsis: 0, // 無推力フライバイなので近点ΔVは無い
+      i_hat,
+      j_hat,
+      k_hat,
+      mode: "manual",
+    };
+
+    // フライバイ直後の速度。ここから先はマヌーバノードが引き継ぐ
+    // (到着速度(index 1)は #update_trajectory 側で伝播結果から補完される)
+    this.#m_s_c_vel[i] = [result.v_out, undefined];
+  }
+
+  // マヌーバ(DSM)ノード: 天体ではなく深宇宙の一点。
+  // 位置は前ノードの出発状態をこのノードの日付まで2体伝播して求め、
+  // そこから次の天体までをランベールで解く。ΔVは
+  //   (ランベールが要求する出発速度) - (伝播してきた到着速度)
+  // MGA-1DSMではこのΔVが目的地への到達を担保する。
+  #calc_maneuver(i) {
+    this.#m_dsm_info[i] = undefined;
+    if (i <= 0 || i >= this.#m_count) return;
+
+    const r_prev = this.#m_s_c_pos[i - 1];
+    const v_prev = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][0] : undefined;
+    if (r_prev == undefined || v_prev == undefined) return;
+
+    const dt1 = (this.#m_dates[i] - this.#m_dates[i - 1]) * 86400;
+    if (!(dt1 > 0)) return;
+
+    // 1) 前ノードの出発状態をこのノードの日付まで伝播 -> DSM地点と到着速度
+    const arrived = propagate(r_prev, v_prev, dt1, MU_SUN);
+    if (arrived == undefined) return;
+    this.#m_s_c_pos[i] = arrived.r;
+
+    // 2) DSM地点から次の天体までをランベールで解く
+    const r_target = this.#m_planet_pos[i + 1];
+    const dt2 = (this.#m_dates[i + 1] - this.#m_dates[i]) * 86400;
+    if (r_target == undefined || !(dt2 > 0)) return;
+
+    let v_lam;
+    try {
+      v_lam = lambert_probrem(MU_SUN, arrived.r, r_target, dt2);
+    } catch (e) {
+      return;
+    }
+    if (v_lam == undefined || v_lam[0] == undefined) return;
+
+    const dv_vec = math.subtract(v_lam[0], arrived.v);
+    const dv = math.norm(dv_vec);
+
+    this.#m_s_c_vel[i] = v_lam;
+    this.#m_dsm_info[i] = { r: arrived.r, v_before: arrived.v, v_after: v_lam[0], dv_vec, dv };
   }
 
   #set_s_c(i) {
     if (i < 0 || i >= this.#m_count) return;
-    if (this.#m_planet_pos[i] == undefined || this.#m_dates[i] == undefined) return;
+    if (this.#m_dates[i] == undefined) return;
+
+    // マヌーバ(DSM)ノードは天体上ではなく深宇宙の一点。位置も伝播で求めるので
+    // 天体位置の存在チェックより先に処理する。
+    if (this.#m_types[i] === Sequence_Type.Maneuver) {
+      this.#calc_maneuver(i);
+      return;
+    }
+
+    if (this.#m_planet_pos[i] == undefined) return;
     this.#m_s_c_pos[i] = this.#m_planet_pos[i];
 
     const is_swingby = this.#m_types[i] === Sequence_Type.Swingby;
 
     if (is_swingby && !this.#m_is_auto_mode[i]) {
-      // 手動スイングバイ: ランベールを使わず、指定したrp/betaで曲げるだけ
+      // 手動スイングバイ(MGA-1DSM): ランベールを使わず、指定したrp/betaで曲げるだけ。
+      // 目的地への到達は直後のマヌーバノードのΔVが担保する。
       this.#calc_swingby_manual(i);
       return;
     }
@@ -564,7 +660,9 @@ export class Mission {
     if (i < 0 || i >= this.#m_count) return;
     if (this.#m_s_c_pos[i] == undefined || this.#m_s_c_vel[i] == undefined) return;
 
-    if (this.#m_planet_vel[i + 1] != undefined) {
+    // 次ノードが天体とは限らない(マヌーバノードは深宇宙の一点)ので、
+    // 天体速度の有無ではなく日付の有無でレグの成立を判定する
+    if (i + 1 < this.#m_count && this.#m_dates[i + 1] != undefined) {
       let par = ic2par(this.#m_s_c_pos[i], this.#m_s_c_vel[i][0], MU_SUN);
       let dt = (this.#m_dates[i + 1] - this.#m_dates[i]) * 86400;
       let E_0 = par[5];
@@ -698,13 +796,82 @@ export class Mission {
   }
 
   set_type(i, type) {
+    const was_manual_swingby =
+      this.#m_types[i] === Sequence_Type.Swingby && !this.#m_is_auto_mode[i];
     this.#m_types[i] = type;
+
+    // スイングバイ(手動)を別の種別に変えたら、付随していたDSMのマヌーバノードも外す
+    if (was_manual_swingby && type !== Sequence_Type.Swingby && this.#has_maneuver_after(i)) {
+      this.#remove_node(i + 1);
+    }
+
     this.#recompute_all();
   }
 
+  // スイングバイの自動(パワード・フライバイ)/手動(MGA-1DSM)を切り替える。
+  // 手動にすると、無推力フライバイのままでは次の天体に到達できないので、
+  // 直後にDSM用のマヌーバノードを自動で挿入する。自動に戻すときは取り除く。
   set_auto_mode(i, is_auto) {
     this.#m_is_auto_mode[i] = is_auto;
+
+    if (this.#m_types[i] === Sequence_Type.Swingby) {
+      if (!is_auto) {
+        if (!this.#has_maneuver_after(i)) this.#insert_maneuver_after(i);
+      } else {
+        if (this.#has_maneuver_after(i)) this.#remove_node(i + 1);
+      }
+    }
+
     this.#recompute_all();
+  }
+
+  #has_maneuver_after(i) {
+    return i + 1 < this.#m_count && this.#m_types[i + 1] === Sequence_Type.Maneuver;
+  }
+
+  // ノードiの直後にマヌーバ(DSM)ノードを挿入する。
+  // 日付は既定でレグの DEFAULT_DSM_ETA の位置に置く。
+  #insert_maneuver_after(i) {
+    const idx = i + 1;
+    // 挿入位置の日付。次ノードが無い場合はレグが無いので何もしない
+    if (idx >= this.#m_count) return;
+    const t0 = this.#m_dates[i];
+    const t1 = this.#m_dates[idx];
+    if (t0 == undefined || t1 == undefined) return;
+    const date = t0 + (t1 - t0) * DEFAULT_DSM_ETA;
+
+    this.#m_planet_nums.splice(idx, 0, -1); // 天体ではない
+    this.#m_dates.splice(idx, 0, date);
+    this.#m_types.splice(idx, 0, Sequence_Type.Maneuver);
+    this.#m_is_auto_mode.splice(idx, 0, true);
+    this.#m_rp.splice(idx, 0, undefined);
+    this.#m_beta.splice(idx, 0, 0);
+    this.#m_planet_pos.splice(idx, 0, undefined);
+    this.#m_planet_vel.splice(idx, 0, undefined);
+    this.#m_s_c_pos.splice(idx, 0, undefined);
+    this.#m_s_c_vel.splice(idx, 0, undefined);
+    this.#m_swingby_info.splice(idx, 0, undefined);
+    this.#m_dsm_info.splice(idx, 0, undefined);
+    this.#m_trajectory_arcs.splice(idx, 0, undefined);
+    this.#m_count++;
+  }
+
+  #remove_node(idx) {
+    if (idx < 0 || idx >= this.#m_count) return;
+    this.#m_planet_nums.splice(idx, 1);
+    this.#m_dates.splice(idx, 1);
+    this.#m_types.splice(idx, 1);
+    this.#m_is_auto_mode.splice(idx, 1);
+    this.#m_rp.splice(idx, 1);
+    this.#m_beta.splice(idx, 1);
+    this.#m_planet_pos.splice(idx, 1);
+    this.#m_planet_vel.splice(idx, 1);
+    this.#m_s_c_pos.splice(idx, 1);
+    this.#m_s_c_vel.splice(idx, 1);
+    this.#m_swingby_info.splice(idx, 1);
+    this.#m_dsm_info.splice(idx, 1);
+    this.#m_trajectory_arcs.splice(idx, 1);
+    this.#m_count--;
   }
 
   set_rp(i, rp) {
@@ -725,6 +892,15 @@ export class Mission {
     this.#m_dates.splice(idx, 0, date);
     this.#m_rp.splice(idx, 0, undefined);
     this.#m_beta.splice(idx, 0, 0);
+    // 平行配列はすべて同じ位置にずらす。ここを漏らすと途中挿入のときに
+    // 添字がずれて別ノードの計算結果を参照してしまう。
+    this.#m_planet_pos.splice(idx, 0, undefined);
+    this.#m_planet_vel.splice(idx, 0, undefined);
+    this.#m_s_c_pos.splice(idx, 0, undefined);
+    this.#m_s_c_vel.splice(idx, 0, undefined);
+    this.#m_swingby_info.splice(idx, 0, undefined);
+    this.#m_dsm_info.splice(idx, 0, undefined);
+    this.#m_trajectory_arcs.splice(idx, 0, undefined);
 
     if (this.#m_count != 0) {
       if (idx == 0 && this.#m_dates[1] - this.#m_dates[0] < 50) this.#m_dates[0] = this.#m_dates[1] - 50;

@@ -63,18 +63,12 @@ export function initBPlane() {
   root.add(sunLight);
   root.add(sunLight.target);
 
-  // 黄道面 (天の北極方向に垂直な、太陽系全体の基準面)。ごく薄いグレーで、
-  // B面や近点のスケールに比べてずっと広く描く。法線は毎回のupdateBPlaneで
-  // northHatに合わせて向きを更新する。
-  eclipticPlane = new THREE.Mesh(
-    new THREE.CircleGeometry(1, 64),
-    new THREE.MeshBasicMaterial({
-      color: 0x8a8f99,
-      transparent: true,
-      opacity: 0.05,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    })
+  // 黄道面 (天の北極方向に垂直な、太陽系全体の基準面)。ごく薄いグレーの
+  // グリッドとして、B面や近点のスケールに比べてずっと広く描く。
+  // 向きは毎回のupdateBPlaneでnorthHatに合わせて更新する。
+  eclipticPlane = new THREE.LineSegments(
+    squareGridGeometry(1, 20),
+    new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.16, depthWrite: false })
   );
   eclipticPlane.renderOrder = -1;
   root.add(eclipticPlane);
@@ -415,7 +409,7 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
     northHat = toDrawing([0, 0, 1], iHat, jHat, kHat);
     // 黄道面を法線northHatに合わせて向け、シーンの規模よりずっと広く敷く
     eclipticPlane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), northHat);
-    eclipticPlane.scale.setScalar(extent * 9);
+    eclipticPlane.scale.setScalar(extent * 6);
     eclipticPlane.visible = true;
   } else {
     eclipticPlane.visible = false;
