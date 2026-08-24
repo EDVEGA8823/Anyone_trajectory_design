@@ -18,6 +18,19 @@ let orbitArrow, dvArrow;
 let root, sunLight;
 let lastFitDist; // 直近にカメラ距離を合わせたときのスケール
 
+// --- マウスで掴んで rp / β を変えるためのハンドル ---
+// 常に掴めるものが出ていると視界とカメラ操作の邪魔になるので、右側の
+// 対応する欄を選んでいる間だけ、その欄のハンドルを表示する。
+//   rp   : 近点方向(半径方向)に伸び縮みするハンドル
+//   beta : B面内をぐるっと回るハンドル
+let rpHandle, betaHandle, rpGuide, betaGuide;
+let activeHandle = null; // null | "rp" | "beta"
+let dragging = null;
+let handlers = {}; // { onRp(rp[km]), onBeta(beta[rad]) }
+let geom = null; // 直近の描画スケール (ハンドルの配置とドラッグの換算に使う)
+const raycaster = new THREE.Raycaster();
+const HANDLE_HIT_PX = 18; // 掴み判定の半径 [画面px]
+
 // キャンバスは操作パネルの空きに合わせて伸縮する正方形。大きさは
 // 下の resizeToDisplaySize が毎フレーム決める。
 const CANVAS_MAX = 460;
@@ -175,12 +188,201 @@ export function initBPlane() {
   dvArrow.renderOrder = 2;
   root.add(dvArrow);
 
+  // rp / β をマウスで動かすためのハンドルと、動かせる向きを示す補助線
+  rpGuide = makeLine([new THREE.Vector3()], COLOR_RP, 0.35);
+  root.add(rpGuide);
+  rpHandle = makeHandle(COLOR_RP);
+  rpHandle.name = "rp_handle";
+  root.add(rpHandle);
+
+  betaGuide = makeLine([new THREE.Vector3()], COLOR_BETA, 0.45);
+  root.add(betaGuide);
+  betaHandle = makeHandle(COLOR_BETA);
+  betaHandle.name = "beta_handle";
+  root.add(betaHandle);
+
   controls = new THREE.OrbitControls(camera, canvas);
   controls.enablePan = false;
   controls.minDistance = 3;
   controls.maxDistance = 400;
 
+  // OrbitControlsはcanvas自身のpointerdownを見ている。同じ要素に後から足すと
+  // 登録順で先を越されてしまうので、documentのキャプチャ段階で先に判定して、
+  // ハンドルを掴んだときだけ伝播を止める。
+  document.addEventListener("pointerdown", onPointerDown, true);
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
+
   animate();
+}
+
+function makeHandle(color) {
+  const handle = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 20, 20),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
+  );
+  handle.material.depthTest = false;
+  handle.renderOrder = 4;
+  handle.visible = false;
+  return handle;
+}
+
+/** ドラッグでrp/βが変わったときに呼ぶコールバックを登録する */
+export function setBPlaneHandlers(h) {
+  handlers = h || {};
+}
+
+/** どの欄のハンドルを出すか。null で全部隠す */
+export function setBPlaneActiveHandle(which) {
+  const next = which === "rp" || which === "beta" ? which : null;
+  if (next === activeHandle) return;
+  activeHandle = next;
+  if (dragging && dragging !== activeHandle) endDrag();
+  updateHandles();
+}
+
+function activeHandleMesh() {
+  if (activeHandle === "rp") return rpHandle;
+  if (activeHandle === "beta") return betaHandle;
+  return null;
+}
+
+// ハンドルの位置と、動かせる向きを示す補助線を引き直す
+function updateHandles() {
+  if (!rpHandle) return;
+
+  const ready = geom != undefined && hyperbolaLine.visible;
+  const showRp = ready && activeHandle === "rp";
+  const showBeta = ready && activeHandle === "beta";
+  rpHandle.visible = showRp;
+  rpGuide.visible = showRp;
+  betaHandle.visible = showBeta;
+  betaGuide.visible = showBeta;
+  if (!ready) return;
+
+  // 掴む対象なので、ビューの縮尺に対して十分見える大きさにする
+  const size = Math.max(geom.extent * 0.075, geom.rp_n * 0.3);
+
+  if (showRp) {
+    rpHandle.position.copy(geom.periapsis);
+    rpHandle.scale.setScalar(size);
+    // 伸び縮みする向き = 天体中心から近点へ向かう半径線
+    const far = Math.max(geom.rp_n * 2.2, geom.extent * 0.8);
+    setLinePoints(rpGuide, [new THREE.Vector3(), geom.P_hat.clone().multiplyScalar(far)]);
+  }
+
+  if (showBeta) {
+    betaHandle.position.copy(geom.pierce);
+    betaHandle.scale.setScalar(size);
+    // 回る向き = B面内の、Bベクトルの長さの円
+    const pts = [];
+    for (let k = 0; k <= 72; k++) {
+      const t = (2 * Math.PI * k) / 72;
+      pts.push(new THREE.Vector3(geom.b_n * Math.cos(t), geom.b_n * Math.sin(t), 0));
+    }
+    setLinePoints(betaGuide, pts);
+  }
+}
+
+function setRayFromEvent(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return false;
+  raycaster.setFromCamera(
+    new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    ),
+    camera
+  );
+  return true;
+}
+
+// ハンドルの当たり判定は画面上の距離で見る。小さな球の実形状で判定すると
+// 狙いにくいので、見た目より広めに取る。
+function hitHandle(event, handle) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  if (rect.width === 0) return false;
+  const p = handle.getWorldPosition(new THREE.Vector3()).project(camera);
+  const hx = rect.left + (p.x * 0.5 + 0.5) * rect.width;
+  const hy = rect.top + (-p.y * 0.5 + 0.5) * rect.height;
+  return Math.hypot(event.clientX - hx, event.clientY - hy) < HANDLE_HIT_PX;
+}
+
+// 天体中心を通る軸 d (world) と、マウスのレイとの最接近点の軸上パラメータ
+function closestOnAxis(d) {
+  const o = raycaster.ray.origin;
+  const r = raycaster.ray.direction;
+  const b = d.dot(r);
+  const den = 1 - b * b;
+  if (Math.abs(den) < 1e-6) return undefined; // レイが軸とほぼ平行
+  return (o.dot(d) - b * o.dot(r)) / den;
+}
+
+// マウスのレイとB面(root座標のXY平面)との交点を root のローカル座標で返す
+function intersectBPlane() {
+  const n = new THREE.Vector3(0, 0, 1).applyQuaternion(root.quaternion);
+  const o = raycaster.ray.origin;
+  const r = raycaster.ray.direction;
+  const dn = r.dot(n);
+  if (Math.abs(dn) < 1e-6) return null;
+  const t = -o.dot(n) / dn;
+  if (t <= 0) return null;
+  return root.worldToLocal(new THREE.Vector3().copy(o).addScaledVector(r, t));
+}
+
+function onPointerDown(event) {
+  if (!renderer || event.button !== 0) return;
+  if (event.target !== renderer.domElement) return;
+  const handle = activeHandleMesh();
+  if (!handle || !handle.visible) return;
+  if (!hitHandle(event, handle)) return;
+
+  dragging = activeHandle;
+  if (controls) controls.enabled = false;
+  renderer.domElement.style.cursor = "grabbing";
+  // ここで止めないとOrbitControlsが同時にカメラを回してしまう
+  event.stopPropagation();
+  event.preventDefault();
+}
+
+function onPointerMove(event) {
+  if (!renderer) return;
+
+  if (!dragging) {
+    // ハンドルの上に来たら掴めることが分かるようにする
+    const handle = activeHandleMesh();
+    if (handle && handle.visible && event.target === renderer.domElement) {
+      renderer.domElement.style.cursor = hitHandle(event, handle) ? "grab" : "";
+    }
+    return;
+  }
+  if (!geom || !setRayFromEvent(event)) return;
+
+  if (dragging === "rp") {
+    // 近点方向は rp によってもわずかに回るので、毎回いまの向きを軸に取る
+    const axis = geom.P_hat.clone().applyQuaternion(root.quaternion).normalize();
+    const t = closestOnAxis(axis);
+    if (t == undefined) return;
+    const rp = Math.max(geom.minRp, t * geom.radius);
+    if (handlers.onRp) handlers.onRp(rp);
+  } else {
+    const p = intersectBPlane();
+    if (!p || p.lengthSq() < 1e-12) return;
+    // 描画側は bHat = (cos β, -sin β, 0) なので符号を戻す
+    if (handlers.onBeta) handlers.onBeta(-Math.atan2(p.y, p.x));
+  }
+  event.preventDefault();
+}
+
+function onPointerUp() {
+  if (!dragging) return;
+  endDrag();
+}
+
+function endDrag() {
+  dragging = null;
+  if (controls) controls.enabled = true;
+  if (renderer) renderer.domElement.style.cursor = "";
 }
 
 function squareGridGeometry(half, divisions) {
@@ -305,6 +507,8 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   setOrbitVisible(hasOrbit);
   if (!hasOrbit) {
     setContextVisible(false);
+    geom = undefined;
+    updateHandles();
     return;
   }
 
@@ -393,6 +597,19 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   // 収まるようにする
   const extent = Math.max(halfSize, rp_n, b_n, rMax);
 
+  // マウスのハンドル用に、いまの縮尺と掴む点を控えておく
+  geom = {
+    radius,
+    minRp: min_flyby_rp(planetNum),
+    P_hat: P_hat.clone(),
+    periapsis: periapsis.clone(),
+    pierce: pierce.clone(),
+    rp_n,
+    b_n,
+    extent,
+  };
+  updateHandles();
+
   // --- 近点ΔV (近点では速度は動径に垂直 = Q_hat 方向) ---
   if (dv > 1e-9) {
     const vp = Math.sqrt(vinf * vinf + (2 * mu) / rp);
@@ -450,7 +667,9 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   const fitDist = (extent * 1.25) / Math.tan((camera.fov * Math.PI) / 180 / 2);
   controls.minDistance = fitDist * 0.25;
   controls.maxDistance = fitDist * 8;
-  if (lastFitDist == undefined || fitDist > lastFitDist * 1.25 || fitDist < lastFitDist * 0.8) {
+  // ハンドルをドラッグしている間は縮尺を固定する。
+  // 途中でカメラが引くと同じマウス移動量が示す長さまで変わって操作しづらい。
+  if (!dragging && (lastFitDist == undefined || fitDist > lastFitDist * 1.25 || fitDist < lastFitDist * 0.8)) {
     camera.position.setLength(fitDist);
     lastFitDist = fitDist;
   }

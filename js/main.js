@@ -11,7 +11,7 @@ import {
   updateLayout,
 } from './plot.js';
 import { initEvents, Update_time } from './event.js';
-import { initBPlane, updateBPlane } from './bplane.js';
+import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
 
 export function add_sequence(id) {
   let sequence_elem = document.createElement("div");
@@ -339,6 +339,9 @@ export function renderSwingbyControls() {
   const is_auto = State.mission_sequence.is_auto_mode(i);
   const info = State.mission_sequence.get_swingby_info(i);
 
+  // 自動モードや別のノードに移ったらマウスハンドルは引っ込める
+  if (State.swingby_handle && (is_auto || handle_seq !== i)) setSwingbyHandle(null);
+
   container.innerHTML = "";
 
   // 自動/手動の切り替えは見出しの横に置く (狭い数値欄の縦を使わないため)
@@ -433,16 +436,17 @@ export function renderSwingbyControls() {
       updateBPlaneView();
     };
 
-    form.appendChild(rpLabel);
-    form.appendChild(rpInput);
+    // 欄を選ぶと、その欄に対応するハンドルがB面ビューに出てマウスで動かせる。
+    // 常に掴めるものを出しておくとカメラ操作の邪魔になるので、選択制にしている。
+    const rpField = makeParamField("rp", rpLabel, rpInput);
     if (min_rp != undefined) {
       const note = document.createElement("div");
       note.className = "swingby-hint";
       note.textContent = `下限 ${min_rp.toFixed(0)} km (大気・放射線帯)`;
-      form.appendChild(note);
+      rpField.appendChild(note);
     }
-    form.appendChild(betaLabel);
-    form.appendChild(betaInput);
+    form.appendChild(rpField);
+    form.appendChild(makeParamField("beta", betaLabel, betaInput));
     container.appendChild(form);
 
     // 自動と同じく、フライバイの結果(速度・曲げ角)も併記する。
@@ -460,6 +464,35 @@ export function renderSwingbyControls() {
   }
 }
 
+// マウスハンドルを出しているシーケンス番号 (別のノードに移ったら消すため)
+let handle_seq = -1;
+
+// B面ビューのハンドルの出し分け。keyは "rp" | "beta" | null
+export function setSwingbyHandle(key) {
+  State.swingby_handle = key;
+  handle_seq = key ? State.selected_sequence : -1;
+  setBPlaneActiveHandle(key);
+}
+
+// ラベルと入力欄を、クリックでハンドルを出せる1つの欄にまとめる。
+// 選択中の欄のラベルをもう一度押すとハンドルを消す (カメラ操作に戻れるように)。
+function makeParamField(key, label, input) {
+  const field = document.createElement("div");
+  field.className = "column param-field param-field--" + key;
+  if (State.swingby_handle === key) field.classList.add("active");
+  field.appendChild(label);
+  field.appendChild(input);
+  field.addEventListener("click", (event) => {
+    const on_label = event.target === label;
+    setSwingbyHandle(State.swingby_handle === key && on_label ? null : key);
+    // ここでDOMを作り直すと入力欄のフォーカスが飛ぶので、見た目だけ切り替える
+    document
+      .querySelectorAll(".param-field")
+      .forEach((el) => el.classList.toggle("active", el.classList.contains("param-field--" + State.swingby_handle)));
+  });
+  return field;
+}
+
 // [項目名, 値] の並びを、幅の狭い1カラムに積んで表示する
 function makeReadout(rows) {
   const readout = document.createElement("div");
@@ -471,6 +504,28 @@ function makeReadout(rows) {
     readout.appendChild(row);
   });
   return readout;
+}
+
+// B面ビューのハンドルをドラッグしている間の反映。
+// 入力欄に打ち込んだときと同じ経路を通す (下限クランプもMission側で効く)。
+function apply_rp_from_drag(rp) {
+  const i = State.selected_sequence;
+  if (i == -1 || !State.mission_sequence) return;
+  State.mission_sequence.set_rp(i, rp);
+  refresh_after_swingby_change();
+}
+
+function apply_beta_from_drag(beta) {
+  const i = State.selected_sequence;
+  if (i == -1 || !State.mission_sequence) return;
+  State.mission_sequence.set_beta(i, beta);
+  refresh_after_swingby_change();
+}
+
+function refresh_after_swingby_change() {
+  update_plot();
+  change_sequence(); // マヌーバのΔVと総ΔVの表示を追従させる
+  updateBPlaneView();
 }
 
 // ========================================
@@ -493,7 +548,8 @@ function boot() {
   make_plot();
   updateLayout();
   initBPlane();
-  
+  setBPlaneHandlers({ onRp: apply_rp_from_drag, onBeta: apply_beta_from_drag });
+
   // Update time for the initial load
   Update_time();
 }

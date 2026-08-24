@@ -618,7 +618,38 @@ input:focus {
 }
 
 .swingby-inputs {
+  gap: 4px;
+}
+
+/* rp / β の欄。クリックするとB面ビューにマウス用のハンドルが出る */
+.param-field {
   gap: 2px;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.param-field:hover {
+  background: var(--surface-muted);
+}
+.param-field.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.param-field.active label {
+  color: var(--accent-strong);
+}
+/* ハンドルで「どう動かせるか」をラベルの脇に示す */
+.param-field.active label::after {
+  margin-left: 4px;
+  font-weight: 700;
+}
+.param-field--rp.active label::after {
+  content: "\2195"; /* 上下矢印 = 半径方向に伸び縮み */
+}
+.param-field--beta.active label::after {
+  content: "\21BB"; /* 回転矢印 = B面内で回す */
 }
 /* rp や β を大文字化すると別の記号に見えてしまうのでそのまま出す */
 .swingby-inputs label {
