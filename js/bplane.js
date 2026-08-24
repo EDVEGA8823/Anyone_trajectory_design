@@ -18,7 +18,8 @@ let orbitArrow, dvArrow;
 let root, sunLight;
 let lastFitDist; // 直近にカメラ距離を合わせたときのスケール
 
-const CANVAS_SIZE = 180;
+// キャンバスはCSS側で操作パネルの幅に追従して伸縮するので、描画解像度は
+// 実表示サイズから毎フレーム求める (下のresizeToDisplaySize)。
 
 const COLOR_ORBIT = 0x1a1c20;
 const COLOR_ASYMPTOTE = 0xa1a4ad;
@@ -37,8 +38,7 @@ export function initBPlane() {
   if (!canvas) return;
 
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(CANVAS_SIZE, CANVAS_SIZE, false);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   scene = new THREE.Scene();
 
@@ -229,8 +229,26 @@ function setArrow(arrow, from, to, maxHead, headLenRatio = 0.22, headWidthRatio 
   arrow.setLength(len, headLength, headLength * headWidthRatio);
 }
 
+// キャンバスのCSS上の実サイズに描画バッファを合わせる。
+// スイングバイ以外を選んでいる間は非表示(サイズ0)になるので、その場合は
+// 何もせず、表示に戻ったフレームで合わせ直す。
+function resizeToDisplaySize() {
+  const canvas = renderer.domElement;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  if (w === 0 || h === 0) return;
+
+  const pr = renderer.getPixelRatio();
+  if (canvas.width === Math.floor(w * pr) && canvas.height === Math.floor(h * pr)) return;
+
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
 function animate() {
   requestAnimationFrame(animate);
+  if (renderer && camera) resizeToDisplaySize();
   if (controls) controls.update();
   if (renderer && scene && camera) renderer.render(scene, camera);
 }
