@@ -12,9 +12,9 @@ import { planet_radius, planet_mu, min_flyby_rp } from './trajectory.js';
 
 export let renderer, scene, camera, controls;
 
-let planetMesh, keepOutSphere, bplaneGroup, hyperbolaLine, asymptoteLine;
+let planetMesh, keepOutSphere, bplaneGroup, hyperbolaLine, asymptoteArrow, travelArrowhead;
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine;
-let orbitLine, dvArrow;
+let orbitArrow, dvArrow;
 let root, sunLight;
 let lastFitDist; // 直近にカメラ距離を合わせたときのスケール
 
@@ -42,7 +42,7 @@ export function initBPlane() {
 
   scene = new THREE.Scene();
 
-  // 表示の向きは「天体の公転方向を画面右(+X)、太陽方向を画面上(+Y)」に固定する。
+  // 表示の向きは「天体の公転方向を画面右(+X)、天の北極方向を画面上(+Y)」に固定する。
   // カメラを動かすとOrbitControlsの回転軸(camera.upから一度だけ決まる)と噛み合わず、
   // ユーザーの手動回転も打ち消してしまうため、代わりに中身をまとめて回転させる。
   // 剛体回転なので双曲線の幾何はそのまま保たれる。
@@ -50,8 +50,10 @@ export function initBPlane() {
   scene.add(root);
 
   camera = new THREE.PerspectiveCamera(35, 1, 0.05, 5000);
-  // 公転面(XY)を正面から見下ろす向き。少しだけ傾けて立体感を出す
-  camera.position.set(0.3, 0.45, 1).setLength(10);
+  // カメラ自体は世界座標に固定したまま(rootだけを回すので)なので、ここで決めた
+  // 向きが常に成り立つ。公転方向(+X)が手前左下から奥右上に抜けて見えるよう、
+  // カメラを -X,-Y 側(やや-Yを弱めに)・+Z側に置く。
+  camera.position.set(-0.6, -0.35, 0.8).setLength(10);
   camera.lookAt(0, 0, 0);
 
   // 陰影のコントラストを出すため環境光は控えめにし、太陽方向の平行光を強くする
@@ -122,8 +124,19 @@ export function initBPlane() {
   hyperbolaLine = makeLine([new THREE.Vector3()], COLOR_ORBIT, 1);
   root.add(hyperbolaLine);
 
-  asymptoteLine = makeLine([new THREE.Vector3()], COLOR_ASYMPTOTE, 0.55);
-  root.add(asymptoteLine);
+  // 探査機の進行方向 (双曲線の出射側先端に付ける矢じるし)。
+  // 軌道本体(COLOR_ORBIT=ほぼ黒)と同じ色だと重なって見分けがつかないため、
+  // はっきり明るい色にする。
+  travelArrowhead = new THREE.Mesh(
+    new THREE.ConeGeometry(1, 1, 16),
+    new THREE.MeshBasicMaterial({ color: 0x5b6472 })
+  );
+  travelArrowhead.material.depthTest = false;
+  travelArrowhead.renderOrder = 2;
+  root.add(travelArrowhead);
+
+  asymptoteArrow = makeArrow(COLOR_ASYMPTOTE, 0.55);
+  root.add(asymptoteArrow);
 
   periapsisMarker = new THREE.Mesh(
     new THREE.SphereGeometry(0.07, 16, 16),
@@ -134,9 +147,9 @@ export function initBPlane() {
   rpLine = makeLine([new THREE.Vector3()], COLOR_RP, 1);
   root.add(rpLine);
 
-  // 天体の公転軌道 (フライバイのスケールではほぼ直線)
-  orbitLine = makeLine([new THREE.Vector3()], COLOR_PLANET_ORBIT, 0.85);
-  root.add(orbitLine);
+  // 天体の進行方向 (公転方向)
+  orbitArrow = makeArrow(COLOR_PLANET_ORBIT, 0.85);
+  root.add(orbitArrow);
 
   // 太陽方向は陰影(平行光の向き)で示すので、線としては描画しない。
   // 太陽光自体は updateBPlane 内の applyOrientation で毎回向きを更新する。
@@ -178,6 +191,32 @@ function makeLine(points, color, opacity = 1) {
 function setLinePoints(line, points) {
   line.geometry.dispose();
   line.geometry = new THREE.BufferGeometry().setFromPoints(points);
+}
+
+// 進行方向を示す矢印。線分と同様に深度テストを切って手前に描く。
+function makeArrow(color, opacity = 1) {
+  const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 1, color, 0.001, 0.001);
+  arrow.line.material.transparent = true;
+  arrow.line.material.opacity = opacity;
+  arrow.line.material.depthTest = false;
+  arrow.cone.material.transparent = true;
+  arrow.cone.material.opacity = opacity;
+  arrow.cone.material.depthTest = false;
+  arrow.renderOrder = 2;
+  return arrow;
+}
+
+// 始点・終点(進行方向)を指定してArrowHelperを更新する。
+// maxHeadは矢じるしの絶対的な上限サイズ(rp_nなど場面のスケールに合わせる)。
+// 線がとても長い場合に矢じるしだけが不自然に巨大化するのを防ぐ。
+function setArrow(arrow, from, to, maxHead, headLenRatio = 0.22, headWidthRatio = 0.5) {
+  const diff = new THREE.Vector3().subVectors(to, from);
+  const len = diff.length();
+  if (len < 1e-9) return;
+  arrow.position.copy(from);
+  arrow.setDirection(diff.multiplyScalar(1 / len));
+  const headLength = Math.min(len * headLenRatio, len * 0.6, maxHead ?? Infinity);
+  arrow.setLength(len, headLength, headLength * headWidthRatio);
 }
 
 function animate() {
@@ -271,13 +310,25 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   }
   setLinePoints(hyperbolaLine, pts);
 
-  // --- 入射漸近線 ---
+  // 探査機の進行方向を示す矢じるし。双曲線は曲がっているのでArrowHelperではなく、
+  // 出射側の末尾2点から接線方向を取り、そこに小さな円錐を向けて置く。
+  const tail = pts[pts.length - 1];
+  const tangent = new THREE.Vector3().subVectors(tail, pts[pts.length - 2]).normalize();
+  const headLen = Math.min(rp_n * 0.5, halfSize * 0.12);
+  travelArrowhead.position.copy(tail);
+  travelArrowhead.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+  travelArrowhead.scale.set(headLen * 0.55, headLen, headLen * 0.55);
+  travelArrowhead.visible = true;
+
+  // --- 入射漸近線 (進行方向 = inHat の矢印) ---
   const pierce = bHat.clone().multiplyScalar(b_n);
   const far = rMax;
-  setLinePoints(asymptoteLine, [
+  setArrow(
+    asymptoteArrow,
     pierce.clone().addScaledVector(inHat, -far),
     pierce.clone().addScaledVector(inHat, far * 0.3),
-  ]);
+    headLen
+  );
   bplaneGroup.getObjectByName("bplane_face").scale.setScalar(halfSize);
   bplaneGroup.getObjectByName("bplane_frame").scale.setScalar(halfSize);
   bplaneGroup.getObjectByName("bplane_grid").scale.setScalar(halfSize);
@@ -300,7 +351,9 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   periapsisMarker.position.copy(periapsis);
   setLinePoints(rpLine, [new THREE.Vector3(), periapsis]);
 
-  const extent = Math.max(halfSize, rp_n, b_n);
+  // rMax(双曲線・漸近線の描画範囲)も含めて、実際に描いた内容全体が画角に
+  // 収まるようにする
+  const extent = Math.max(halfSize, rp_n, b_n, rMax);
 
   // --- 近点ΔV (近点では速度は動径に垂直 = Q_hat 方向) ---
   if (dv > 1e-9) {
@@ -329,10 +382,11 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
     if (vn > 1e-12) {
       vHat = toDrawing([planetVel[0] / vn, planetVel[1] / vn, planetVel[2] / vn], iHat, jHat, kHat);
       const L = extent * 1.5;
-      setLinePoints(orbitLine, [vHat.clone().multiplyScalar(-L), vHat.clone().multiplyScalar(L)]);
-      orbitLine.visible = true;
-    } else orbitLine.visible = false;
-  } else orbitLine.visible = false;
+      // 手前(-L)から矢じるし(+L)まで。天体を通り抜けて進行方向を示す
+      setArrow(orbitArrow, vHat.clone().multiplyScalar(-L), vHat.clone().multiplyScalar(L), extent * 0.22, 0.12, 0.4);
+      orbitArrow.visible = true;
+    } else orbitArrow.visible = false;
+  } else orbitArrow.visible = false;
 
   if (haveFrame && planetPos) {
     const rn = Math.hypot(planetPos[0], planetPos[1], planetPos[2]);
@@ -395,7 +449,8 @@ function applyOrientation(vHat, sHat, northHat) {
 
 function setOrbitVisible(visible) {
   hyperbolaLine.visible = visible;
-  asymptoteLine.visible = visible;
+  travelArrowhead.visible = visible;
+  asymptoteArrow.visible = visible;
   pierceMarker.visible = visible;
   periapsisMarker.visible = visible;
   rpLine.visible = visible;
@@ -407,5 +462,5 @@ function setOrbitVisible(visible) {
 }
 
 function setContextVisible(visible) {
-  orbitLine.visible = visible;
+  orbitArrow.visible = visible;
 }
