@@ -325,11 +325,11 @@ export function renderLegEvents() {
   if (i == -1 || !State.mission_sequence) return;
 
   const mission = State.mission_sequence;
+  // 一覧を出すのはマヌーバ(DSM)だけ。天体のノードは日付を変えるとレグ自体が
+  // 変わってしまい、節目を選ぶという操作が意味を持たない。
+  if (mission.type(i) !== Sequence_Type.Maneuver) return;
+
   const events = mission.get_node_events(i);
-  // 選んで固定できるのは、決まった軌道の上を滑って動けるマヌーバ(DSM)だけ。
-  // 天体のノードは日付を変えるとレグそのものが変わってしまい、節目に
-  // 固定するという操作が意味を持たない。
-  const pinnable = mission.type(i) === Sequence_Type.Maneuver;
   const pinned = mission.pinned_event(i);
 
   if (events.length === 0) {
@@ -362,19 +362,17 @@ export function renderLegEvents() {
     row.appendChild(date);
     row.appendChild(dist);
 
-    if (pinnable) {
-      row.classList.add("pinnable");
-      row.title = "この点に固定する (前後の時刻を変えても追従します)";
-      if (pinned === ev.type) {
-        row.classList.add("pinned");
-        row.title = "固定を解除する";
-        const mark = document.createElement("span");
-        mark.className = "leg-event-pin";
-        mark.textContent = "固定中";
-        row.appendChild(mark);
-      }
-      row.addEventListener("click", () => pin_node_to_event(i, ev.type));
+    row.classList.add("pinnable");
+    row.title = "この点に固定する (前後の時刻を変えても追従します)";
+    if (pinned === ev.type) {
+      row.classList.add("pinned");
+      row.title = "固定を解除する";
+      const mark = document.createElement("span");
+      mark.className = "leg-event-pin";
+      mark.textContent = "固定中";
+      row.appendChild(mark);
     }
+    row.addEventListener("click", () => pin_node_to_event(i, ev.type));
     list.appendChild(row);
   });
 
