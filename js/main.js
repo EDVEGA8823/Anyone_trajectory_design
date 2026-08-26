@@ -166,16 +166,22 @@ export function update_plot() {
     updateLine(PlotState.orbit_lines[i], orbit);
   });
   
-  for (let i = 0; i < State.mission_sequence.count; i++) {
-    if (State.mission_sequence.get_trajectory(i).length != 0) {
-      // Missionは手動スイングバイ時にマヌーバノードを自前で挿入するため、
-      // ノード数が増えて arcs が足りなくなることがある。足りなければここで作る。
-      if (State.arcs[i] == undefined) {
-        const points = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
-        State.arcs[i] = createLine(points, 0x0000ff);
-      }
-      updateLine(State.arcs[i], State.mission_sequence.get_trajectory(i));
+  // Missionは自動/手動の切り替えでマヌーバノードを自前で出し入れするため、
+  // ノード数が増減して arcs と食い違うことがある。arcs側が多い場合も必ず
+  // 走査し、描くものが無くなった弧は隠す (隠さないと前の線が残り続ける)。
+  const count = State.mission_sequence.count;
+  for (let i = 0; i < Math.max(count, State.arcs.length); i++) {
+    const points = i < count ? State.mission_sequence.get_trajectory(i) : [];
+    if (points.length == 0) {
+      if (State.arcs[i]) State.arcs[i].line.visible = false;
+      continue;
     }
+    if (State.arcs[i] == undefined) {
+      const blank = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
+      State.arcs[i] = createLine(blank, 0x0000ff);
+    }
+    updateLine(State.arcs[i], points);
+    State.arcs[i].line.visible = true;
   }
 }
 
@@ -233,21 +239,12 @@ export function toggle_planet() {
   update_coast_orbit();
 }
 
-// マヌーバ(DSM)ノードを選択中は、「マヌーバを実行しなかった場合に
-// そのまま流されていく軌道」を赤い破線で表示する。
+// 「その場のΔVを実行しなかった場合にそのまま流されていく軌道」を赤い破線で
+// 表示する。マヌーバ(DSM)ノードならDSMを打たなかった場合、自動スイングバイ
+// なら近点ΔVを打たず無推力で通過した場合。対象外のノードでは空になる。
 export function update_coast_orbit() {
   const i = State.selected_sequence;
-  const show =
-    i != -1 &&
-    State.mission_sequence &&
-    State.mission_sequence.type(i) === Sequence_Type.Maneuver;
-
-  if (!show) {
-    if (PlotState.coast_line) PlotState.coast_line.line.visible = false;
-    return;
-  }
-
-  const pts = State.mission_sequence.get_coast_orbit(i);
+  const pts = i != -1 && State.mission_sequence ? State.mission_sequence.get_coast_orbit(i) : [];
   if (pts.length === 0) {
     if (PlotState.coast_line) PlotState.coast_line.line.visible = false;
     return;
@@ -356,9 +353,7 @@ export function renderSwingbyControls() {
   autoBtn.className = "mode-btn" + (is_auto ? " active" : "");
   autoBtn.onclick = () => {
     State.mission_sequence.set_auto_mode(i, true);
-    update_plot();
-    change_sequence();
-    updateBPlaneView();
+    refresh_after_swingby_change();
   };
 
   const manualBtn = document.createElement("button");
@@ -367,9 +362,7 @@ export function renderSwingbyControls() {
   manualBtn.className = "mode-btn" + (!is_auto ? " active" : "");
   manualBtn.onclick = () => {
     State.mission_sequence.set_auto_mode(i, false);
-    update_plot();
-    change_sequence();
-    updateBPlaneView();
+    refresh_after_swingby_change();
   };
 
   if (modeRow) {
@@ -527,6 +520,9 @@ function apply_beta_from_drag(beta) {
 function refresh_after_swingby_change() {
   update_plot();
   change_sequence(); // マヌーバのΔVと総ΔVの表示を追従させる
+  // 自動/手動の切り替えではマヌーバノードが出入りしてノードの並びが変わるので、
+  // マーカーとΔV未実行時の軌道も引き直す
+  toggle_planet();
   updateBPlaneView();
 }
 
