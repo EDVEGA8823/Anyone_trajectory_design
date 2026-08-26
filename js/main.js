@@ -301,8 +301,105 @@ export function updateControlPanelDisplay() {
     maneuver_only[i].style.display = is_maneuver ? "flex" : "none";
   }
 
+  const is_launch =
+    State.selected_sequence != -1 &&
+    State.mission_sequence &&
+    State.mission_sequence.type(State.selected_sequence) === Sequence_Type.Launch;
+  const launch_only = document.getElementsByClassName("launch-only");
+  for (let i = 0; i < launch_only.length; i++) {
+    launch_only[i].style.display = is_launch ? "flex" : "none";
+  }
+
   if (is_swingby) updateBPlaneView();
   if (is_maneuver) renderManeuverControls();
+  if (is_launch) renderLaunchControls();
+}
+
+// 打上げの自動/手動切り替えと、手動モードのパラメータ入力を描画する。
+//   自動: 次の天体までをランベールで解く (V∞は結果)
+//   手動 (MGA-1DSM): |V∞| と2つの角度で飛び出し、直後に自動挿入される
+//         マヌーバ(DSM)のΔVで次の天体へ到達させる
+export function renderLaunchControls() {
+  const container = document.getElementById("launch_controls");
+  const i = State.selected_sequence;
+  if (!container || i == -1 || !State.mission_sequence) return;
+
+  const mission = State.mission_sequence;
+  const is_auto = mission.is_auto_mode(i);
+  const vinf = mission.get_v_inf();
+
+  const modeRow = document.getElementById("launch_mode");
+  if (modeRow) {
+    modeRow.innerHTML = "";
+    [
+      ["自動", true],
+      ["手動", false],
+    ].forEach(([text, auto]) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = text;
+      btn.className = "mode-btn" + (is_auto === auto ? " active" : "");
+      btn.onclick = () => {
+        mission.set_auto_mode(i, auto);
+        refresh_after_swingby_change();
+      };
+      modeRow.appendChild(btn);
+    });
+  }
+
+  container.innerHTML = "";
+
+  if (is_auto) {
+    container.appendChild(
+      makeReadout([
+        ["脱出速度 V∞", vinf.toFixed(3) + " km/s"],
+        ["C3", (vinf * vinf).toFixed(2) + " km²/s²"],
+      ])
+    );
+    return;
+  }
+
+  const form = document.createElement("div");
+  form.className = "column swingby-inputs";
+
+  const addInput = (label_text, value, step, on_change) => {
+    const field = document.createElement("div");
+    field.className = "column launch-field";
+    const label = document.createElement("label");
+    label.textContent = label_text;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = String(step);
+    input.value = value;
+    input.onchange = () => on_change(Number(input.value));
+    field.appendChild(label);
+    field.appendChild(input);
+    form.appendChild(field);
+  };
+
+  addInput("脱出速度 V∞ [km/s]", mission.launch_vinf().toFixed(3), 0.1, (v) => {
+    mission.set_launch_vinf(v);
+    refresh_after_swingby_change();
+  });
+  addInput("方位角 α [deg]", (mission.launch_alpha() * RAD2DEG).toFixed(1), 5, (v) => {
+    mission.set_launch_alpha(v * DEG2RAD);
+    refresh_after_swingby_change();
+  });
+  addInput("仰角 δ [deg]", (mission.launch_delta() * RAD2DEG).toFixed(1), 5, (v) => {
+    mission.set_launch_delta(v * DEG2RAD);
+    refresh_after_swingby_change();
+  });
+
+  const hint = document.createElement("div");
+  hint.className = "swingby-hint";
+  hint.textContent = "α: 天体の公転方向から / δ: 軌道面から北向きが正";
+  form.appendChild(hint);
+  container.appendChild(form);
+
+  const rows = [["C3", (vinf * vinf).toFixed(2) + " km²/s²"]];
+  const dsm = mission.get_dsm_info(i + 1);
+  if (dsm) rows.push(["DSMのΔV", (dsm.dv * 1000).toFixed(1) + " m/s"]);
+  container.appendChild(makeReadout(rows));
 }
 
 const LEG_EVENT_LABEL = {
@@ -668,7 +765,8 @@ function refresh_after_swingby_change() {
   // 自動/手動の切り替えではマヌーバノードが出入りしてノードの並びが変わるので、
   // マーカーとΔV未実行時の軌道も引き直す
   toggle_planet();
-  updateBPlaneView();
+  // 選択中のノードに応じた欄 (打上げ/スイングバイ/マヌーバ) を出し直す
+  updateControlPanelDisplay();
 }
 
 // ========================================

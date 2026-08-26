@@ -523,6 +523,27 @@ input:focus {
 }
 
 /* ==================================================================
+   打上げ
+   ================================================================== */
+.launch-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.launch-field {
+  gap: 2px;
+}
+.launch-field label {
+  text-transform: none; /* V∞ や α をそのまま出す */
+  line-height: 1.2;
+}
+.launch-field input {
+  padding: 5px 8px;
+  font-size: 13px;
+  max-width: 160px;
+}
+
+/* ==================================================================
    マヌーバ (DSM)
    ================================================================== */
 .maneuver-readout {

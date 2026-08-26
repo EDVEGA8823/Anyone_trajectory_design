@@ -456,6 +456,46 @@ export function swingby(v_in, v_pla, rp, beta, mu_pla) {
   return { v_out, v_inf_in, v_inf_out, v_inf, delta, e };
 }
 
+/**
+ * 打上げ方向を測るための、天体の運動を基準にした右手直交系。
+ *   x_hat = 公転方向, z_hat = 軌道面の法線(≒黄道北), y_hat = z_hat × x_hat
+ * 太陽系の慣性系で角度を指定するより、「公転方向から何度」の方が直感的なので
+ * この向きを基準にしている。
+ */
+export function launch_frame(r_pla, v_pla) {
+  const vn = math.norm(v_pla);
+  const h = math.cross(r_pla, v_pla);
+  const hn = math.norm(h);
+  if (!(vn > 0) || !(hn > 0)) return undefined;
+  const x_hat = math.divide(v_pla, vn);
+  const z_hat = math.divide(h, hn);
+  const y_hat = math.cross(z_hat, x_hat);
+  return { x_hat, y_hat, z_hat };
+}
+
+/**
+ * 手動モードの打上げ: |V∞| と2つの角度から出発速度を作る。
+ *   v_inf = V (cosδcosα x_hat + cosδsinα y_hat + sinδ z_hat)
+ * @param {number} vinf  無限遠方での速度の大きさ [km/s]
+ * @param {number} alpha 方位角 [rad] (軌道面内、公転方向を0として y_hat 側が正)
+ * @param {number} delta 仰角 [rad] (軌道面から外れる向き、北側が正)
+ * @returns {{v_inf_vec:number[], v_out:number[]}|undefined}
+ */
+export function launch_velocity(r_pla, v_pla, vinf, alpha, delta) {
+  const frame = launch_frame(r_pla, v_pla);
+  if (frame == undefined) return undefined;
+  const { x_hat, y_hat, z_hat } = frame;
+  const c = Math.cos(delta);
+  const v_inf_vec = math.add(
+    math.add(
+      math.multiply(x_hat, vinf * c * Math.cos(alpha)),
+      math.multiply(y_hat, vinf * c * Math.sin(alpha))
+    ),
+    math.multiply(z_hat, vinf * Math.sin(delta))
+  );
+  return { v_inf_vec, v_out: math.add(v_pla, v_inf_vec) };
+}
+
 export class Mission {
   #m_planet_nums = [];
   #m_dates = [];
@@ -476,6 +516,11 @@ export class Mission {
   // 軌道上の節目(近日点など)に固定されているノードの、その節目の種別。
   // 固定されていれば、前後の時刻を動かしてもその節目に追従し続ける。
   #m_pinned_event = [];
+
+  // 手動モードの打上げパラメータ (打上げは常にノード0なのでスカラで持つ)
+  #m_launch_vinf = 3; // |V∞| [km/s]
+  #m_launch_alpha = 0; // 方位角 [rad] (公転方向が0)
+  #m_launch_delta = 0; // 仰角 [rad] (軌道面から北向きが正)
 
   #m_trajectory_arcs = [];
 
@@ -513,13 +558,14 @@ export class Mission {
   }
 
   // 「DSMを実行しなかった場合」にそのまま流されていく軌道。
-  //   マヌーバ(DSM)ノード     : そのマヌーバを打たずに流された場合
-  //   手動スイングバイ(MGA-1DSM) : 直後のDSMを打たずに流された場合
-  //     (rp/betaを調整している最中に、DSM無しでどこへ行くかが見える)
+  //   マヌーバ(DSM)ノード          : そのマヌーバを打たずに流された場合
+  //   手動のスイングバイ/打上げ    : 直後のDSMを打たずに流された場合
+  //     (rp/betaやV∞を調整している最中に、DSM無しでどこへ行くかが見える)
   #coast_conic(i) {
     if (i < 0 || i >= this.#m_count) return null;
-    if (this.#m_types[i] === Sequence_Type.Maneuver) return this.get_incoming_conic(i);
-    if (this.#m_types[i] === Sequence_Type.Swingby && !this.#m_is_auto_mode[i]) {
+    const type = this.#m_types[i];
+    if (type === Sequence_Type.Maneuver) return this.get_incoming_conic(i);
+    if ((type === Sequence_Type.Swingby || type === Sequence_Type.Launch) && !this.#m_is_auto_mode[i]) {
       // 直後に自動挿入されているマヌーバノードの「未実行時の軌道」を借りる
       return this.get_incoming_conic(i + 1);
     }
@@ -765,6 +811,45 @@ export class Mission {
     this.#m_s_c_vel[i] = [result.v_out, undefined];
   }
 
+  // 手動モードの打上げ: |V∞| と2つの角度で決めた出発速度をそのまま使う。
+  // (角度の測り方は launch_velocity を参照)
+  #calc_launch_manual(i) {
+    const r_pla = this.#m_planet_pos[i];
+    const v_pla = this.#m_planet_vel[i];
+    if (r_pla == undefined || v_pla == undefined) return;
+
+    const result = launch_velocity(
+      r_pla,
+      v_pla,
+      this.#m_launch_vinf,
+      this.#m_launch_alpha,
+      this.#m_launch_delta
+    );
+    if (result == undefined) return;
+    // 到着速度(index 1)は前レグが無いので使わない
+    this.#m_s_c_vel[i] = [result.v_out, undefined];
+  }
+
+  // 自動モードでの出発速度から、手動モードの初期値(|V∞|と2つの角度)を取る。
+  // 手動に切り替えた瞬間に軌道が飛ばないようにするため。
+  #init_launch_manual_from_auto() {
+    const v0 = this.#m_s_c_vel[0] != undefined ? this.#m_s_c_vel[0][0] : undefined;
+    const r_pla = this.#m_planet_pos[0];
+    const v_pla = this.#m_planet_vel[0];
+    if (v0 == undefined || r_pla == undefined || v_pla == undefined) return;
+
+    const frame = launch_frame(r_pla, v_pla);
+    if (frame == undefined) return;
+    const v_inf = math.subtract(v0, v_pla);
+    const V = math.norm(v_inf);
+    if (!(V > 0)) return;
+
+    const cz = math.dot(v_inf, frame.z_hat);
+    this.#m_launch_vinf = V;
+    this.#m_launch_delta = Math.asin(Math.max(-1, Math.min(1, cz / V)));
+    this.#m_launch_alpha = Math.atan2(math.dot(v_inf, frame.y_hat), math.dot(v_inf, frame.x_hat));
+  }
+
   // マヌーバ(DSM)ノード: 天体ではなく深宇宙の一点。
   // 位置は前ノードの出発状態をこのノードの日付まで2体伝播して求め、
   // そこから次の天体までをランベールで解く。ΔVは
@@ -821,6 +906,13 @@ export class Mission {
     this.#m_s_c_pos[i] = this.#m_planet_pos[i];
 
     const is_swingby = this.#m_types[i] === Sequence_Type.Swingby;
+
+    // 手動モードの打上げ(MGA-1DSM): ランベールを使わず、指定した|V∞|と2つの
+    // 角度で飛び出すだけ。目的地への到達は直後のマヌーバノードが担保する。
+    if (this.#m_types[i] === Sequence_Type.Launch && !this.#m_is_auto_mode[i]) {
+      this.#calc_launch_manual(i);
+      return;
+    }
 
     if (is_swingby && !this.#m_is_auto_mode[i]) {
       // 手動スイングバイ(MGA-1DSM): ランベールを使わず、指定したrp/betaで曲げるだけ。
@@ -1056,13 +1148,22 @@ export class Mission {
     this.#recompute_all();
   }
 
-  // スイングバイの自動(パワード・フライバイ)/手動(MGA-1DSM)を切り替える。
-  // 手動にすると、無推力フライバイのままでは次の天体に到達できないので、
-  // 直後にDSM用のマヌーバノードを自動で挿入する。自動に戻すときは取り除く。
+  // 打上げ・スイングバイの自動/手動を切り替える。
+  //   スイングバイ 自動: パワード・フライバイ / 手動: 指定したrp・betaで無推力
+  //   打上げ       自動: ランベールで次の天体へ / 手動: 指定した|V∞|と角度で出発
+  // どちらも手動では次の天体に届かないので、直後にDSM用のマヌーバノードを
+  // 自動で挿入する。自動に戻すときは取り除く。
   set_auto_mode(i, is_auto) {
+    const type = this.#m_types[i];
+    const has_manual = type === Sequence_Type.Swingby || type === Sequence_Type.Launch;
+
+    // 手動に切り替えるときは、いまの軌道から初期値を取って飛びを防ぐ
+    if (has_manual && !is_auto && this.#m_is_auto_mode[i] && type === Sequence_Type.Launch) {
+      this.#init_launch_manual_from_auto();
+    }
     this.#m_is_auto_mode[i] = is_auto;
 
-    if (this.#m_types[i] === Sequence_Type.Swingby) {
+    if (has_manual) {
       if (!is_auto) {
         if (!this.#has_maneuver_after(i)) this.#insert_maneuver_after(i);
       } else {
@@ -1070,6 +1171,31 @@ export class Mission {
       }
     }
 
+    this.#recompute_all();
+  }
+
+  // --- 手動モードの打上げパラメータ ---
+  launch_vinf() {
+    return this.#m_launch_vinf;
+  }
+  launch_alpha() {
+    return this.#m_launch_alpha;
+  }
+  launch_delta() {
+    return this.#m_launch_delta;
+  }
+  set_launch_vinf(vinf) {
+    this.#m_launch_vinf = Math.max(0, vinf);
+    this.#recompute_all();
+  }
+  set_launch_alpha(alpha) {
+    this.#m_launch_alpha = alpha;
+    this.#recompute_all();
+  }
+  set_launch_delta(delta) {
+    // 仰角は±90度まで (これを超えると方位角側で表せる)
+    const lim = Math.PI / 2;
+    this.#m_launch_delta = Math.max(-lim, Math.min(lim, delta));
     this.#recompute_all();
   }
 
