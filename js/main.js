@@ -324,7 +324,14 @@ export function renderLegEvents() {
   const i = State.editing_sequence;
   if (i == -1 || !State.mission_sequence) return;
 
-  const events = State.mission_sequence.get_node_events(i);
+  const mission = State.mission_sequence;
+  const events = mission.get_node_events(i);
+  // 選んで固定できるのは、決まった軌道の上を滑って動けるマヌーバ(DSM)だけ。
+  // 天体のノードは日付を変えるとレグそのものが変わってしまい、節目に
+  // 固定するという操作が意味を持たない。
+  const pinnable = mission.type(i) === Sequence_Type.Maneuver;
+  const pinned = mission.pinned_event(i);
+
   if (events.length === 0) {
     const empty = document.createElement("div");
     empty.className = "leg-event-empty";
@@ -336,7 +343,8 @@ export function renderLegEvents() {
   events.slice(0, MAX_LEG_EVENTS).forEach((ev) => {
     const row = document.createElement("div");
     row.className = "leg-event leg-event--" + ev.type;
-    row.dataset.date = String(ev.date); // 後で時刻の選択に使う
+    row.dataset.date = String(ev.date);
+    row.dataset.type = ev.type;
 
     const name = document.createElement("span");
     name.className = "leg-event-name";
@@ -353,6 +361,20 @@ export function renderLegEvents() {
     row.appendChild(name);
     row.appendChild(date);
     row.appendChild(dist);
+
+    if (pinnable) {
+      row.classList.add("pinnable");
+      row.title = "この点に固定する (前後の時刻を変えても追従します)";
+      if (pinned === ev.type) {
+        row.classList.add("pinned");
+        row.title = "固定を解除する";
+        const mark = document.createElement("span");
+        mark.className = "leg-event-pin";
+        mark.textContent = "固定中";
+        row.appendChild(mark);
+      }
+      row.addEventListener("click", () => pin_node_to_event(i, ev.type));
+    }
     list.appendChild(row);
   });
 
@@ -362,6 +384,17 @@ export function renderLegEvents() {
     more.textContent = "ほか " + (events.length - MAX_LEG_EVENTS) + " 件";
     list.appendChild(more);
   }
+}
+
+// 一覧の行をクリックしたとき。同じ節目をもう一度押すと固定を解除する。
+function pin_node_to_event(i, type) {
+  const mission = State.mission_sequence;
+  mission.set_pinned_event(i, mission.pinned_event(i) === type ? null : type);
+  // 固定で日付が動くので、時刻欄が見ている日付を実際の値に合わせ直す
+  State.tmp_date = mission.date(i);
+  change_sequence();
+  toggle_planet();
+  Update_time(); // 時刻欄・節目一覧・操作パネル・軌道の描画をまとめて更新
 }
 
 // マヌーバ(DSM)ノードのΔVなどを操作パネルに表示する。

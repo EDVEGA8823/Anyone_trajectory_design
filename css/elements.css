@@ -483,6 +483,28 @@ input:focus {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
 }
+/* 選んで固定できる行 (マヌーバのみ) */
+.leg-event.pinnable {
+  cursor: pointer;
+}
+.leg-event.pinnable:hover {
+  background: var(--surface-muted);
+}
+.leg-event.pinned {
+  background: var(--accent-soft);
+}
+.leg-event.pinned .leg-event-name {
+  color: var(--accent-strong);
+}
+.leg-event-pin {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
 /* 種類ごとに色分け (近日点=近い/赤, 遠日点=遠い/青, 交点=緑) */
 .leg-event--perihelion {
   border-left-color: var(--danger);

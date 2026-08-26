@@ -279,6 +279,9 @@ export const Leg_Event = {
 // 交点が意味を持たないとみなす軌道傾斜角のしきい値 [rad] (約0.006度)
 const COPLANAR_INC = 1e-4;
 
+// 隣り合うノードの間に最低限空ける日数
+const MIN_NODE_GAP = 10;
+
 function wrap_pi(x) {
   let y = (x + Math.PI) % (2 * Math.PI);
   if (y < 0) y += 2 * Math.PI;
@@ -470,6 +473,9 @@ export class Mission {
   #m_beta = []; // スイングバイのb面内回転角 [rad] (Swingbyノードのみ意味を持つ)
   #m_swingby_info = []; // 直近に計算されたスイングバイ結果 (get_swingby_info用)
   #m_dsm_info = []; // 直近に計算されたDSM(マヌーバ)結果 (get_dsm_info用)
+  // 軌道上の節目(近日点など)に固定されているノードの、その節目の種別。
+  // 固定されていれば、前後の時刻を動かしてもその節目に追従し続ける。
+  #m_pinned_event = [];
 
   #m_trajectory_arcs = [];
 
@@ -883,9 +889,72 @@ export class Mission {
     // このノードの出発速度を決める(set_s_c)」を繰り返す。スイングバイの出発速度は
     // 前レグの到着速度に依存するため、この順序を崩すと未確定のまま参照してしまう。
     for (let i = 0; i < this.#m_count; i++) {
+      // 節目に固定されているノードは、上流(i-1まで)が確定したこの時点で
+      // 日付を追従させる。レグの弧を張る update_trajectory より先に行う。
+      this.#apply_pinned_event(i);
       if (i > 0) this.#update_trajectory(i - 1);
       this.#set_s_c(i);
     }
+  }
+
+  // 前後のノードとの最小間隔を守る位置に日付を切り詰める
+  #clamp_date(i, date) {
+    if (i != 0 && date - this.#m_dates[i - 1] < MIN_NODE_GAP) return this.#m_dates[i - 1] + MIN_NODE_GAP;
+    if (i != this.#m_count - 1 && this.#m_dates[i + 1] - date < MIN_NODE_GAP) {
+      return this.#m_dates[i + 1] - MIN_NODE_GAP;
+    }
+    return date;
+  }
+
+  // 節目に固定されているノードの日付を、いまの軌道での節目の時刻に合わせる。
+  // 前後のノードに阻まれてそこまで動かせない場合や、その節目を通らなくなった
+  // 場合は固定を解除し、日付はこれまで通り前後の間隔で切り詰める。
+  #apply_pinned_event(i) {
+    const type = this.#m_pinned_event[i];
+    if (type == undefined) return;
+
+    // 固定できるのは、決まった軌道の上を滑って動けるマヌーバ(DSM)だけ
+    if (this.#m_types[i] !== Sequence_Type.Maneuver || i - 1 < 0 || i + 1 >= this.#m_count) {
+      this.#m_pinned_event[i] = undefined;
+      return;
+    }
+
+    const r0 = this.#m_s_c_pos[i - 1];
+    const v0 = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][0] : undefined;
+    const t_prev = this.#m_dates[i - 1];
+    const t_next = this.#m_dates[i + 1];
+    if (r0 == undefined || v0 == undefined || t_prev == undefined || t_next == undefined) return;
+
+    const hits = leg_events(r0, v0, t_prev, t_next, MU_SUN).filter((e) => e.type === type);
+    if (hits.length === 0) {
+      // その節目を通らなくなった
+      this.#m_pinned_event[i] = undefined;
+      this.#m_dates[i] = this.#clamp_date(i, this.#m_dates[i]);
+      return;
+    }
+
+    // 楕円で複数回通る場合は、いまの日付にいちばん近いものを選ぶ
+    const now = this.#m_dates[i];
+    const target = hits.reduce((a, b) => (Math.abs(b.date - now) < Math.abs(a.date - now) ? b : a)).date;
+    const clamped = this.#clamp_date(i, target);
+    // 節目まで動かしきれなかった = レンジから外れた -> 固定を外して切り詰めるだけ
+    if (Math.abs(clamped - target) > 1e-9) this.#m_pinned_event[i] = undefined;
+    this.#m_dates[i] = clamped;
+  }
+
+  /**
+   * ノードiを軌道上の節目(Leg_Eventの種別)に固定する。nullで固定を解除。
+   * 固定されている間は、前後のノードの時刻を変えてもその節目に追従する。
+   */
+  set_pinned_event(i, type) {
+    if (i < 0 || i >= this.#m_count) return;
+    this.#m_pinned_event[i] = type ?? undefined;
+    this.#recompute_all();
+  }
+
+  // ノードiが固定されている節目の種別。固定されていなければnull。
+  pinned_event(i) {
+    return this.#m_pinned_event[i] ?? null;
   }
 
   get_trajectory(i) {
@@ -964,16 +1033,14 @@ export class Mission {
 
   set_date(i, date) {
     if (i < 0 || i >= this.#m_count) return date;
-    if (i != 0) {
-      if (date - this.#m_dates[i - 1] < 10) return (this.#m_dates[i] = this.#m_dates[i - 1] + 10);
-    }
-    if (i != this.#m_count - 1) {
-      if (this.#m_dates[i + 1] - date < 10) return (this.#m_dates[i] = this.#m_dates[i + 1] - 10);
-    }
+    const clamped = this.#clamp_date(i, date);
+    if (clamped === this.#m_dates[i]) return clamped;
 
-    this.#m_dates[i] = date;
+    // 手で時刻を動かしたら、節目への固定は外れる
+    this.#m_pinned_event[i] = undefined;
+    this.#m_dates[i] = clamped;
     this.#recompute_all();
-    return date;
+    return clamped;
   }
 
   set_type(i, type) {
@@ -1033,6 +1100,7 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 0, undefined);
     this.#m_swingby_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
+    this.#m_pinned_event.splice(idx, 0, undefined);
     this.#m_trajectory_arcs.splice(idx, 0, undefined);
     this.#m_count++;
   }
@@ -1051,6 +1119,7 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 1);
     this.#m_swingby_info.splice(idx, 1);
     this.#m_dsm_info.splice(idx, 1);
+    this.#m_pinned_event.splice(idx, 1);
     this.#m_trajectory_arcs.splice(idx, 1);
     this.#m_count--;
   }
@@ -1081,6 +1150,7 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 0, undefined);
     this.#m_swingby_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
+    this.#m_pinned_event.splice(idx, 0, undefined);
     this.#m_trajectory_arcs.splice(idx, 0, undefined);
 
     if (this.#m_count != 0) {
