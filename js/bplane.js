@@ -32,9 +32,14 @@ const raycaster = new THREE.Raycaster();
 const HANDLE_HIT_PX = 18; // 掴み判定の半径 [画面px]
 const HANDLE_PX = 9; // ハンドルの見た目の半径 [画面px]。遠近によらず一定にする
 
-// 黄道面グリッドの現在の縮尺。基準として読み取れるよう、カメラの
-// フィットが実際に切り替わったときだけ張り直す。
-let gridExtent;
+// 黄道面グリッドは空間の基準なので、目の粗さを最初から最後まで変えない。
+// シーンの規模に合わせて張り直すと、rpのドラッグを離した瞬間などに
+// グリッドだけ急に伸び縮みして直感に反する。
+// 単位は天体半径 (このビューは天体半径=1で描いている)。
+// 広く敷きすぎると、縮尺が小さいときに遠くの線が地平線のように詰まって
+// 帯に見えてしまうので、広さも初期の見え方のまま固定する。
+const ECLIPTIC_CELL = 2.5; // 一目の大きさ
+const ECLIPTIC_CELLS = 20; // 一辺の目の数
 
 // キャンバスは操作パネルの空きに合わせて伸縮する正方形。大きさは
 // 下の resizeToDisplaySize が毎フレーム決める。
@@ -86,9 +91,9 @@ export function initBPlane() {
 
   // 黄道面 (天の北極方向に垂直な、太陽系全体の基準面)。ごく薄いグレーの
   // グリッドとして、B面や近点のスケールに比べてずっと広く描く。
-  // 向きは毎回のupdateBPlaneでnorthHatに合わせて更新する。
+  // 大きさは固定で、向きだけ毎回のupdateBPlaneでnorthHatに合わせて更新する。
   eclipticPlane = new THREE.LineSegments(
-    squareGridGeometry(1, 20),
+    squareGridGeometry((ECLIPTIC_CELL * ECLIPTIC_CELLS) / 2, ECLIPTIC_CELLS),
     new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.16, depthWrite: false })
   );
   eclipticPlane.name = "ecliptic";
@@ -677,11 +682,8 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
   if (haveFrame) {
     // 黄道面の法線(=天の北極方向)。太陽系全体で共通の固定ベクトル[0,0,1]。
     northHat = toDrawing([0, 0, 1], iHat, jHat, kHat);
-    // 黄道面を法線northHatに合わせて向ける。大きさは空間の基準として読める
-    // よう、下のカメラのフィットが切り替わったときだけ張り直す
-    // (rpをドラッグするたびにグリッドが伸び縮みすると基準にならない)
+    // 黄道面は向きだけ合わせる (大きさは固定。ECLIPTIC_CELL の説明を参照)
     eclipticPlane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), northHat);
-    if (gridExtent == undefined) setGridExtent(extent);
     eclipticPlane.visible = true;
   } else {
     eclipticPlane.visible = false;
@@ -704,15 +706,7 @@ function fitCamera(extent) {
   if (lastFitDist == undefined || fitDist > lastFitDist * 1.25 || fitDist < lastFitDist * 0.8) {
     camera.position.setLength(fitDist);
     lastFitDist = fitDist;
-    setGridExtent(extent);
   }
-}
-
-// 黄道面グリッドをシーンの規模よりずっと広く敷き直す。
-// ズームやドラッグの最中には呼ばない (基準として動かないことに意味がある)
-function setGridExtent(extent) {
-  gridExtent = extent;
-  eclipticPlane.scale.setScalar(extent * 6);
 }
 
 /**
