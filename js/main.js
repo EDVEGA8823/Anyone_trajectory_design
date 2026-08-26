@@ -239,9 +239,10 @@ export function toggle_planet() {
   update_coast_orbit();
 }
 
-// 「その場のΔVを実行しなかった場合にそのまま流されていく軌道」を赤い破線で
-// 表示する。マヌーバ(DSM)ノードならDSMを打たなかった場合、自動スイングバイ
-// なら近点ΔVを打たず無推力で通過した場合。対象外のノードでは空になる。
+// 「DSMを実行しなかった場合にそのまま流されていく軌道」を赤い破線で表示する。
+// マヌーバ(DSM)ノードのほか、手動スイングバイのノードを選んでいる間も、
+// 直後のDSMを打たなかった場合の軌道として同じものを出す。
+// 対象外のノードでは get_coast_orbit が空を返すので破線は消える。
 export function update_coast_orbit() {
   const i = State.selected_sequence;
   const pts = i != -1 && State.mission_sequence ? State.mission_sequence.get_coast_orbit(i) : [];
@@ -412,11 +413,10 @@ export function renderSwingbyControls() {
     rpInput.value = rp != undefined ? rp.toFixed(0) : "";
     rpInput.onchange = () => {
       State.mission_sequence.set_rp(i, Number(rpInput.value));
-      update_plot();
       // 下限でクランプされた場合は入力欄の表示も実際の値に合わせる
       const applied = State.mission_sequence.rp(i);
       if (applied != undefined) rpInput.value = applied.toFixed(0);
-      updateBPlaneView();
+      refresh_after_swingby_change();
     };
 
     const betaLabel = document.createElement("label");
@@ -427,8 +427,7 @@ export function renderSwingbyControls() {
     betaInput.value = (beta * RAD2DEG).toFixed(1);
     betaInput.onchange = () => {
       State.mission_sequence.set_beta(i, Number(betaInput.value) * DEG2RAD);
-      update_plot();
-      updateBPlaneView();
+      refresh_after_swingby_change();
     };
 
     // 欄を選ぶと、その欄に対応するハンドルがB面ビューに出てマウスで動かせる。

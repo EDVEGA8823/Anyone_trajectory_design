@@ -409,45 +409,21 @@ export class Mission {
     return { par, epoch: this.#m_dates[i - 1] };
   }
 
-  // 自動スイングバイで近点ΔV(パワード・フライバイ)を実施しなかった場合に、
-  // 無推力のまま流されていく軌道。同じrp・betaで無推力フライバイしたときの
-  // 出射速度から求める。
-  #unpowered_flyby_conic(i) {
-    const info = this.#m_swingby_info[i];
-    if (info == undefined || info.mode !== "auto" || info.rp == undefined) return null;
-
-    const v_in = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][1] : undefined;
-    const v_pla = this.#m_planet_vel[i];
-    const r_pla = this.#m_planet_pos[i];
-    const n = this.#m_planet_nums[i];
-    if (v_in == undefined || v_pla == undefined || r_pla == undefined || n == undefined || n == -1) return null;
-    const mu_pla = planet_mu[n];
-    if (mu_pla == undefined) return null;
-
-    let result;
-    try {
-      result = swingby(v_in, v_pla, info.rp, info.beta, mu_pla);
-    } catch (e) {
-      return null;
-    }
-    const par = ic2par(r_pla, result.v_out, MU_SUN);
-    if (!isFinite(par[0]) || !isFinite(par[1])) return null;
-    return { par, epoch: this.#m_dates[i] };
-  }
-
-  // 「その場のΔVを実施しなかった場合」にそのまま流されていく軌道。
-  //   マヌーバ(DSM)ノード : DSMを打たずに流された場合
-  //   自動スイングバイ     : 近点ΔVを打たず無推力で通過した場合
+  // 「DSMを実行しなかった場合」にそのまま流されていく軌道。
+  //   マヌーバ(DSM)ノード     : そのマヌーバを打たずに流された場合
+  //   手動スイングバイ(MGA-1DSM) : 直後のDSMを打たずに流された場合
+  //     (rp/betaを調整している最中に、DSM無しでどこへ行くかが見える)
   #coast_conic(i) {
     if (i < 0 || i >= this.#m_count) return null;
     if (this.#m_types[i] === Sequence_Type.Maneuver) return this.get_incoming_conic(i);
-    if (this.#m_types[i] === Sequence_Type.Swingby && this.#m_is_auto_mode[i]) {
-      return this.#unpowered_flyby_conic(i);
+    if (this.#m_types[i] === Sequence_Type.Swingby && !this.#m_is_auto_mode[i]) {
+      // 直後に自動挿入されているマヌーバノードの「未実行時の軌道」を借りる
+      return this.get_incoming_conic(i + 1);
     }
     return null;
   }
 
-  // ΔVを実行しなかった場合の軌道の描画点 (#coast_conic を参照)。
+  // DSMを実行しなかった場合の軌道の描画点 (#coast_conic を参照)。
   // 楕円なら1周分、双曲線なら前後に適当な範囲を描く。
   get_coast_orbit(i) {
     const conic = this.#coast_conic(i);
