@@ -268,6 +268,103 @@ export function get_peariod(a, μ) {
 // MGA-1DSMでDSMを打つ既定の位置 (レグの時間割合)
 export const DEFAULT_DSM_ETA = 0.5;
 
+// レグ上で起こる軌道要素上の節目
+export const Leg_Event = {
+  Perihelion: "perihelion", // 近日点
+  Aphelion: "aphelion", // 遠日点
+  AscendingNode: "ascending_node", // 昇交点 (黄道面を南->北へ横切る)
+  DescendingNode: "descending_node", // 降交点 (北->南)
+};
+
+// 交点が意味を持たないとみなす軌道傾斜角のしきい値 [rad] (約0.006度)
+const COPLANAR_INC = 1e-4;
+
+function wrap_pi(x) {
+  let y = (x + Math.PI) % (2 * Math.PI);
+  if (y < 0) y += 2 * Math.PI;
+  return y - Math.PI;
+}
+
+/**
+ * 状態ベクトル(r0, v0)から始まる2体軌道について、時刻 t0 から t1 までの間に
+ * 通過する近日点・遠日点・昇交点・降交点を列挙する。
+ *
+ * 楕円では区間が1周を超えると同じ節目を複数回通るため、その分もすべて返す。
+ * 双曲線には遠日点が無く、交点も漸近線の手前(|ν| < ν∞)にある場合だけ通る。
+ * 軌道傾斜角がほぼ0の場合は交点が定まらないので交点は返さない。
+ *
+ * @param {number[]} r0 基準時刻の位置 [km]
+ * @param {number[]} v0 基準時刻の速度 [km/s]
+ * @param {number} t0 レグ開始のユリウス日 (r0, v0 の時刻)
+ * @param {number} t1 レグ終了のユリウス日
+ * @param {number} [mu] 中心天体の重力定数 [km^3/s^2]
+ * @returns {Array<{type:string, date:number, nu:number, E:number,
+ *                  r:number[], v:number[], r_norm:number, speed:number}>}
+ *          日付の昇順。求められない場合は空配列。
+ */
+export function leg_events(r0, v0, t0, t1, mu = MU_SUN) {
+  if (r0 == undefined || v0 == undefined || t0 == undefined || t1 == undefined) return [];
+  if (!(t1 > t0)) return [];
+
+  const par = ic2par(r0, v0, mu);
+  const a = par[0];
+  const e = par[1];
+  const inc = par[2];
+  const w = par[4];
+  if (!isFinite(a) || !isFinite(e) || e < 0) return [];
+
+  // 各節目の真近点角。交点は緯度引数 u = ω + ν が 0 / π になる点。
+  const candidates = [{ type: Leg_Event.Perihelion, nu: 0, E: 0 }];
+  if (e < 1) candidates.push({ type: Leg_Event.Aphelion, nu: Math.PI, E: Math.PI });
+  if (Math.abs(inc) > COPLANAR_INC && Math.abs(Math.abs(inc) - Math.PI) > COPLANAR_INC) {
+    candidates.push({ type: Leg_Event.AscendingNode, nu: wrap_pi(-w) });
+    candidates.push({ type: Leg_Event.DescendingNode, nu: wrap_pi(Math.PI - w) });
+  }
+
+  // 基準時刻の近点通過からの経過時間。各節目との差がレグ開始からの経過になる。
+  const t_epoch = kepler_equation(a, e, par[5], mu);
+  const nu_inf = e > 1 ? Math.acos(-1 / e) : undefined;
+  const period_d = e < 1 ? get_peariod(a, mu) / 86400 : undefined;
+
+  const events = [];
+  for (const c of candidates) {
+    // 双曲線では漸近線の手前しか通らない
+    if (nu_inf != undefined && Math.abs(c.nu) >= nu_inf) continue;
+
+    const E = c.E != undefined ? c.E : nu2E(c.nu, e);
+    if (!isFinite(E)) continue;
+    const date0 = t0 + (kepler_equation(a, e, E, mu) - t_epoch) / 86400;
+
+    const add = (date) => {
+      const { r, v } = get_planets_pos_E(par, E);
+      events.push({
+        type: c.type,
+        date,
+        nu: c.nu,
+        E,
+        r,
+        v,
+        r_norm: math.norm(r),
+        speed: math.norm(v),
+      });
+    };
+
+    if (period_d != undefined) {
+      // 楕円: レグが何周ぶんかを跨ぐこともあるので、区間内の通過をすべて拾う
+      for (let k = Math.ceil((t0 - date0) / period_d); ; k++) {
+        const date = date0 + k * period_d;
+        if (date > t1) break;
+        add(date);
+      }
+    } else if (date0 >= t0 && date0 <= t1) {
+      add(date0);
+    }
+  }
+
+  events.sort((x, y) => x.date - y.date);
+  return events;
+}
+
 /**
  * 2体問題で状態ベクトル(r, v)を dt 秒だけ伝播する。
  * 楕円・双曲線どちらにも対応する(平均近点角の進み方を場合分けする)。
@@ -449,6 +546,17 @@ export class Mission {
       }
     }
     return pts;
+  }
+
+  /**
+   * ノードiからi+1までのレグの間に通る近日点・遠日点・昇交点・降交点を返す。
+   * 詳細は leg_events を参照。レグが成立していない場合は空配列。
+   */
+  get_leg_events(i) {
+    if (i < 0 || i + 1 >= this.#m_count) return [];
+    const r0 = this.#m_s_c_pos[i];
+    const v0 = this.#m_s_c_vel[i] != undefined ? this.#m_s_c_vel[i][0] : undefined;
+    return leg_events(r0, v0, this.#m_dates[i], this.#m_dates[i + 1], MU_SUN);
   }
 
   // マヌーバ(DSM)ノードiの直近の計算結果。マヌーバノードでない場合はnull。

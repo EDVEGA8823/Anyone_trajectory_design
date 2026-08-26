@@ -291,7 +291,63 @@ export function updateControlPanelDisplay() {
   for (let i = 0; i < swingby_only.length; i++) {
     swingby_only[i].style.display = is_swingby ? "flex" : "none";
   }
+
+  const is_maneuver =
+    State.selected_sequence != -1 &&
+    State.mission_sequence &&
+    State.mission_sequence.type(State.selected_sequence) === Sequence_Type.Maneuver;
+  const maneuver_only = document.getElementsByClassName("maneuver-only");
+  for (let i = 0; i < maneuver_only.length; i++) {
+    maneuver_only[i].style.display = is_maneuver ? "flex" : "none";
+  }
+
   if (is_swingby) updateBPlaneView();
+  if (is_maneuver) renderManeuverControls();
+}
+
+// マヌーバ(DSM)ノードのΔVなどを操作パネルに表示する。
+// updateControlPanelDisplay は Update_time からも呼ばれるので、マヌーバを
+// マウスでドラッグしている間もこの表示がそのまま追従する。
+export function renderManeuverControls() {
+  const container = document.getElementById("maneuver_readout");
+  const i = State.selected_sequence;
+  if (!container || i == -1 || !State.mission_sequence) return;
+
+  const dsm = State.mission_sequence.get_dsm_info(i);
+  container.innerHTML = "";
+
+  if (dsm == null) {
+    const note = document.createElement("div");
+    note.className = "swingby-hint";
+    note.textContent = "前後のレグが決まると計算されます";
+    container.appendChild(note);
+    return;
+  }
+
+  const norm = (v) => Math.hypot(v[0], v[1], v[2]);
+  const tiles = [
+    ["ΔV", (dsm.dv * 1000).toFixed(1), "m/s", true],
+    ["実行前", norm(dsm.v_before).toFixed(3), "km/s", false],
+    ["実行後", norm(dsm.v_after).toFixed(3), "km/s", false],
+    ["太陽距離", (norm(dsm.r) / AU).toFixed(3), "AU", false],
+  ];
+  tiles.forEach(([title, value, unit, primary]) => {
+    const box = document.createElement("div");
+    box.className = "value_box" + (primary ? " primary" : "");
+    const t = document.createElement("div");
+    t.className = "title";
+    t.textContent = title;
+    const v = document.createElement("div");
+    v.className = "value";
+    v.textContent = value;
+    const u = document.createElement("div");
+    u.className = "unit";
+    u.textContent = unit;
+    box.appendChild(t);
+    box.appendChild(v);
+    box.appendChild(u);
+    container.appendChild(box);
+  });
 }
 
 // 現在選択中のシーケンスのスイングバイパラメータをB面ビューと右側UIに反映する

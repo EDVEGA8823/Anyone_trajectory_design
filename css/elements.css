@@ -448,6 +448,24 @@ input:focus {
 }
 
 /* ==================================================================
+   マヌーバ (DSM)
+   ================================================================== */
+.maneuver-readout {
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-start;
+}
+/* 主役のΔVだけ少し目立たせる */
+.maneuver-readout .value_box.primary {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.maneuver-readout .value_box.primary .title,
+.maneuver-readout .value_box.primary .unit {
+  color: var(--accent-strong);
+}
+
+/* ==================================================================
    スイングバイ (B面ビュー)
    ================================================================== */
 /* 操作パネルをスクロールさせないため、B面の箱が縦の余りを引き受け、
