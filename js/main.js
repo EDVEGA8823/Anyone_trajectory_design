@@ -308,6 +308,8 @@ export function updateBPlaneView() {
   const info = State.mission_sequence.get_swingby_info(i);
   updateBPlane({
     planetNum,
+    // 表示対象が変わったときだけB面ビューの画角を取り直させる
+    key: i + ":" + planetNum,
     rp,
     beta,
     vinf: info ? info.v_inf_in : undefined,

@@ -16,7 +16,7 @@ let planetMesh, keepOutSphere, eclipticPlane, bplaneGroup, hyperbolaLine, asympt
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine;
 let orbitArrow, dvArrow;
 let root, sunLight;
-let lastFitDist; // 直近にカメラ距離を合わせたときのスケール
+let lastViewKey; // いま表示しているノード。切り替わったときだけ画角を取り直す
 
 // --- マウスで掴んで rp / β を変えるためのハンドル ---
 // 常に掴めるものが出ていると視界とカメラ操作の邪魔になるので、右側の
@@ -391,12 +391,9 @@ function onPointerUp() {
 }
 
 function endDrag() {
-  const was = dragging;
   dragging = null;
   if (controls) controls.enabled = true;
   if (renderer) renderer.domElement.style.cursor = "";
-  // ドラッグ中は縮尺を固定していたので、離した時点で改めて画角に合わせる
-  if (was && geom) fitCamera(geom.extent);
 }
 
 function squareGridGeometry(half, divisions) {
@@ -513,6 +510,8 @@ function toDrawing(w, i_hat, j_hat, k_hat) {
  *
  * @param {object} params
  * @param {number} params.planetNum 通過天体の番号
+ * @param {string} [params.key]     表示対象の識別子。これが変わったときだけ
+ *                                  カメラの画角を取り直す (rp/betaの変更では動かさない)
  * @param {number} [params.rp]      近点半径 [km]
  * @param {number} [params.beta]    B面内での回転角 [rad]
  * @param {number} [params.vinf]    入射V∞ [km/s]
@@ -523,7 +522,7 @@ function toDrawing(w, i_hat, j_hat, k_hat) {
  * @param {number[]} [params.jHat]
  * @param {number[]} [params.kHat]
  */
-export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel, planetPos, iHat, jHat, kHat }) {
+export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, dv = 0, planetVel, planetPos, iHat, jHat, kHat }) {
   if (!scene || planetNum == undefined || planetNum == -1) return;
 
   const radius = planet_radius[planetNum];
@@ -691,22 +690,23 @@ export function updateBPlane({ planetNum, rp, beta = 0, vinf, dv = 0, planetVel,
 
   applyOrientation(vHat, sHat, northHat);
 
-  // ハンドルをドラッグしている間は縮尺を固定する。
-  // 途中でカメラが引くと同じマウス移動量が示す長さまで変わって操作しづらい。
-  // (離した時点で endDrag が改めて合わせ直す)
-  if (!dragging) fitCamera(extent);
+  // 画角を取り直すのは表示するノードが変わったときだけ。
+  // rpやβを変えるたびにカメラが動くと、見ている大きさの感覚が崩れて
+  // 操作しづらいので、パラメータの変更ではズームを一切動かさない。
+  if (key !== lastViewKey) {
+    lastViewKey = key;
+    fitCamera(extent);
+  }
 }
 
-// 全体が画角に収まる距離を求める。規模が大きく変わったときだけ距離を
-// 合わせ直し、それ以外はユーザーのズーム操作を尊重する。
+// 全体が画角に収まる距離にカメラを置き直す
 function fitCamera(extent) {
   const fitDist = (extent * 1.25) / Math.tan((camera.fov * Math.PI) / 180 / 2);
-  controls.minDistance = fitDist * 0.25;
-  controls.maxDistance = fitDist * 8;
-  if (lastFitDist == undefined || fitDist > lastFitDist * 1.25 || fitDist < lastFitDist * 0.8) {
-    camera.position.setLength(fitDist);
-    lastFitDist = fitDist;
-  }
+  camera.position.setLength(fitDist);
+  // ズームの範囲は「合わせた距離」を基準に広めに取る。実際の規模(extent)に
+  // 追従させると、rpを変えた拍子に現在のカメラ位置が範囲外になって飛んでしまう。
+  controls.minDistance = fitDist * 0.1;
+  controls.maxDistance = fitDist * 30;
 }
 
 /**
