@@ -549,6 +549,23 @@ export class Mission {
   }
 
   /**
+   * ノードiの時刻を動かせる範囲で、そのノードが乗る軌道上に現れる節目を返す。
+   *
+   * マヌーバ(DSM)は前ノードから出る軌道の上を滑って動くので、その軌道について
+   * 「前ノード〜次ノード」= DSMを打てる範囲を見る。それ以外のノードは、
+   * そこから次ノードまでのレグを見る。
+   */
+  get_node_events(i) {
+    if (i < 0 || i >= this.#m_count) return [];
+    if (this.#m_types[i] !== Sequence_Type.Maneuver) return this.get_leg_events(i);
+    if (i - 1 < 0 || i + 1 >= this.#m_count) return [];
+
+    const r0 = this.#m_s_c_pos[i - 1];
+    const v0 = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][0] : undefined;
+    return leg_events(r0, v0, this.#m_dates[i - 1], this.#m_dates[i + 1], MU_SUN);
+  }
+
+  /**
    * ノードiからi+1までのレグの間に通る近日点・遠日点・昇交点・降交点を返す。
    * 詳細は leg_events を参照。レグが成立していない場合は空配列。
    */

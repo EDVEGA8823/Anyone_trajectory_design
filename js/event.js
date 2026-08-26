@@ -1,5 +1,12 @@
 import { State, User_Mode, PlotState, Sequence_Type } from './state.js';
-import { change_sequence, change_sequence_propaty, toggle_planet, updateControlPanelDisplay, update_plot } from './main.js';
+import {
+  change_sequence,
+  change_sequence_propaty,
+  renderLegEvents,
+  toggle_planet,
+  updateControlPanelDisplay,
+  update_plot,
+} from './main.js';
 import { camera, controls, createLine } from './plot.js';
 import { get_W_hat, get_P_hat, get_peariod, kepler_equation, nu2E, MU_SUN } from './trajectory.js';
 import { JulianToDate, DateToJulian } from './trajectory.js';
@@ -81,6 +88,7 @@ function updateAfterAdd() {
     cancel_time.style.visibility = "hidden";
   }
   update_edit_target_label();
+  renderLegEvents();
 }
 
 // 時刻編集の対象ノードを切り替える。
@@ -142,6 +150,7 @@ export function Update_time() {
   C3.textContent = (v * v).toFixed(2);
   total_dv.textContent = (State.mission_sequence.get_total_dv() * 1000).toFixed(1); // km/s -> m/s
   update_edit_target_label();
+  renderLegEvents();
 }
 
 // --------------------- Mouse / Touch Handlers ---------------------

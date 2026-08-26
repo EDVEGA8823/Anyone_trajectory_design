@@ -305,6 +305,65 @@ export function updateControlPanelDisplay() {
   if (is_maneuver) renderManeuverControls();
 }
 
+const LEG_EVENT_LABEL = {
+  perihelion: "近日点",
+  aphelion: "遠日点",
+  ascending_node: "昇交点",
+  descending_node: "降交点",
+};
+const MAX_LEG_EVENTS = 8;
+
+// 時刻の枠に、いま時刻を編集しているノードが乗る軌道上の節目
+// (近日点・遠日点・昇交点・降交点) を一覧表示する。
+// 後でここから時刻を選べるようにするため、各行に日付を持たせてある。
+export function renderLegEvents() {
+  const list = document.getElementById("leg_events");
+  if (!list) return;
+  list.innerHTML = "";
+
+  const i = State.editing_sequence;
+  if (i == -1 || !State.mission_sequence) return;
+
+  const events = State.mission_sequence.get_node_events(i);
+  if (events.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "leg-event-empty";
+    empty.textContent = "この区間に近日点・遠日点・交点はありません";
+    list.appendChild(empty);
+    return;
+  }
+
+  events.slice(0, MAX_LEG_EVENTS).forEach((ev) => {
+    const row = document.createElement("div");
+    row.className = "leg-event leg-event--" + ev.type;
+    row.dataset.date = String(ev.date); // 後で時刻の選択に使う
+
+    const name = document.createElement("span");
+    name.className = "leg-event-name";
+    name.textContent = LEG_EVENT_LABEL[ev.type] ?? ev.type;
+
+    const date = document.createElement("span");
+    date.className = "leg-event-date";
+    date.textContent = JulianToDate(ev.date).toLocaleDateString("ja-JP");
+
+    const dist = document.createElement("span");
+    dist.className = "leg-event-r";
+    dist.textContent = (ev.r_norm / AU).toFixed(2) + " AU";
+
+    row.appendChild(name);
+    row.appendChild(date);
+    row.appendChild(dist);
+    list.appendChild(row);
+  });
+
+  if (events.length > MAX_LEG_EVENTS) {
+    const more = document.createElement("div");
+    more.className = "leg-event-empty";
+    more.textContent = "ほか " + (events.length - MAX_LEG_EVENTS) + " 件";
+    list.appendChild(more);
+  }
+}
+
 // マヌーバ(DSM)ノードのΔVなどを操作パネルに表示する。
 // updateControlPanelDisplay は Update_time からも呼ばれるので、マヌーバを
 // マウスでドラッグしている間もこの表示がそのまま追従する。

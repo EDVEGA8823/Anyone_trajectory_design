@@ -448,6 +448,59 @@ input:focus {
 }
 
 /* ==================================================================
+   時刻の枠に出す軌道上の節目 (近日点/遠日点/昇交点/降交点)
+   ================================================================== */
+.leg-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.leg-event {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--gray-300);
+  background: var(--surface);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.leg-event-name {
+  font-weight: 600;
+  color: var(--text);
+  flex: 0 0 auto;
+}
+.leg-event-date {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.leg-event-r {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+/* 種類ごとに色分け (近日点=近い/赤, 遠日点=遠い/青, 交点=緑) */
+.leg-event--perihelion {
+  border-left-color: var(--danger);
+}
+.leg-event--aphelion {
+  border-left-color: var(--accent);
+}
+.leg-event--ascending_node,
+.leg-event--descending_node {
+  border-left-color: #4caf82;
+}
+.leg-event-empty {
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+/* ==================================================================
    マヌーバ (DSM)
    ================================================================== */
 .maneuver-readout {
