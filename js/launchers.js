@@ -131,12 +131,16 @@ const LAUNCHERS = {
     note: "参考値。C3に対する近似式で、赤緯依存は見ていない",
     formula: h3_mass(11012.14),
     vinf_max: h3_vinf_max(11012.14),
+    source_mode: "extrapolated",
+    confidence: "reference",
   },
   h3_22: {
     label: "H3-22形態",
     note: "参考値。C3に対する近似式で、赤緯依存は見ていない",
     formula: h3_mass(9102.14),
     vinf_max: h3_vinf_max(9102.14),
+    source_mode: "extrapolated",
+    confidence: "reference",
   },
   ariane64: {
     label: "Ariane 64",
@@ -190,6 +194,16 @@ const LAUNCHERS = {
       [5302, 5021, 4604, 4044, 0.367879441, 0.135335283, 0.0497870684, 0.0183156389, 0.006737947, 0.00247875218, 0.000911881966, 0.000335462628],
     ],
   },
+  ariane5_free: {
+    label: "Ariane 5 (赤緯自由)",
+    note:
+      "各C3で表の中の物理的な値(>100kg)の最大を取った包絡。赤緯を選べる前提の比較用で、" +
+      "特定の赤緯へ飛ばせることを意味しない",
+    formula: (c3) => ariane5FreeDLA(c3),
+    vinf_max: 6,
+    source_mode: "free-DLA-envelope",
+    confidence: "speculative",
+  },
   atlas501: {
     label: "Atlas V 501",
     note: "ケープカナベラル射場",
@@ -223,6 +237,8 @@ const LAUNCHERS = {
     c3_min: STAR48B_C3_MIN,
     c3_max: STAR48B_C3_MAX,
     vinf_max: Math.sqrt(STAR48B_C3_MAX),
+    source_mode: "extrapolated",
+    confidence: "reference",
   },
   atlas551: {
     label: "Atlas V 551",
@@ -302,57 +318,226 @@ function locate(grid, x) {
 }
 
 const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (x, lo, hi) => Math.min(Math.max(x, lo), hi);
+
+// 表を (C3, 赤緯) で引く。表の範囲内で呼ぶこと (外は locate が端で頭打ちにする)。
+function table_at(L, c3, decl = 0) {
+  const v = locate(L.vinfs, Math.sqrt(Math.max(c3, 0)));
+  if (L.decls == undefined) return lerp(L.data[v.i], L.data[v.i + 1], v.t);
+  const ds = L.decls;
+  const d = locate(ds, clamp(decl, ds[0], ds[ds.length - 1]));
+  const low = L.data[d.i];
+  const high = L.data[d.i + 1];
+  return lerp(lerp(low[v.i], low[v.i + 1], v.t), lerp(high[v.i], high[v.i + 1], v.t), d.t);
+}
+
+// ==================================================================
+// 表の外や「作り物の境界」を工学的な近似で埋める (extendedモード)
+// ==================================================================
+// 元の表は「そこへは飛ばせない」ことを表すのに、負の値を極端に小さい正の値
+// (0.001 / 0.1 / 1 / 10 / 100 kg など) に置き換えてある。これをそのまま性能と
+// して読むと、実際には可能な打上げが「打ち上げ不可」になってしまう。
+// また表の上端を超えたC3で最後の値に張り付かせるのも実態と合わない。
+//
+// extendedモードでは、信頼できる芯の部分だけ表の値を使い、その外側を埋める。
+//   ・低C3側     : 表の最初の2列を使ったC3についての線形外挿
+//   ・高C3側     : 表の端に接する指数関数
+//   ・芯を外れた赤緯: パーキング軌道経由とみなして赤緯0の性能の90%
+// どこから来た値かは sourceMode / confidence で返す。
+const PARKING_FACTOR = 0.9;
+
+// 確からしさの順序。組み合わせたときは低い方を採る。
+const CONFIDENCE_RANK = { table: 3, reference: 2, speculative: 1 };
+const weaker = (a, b) => (CONFIDENCE_RANK[a] <= CONFIDENCE_RANK[b] ? a : b);
+
+const EXTENDED = {
+  ariane64: {
+    // 芯: 0.25 <= C3 <= 36 かつ |DLA| <= 5度
+    c3_core: [0.25, 36],
+    dla_core: 5,
+    tail: (c3) => 2400 * Math.exp(-0.03965 * (c3 - 36)),
+    low: "linear_c3", // 表の最初の2列でC3について線形外挿
+    // 90%というパーキング軌道の仮定は ESA EPIG CDF study に記載がある
+    parking_confidence: "reference",
+  },
+  atlas501: {
+    // 芯: 0 <= C3 <= 36 かつ |DLA| <= 28.5度
+    // (±29 / ±30 / ±40 / ±90 の行は作り物の境界なので extended では使わない)
+    c3_core: [0, 36],
+    dla_core: 28.5,
+    tail: (c3) => 1075 * Math.exp(-0.02925 * (c3 - 36)),
+    parking_confidence: "speculative", // こちらは経験則
+  },
+  soyuzf: {
+    // 芯: 0 <= C3 <= 25 かつ |DLA| <= 50度
+    // (±65の100kg、±90の0.001kgの行は作り物の境界)
+    c3_core: [0, 25],
+    dla_core: 50,
+    tail: (c3) => 1435.2 * Math.exp(-0.02083 * (c3 - 25)),
+    parking_confidence: "speculative",
+  },
+  atlas551: {
+    c3_core: [1, 60],
+    tail: (c3) => 1695 * Math.exp(-0.02265 * (c3 - 60)),
+    low_fn: (c3) => 6102.5 - 107.5 * c3,
+    // これより高いC3は Atlas V 551 + Star 48B の方を使う
+  },
+  falcon9: {
+    c3_core: [0, 80],
+    tail: (c3) => 350 * Math.exp(-0.03199 * (c3 - 80)),
+    // 元の表自体に推定値が混じっているとコメントされているので、
+    // 表の中でも「参考」扱いにする
+    raw_confidence: "reference",
+  },
+  // ariane5 は直接投入の表をそのまま使う。作り物に見える小さい値は
+  // 「その赤緯へは直接投入では飛ばせない」という意味を持っているので、
+  // 他機のようにまとめてパーキング軌道の近似で置き換えない (ECA上段の事情)。
+  // 赤緯を選ばない場合の包絡は ariane5FreeDLA() を参照。
+};
+
+// 芯の外を埋めて (mass, sourceMode, confidence) を返す
+function extended_mass(id, L, c3, decl) {
+  const cfg = EXTENDED[id];
+  if (cfg == undefined) {
+    return { mass: table_at(L, c3, decl), sourceMode: "raw", confidence: "table" };
+  }
+
+  // 呼び出し側はV∞を渡してくるので、C3は2乗の丸めで芯の端をわずかに跨ぐ
+  // (例: sqrt(80)^2 = 80.00000000000001)。端ちょうどは芯の中として扱う。
+  const EPS = 1e-9;
+  const [c3_lo, c3_hi] = cfg.c3_core;
+  const off_axis = cfg.dla_core != undefined && Math.abs(decl) > cfg.dla_core + EPS;
+  // 芯を外れた赤緯はパーキング軌道経由とみなすので、まず赤緯0で評価する
+  const dla = off_axis ? 0 : decl;
+
+  let mass;
+  let sourceMode;
+  let confidence;
+  if (c3 > c3_hi + EPS) {
+    mass = cfg.tail(c3);
+    sourceMode = "extrapolated";
+    confidence = "reference";
+  } else if (c3 < c3_lo - EPS) {
+    if (cfg.low_fn) mass = cfg.low_fn(c3);
+    else if (cfg.low === "linear_c3") {
+      // 最初の2列 (C3a, C3b) を通る直線をそのまま下へ延ばす
+      const c3a = L.vinfs[0] ** 2;
+      const c3b = L.vinfs[1] ** 2;
+      const ma = table_at(L, c3a, dla);
+      const mb = table_at(L, c3b, dla);
+      mass = ma + ((mb - ma) * (c3 - c3a)) / (c3b - c3a);
+    } else mass = table_at(L, c3_lo, dla);
+    sourceMode = "extrapolated";
+    confidence = "reference";
+  } else {
+    mass = table_at(L, c3, dla);
+    sourceMode = "raw";
+    confidence = cfg.raw_confidence ?? "table";
+  }
+
+  if (off_axis) {
+    mass *= PARKING_FACTOR;
+    sourceMode = "parking-orbit-surrogate";
+    confidence = weaker(confidence, cfg.parking_confidence ?? "speculative");
+  }
+  return { mass, sourceMode, confidence };
+}
+
+/** Ariane 5 の直接投入 (元の表そのまま)。指定した赤緯へ直接飛ばす場合の質量 [kg] */
+export function ariane5Direct(c3, decl = 0) {
+  const L = LAUNCHERS.ariane5;
+  const vs = L.vinfs;
+  const c3_min = vs[0] ** 2;
+  const c3_max = vs[vs.length - 1] ** 2;
+  if (c3 > c3_max) return 0; // 表の上端より先へは伸ばさない
+  return table_at(L, Math.max(c3, c3_min), decl);
+}
+
+// Ariane 5 で赤緯を選ばない場合の包絡。各C3で「物理的に意味のある値
+// (>100 kg) の最大」を取る。境界をまたぐ区間は作り物の値との補間になって
+// しまうので、両端とも物理的な行だけを見る。
+const ARIANE5_ENVELOPE_C3 = 30.25; // ここから先は表に物理解が無いので指数近似
+const ariane5_envelope = (c3) => 2260 * Math.exp(-0.03729 * (c3 - ARIANE5_ENVELOPE_C3));
+
+/** Ariane 5 の赤緯自由包絡 [kg] (比較用) */
+export function ariane5FreeDLA(c3) {
+  const L = LAUNCHERS.ariane5;
+  const vs = L.vinfs;
+  const c3_max = vs[vs.length - 1] ** 2;
+  if (c3 <= c3_max) {
+    const v = locate(vs, Math.sqrt(Math.max(c3, vs[0] ** 2)));
+    let best = 0;
+    for (const row of L.data) {
+      const a = row[v.i];
+      const b = row[v.i + 1];
+      if (a > 100 && b > 100) best = Math.max(best, lerp(a, b, v.t));
+    }
+    if (best > 0) return best;
+  }
+  return c3 > ARIANE5_ENVELOPE_C3 ? ariane5_envelope(c3) : 0;
+}
 
 /**
- * 打上げ機が投入できる質量 [kg]。
- *
- * 表の外側の扱いだけ pykep と変えてある。pykep は表の外でも外挿する
- * (1次元のものは 0.1kg を返す) が、それだと V∞ が表の下限より小さいときに
- * 「遅いほど質量が減る」というあり得ない値になるため、
- *   ・V∞ が表の下限より小さい -> 下限の値で頭打ち (安全側。実際にはもう少し積める)
- *   ・V∞ が表の上限より大きい -> 0 (その打上げ機では届かない)
- * とし、どちらだったかを status で返す。赤緯は表が±90度まで覆っているので
- * その範囲に収めるだけ。
+ * 打上げ機が投入できる質量 [kg] とその出どころ。
  *
  * @param {string} id     launcher_list() の id
  * @param {number} vinf   脱出双曲線余剰速度 [km/s]
  * @param {number} [decl] 赤緯 DLA [deg] (1次元の表では無視される)
- * @returns {{mass:number, status:"ok"|"below_table"|"over_vinf"|"unknown"}}
+ * @param {"extended"|"strict"} [mode]
+ *   strict   : pykepの表をそのまま再現する (表の外は下限で頭打ち / 上限超えは不可)
+ *   extended : 信頼できる範囲は表の値、その外は工学的な近似で埋める (既定)
+ * @returns {{mass:number, status:string, sourceMode:string, confidence:string}}
+ *   status     : "ok" | "below_table" | "over_vinf" | "outside_range" | "unknown"
+ *   sourceMode : "raw" | "extrapolated" | "parking-orbit-surrogate" | "free-DLA-envelope"
+ *   confidence : "table" | "reference" | "speculative"
  */
-export function launcher_mass(id, vinf, decl = 0) {
+export function launcher_mass(id, vinf, decl = 0, mode = "extended") {
   const L = LAUNCHERS[id];
-  if (L == undefined || !isFinite(vinf) || vinf < 0) return { mass: 0, status: "unknown" };
+  if (L == undefined || !isFinite(vinf) || vinf < 0) {
+    return { mass: 0, status: "unknown", sourceMode: "raw", confidence: "speculative" };
+  }
+  const c3 = vinf * vinf;
 
-  // 表ではなく式・逆算で与える機種 (H3, Atlas+Star 48B)。
-  // 質量が出せなければ「その機体では上げられない」扱い。
-  // c3_min / c3_max を持つものは、その外では参考値であることを status で伝える。
+  // 表ではなく式・逆算で与える機種 (H3, Atlas + Star 48B, Ariane 5の包絡)。
+  // モードによらず同じ式を使う (元から表ではないため)。
   if (L.formula != undefined) {
-    const c3 = vinf * vinf;
     const mass = L.formula(c3);
-    if (!(mass > 0)) return { mass: 0, status: "over_vinf" };
+    const meta = {
+      sourceMode: L.source_mode ?? "extrapolated",
+      confidence: L.confidence ?? "reference",
+    };
+    if (!(mass > 0)) return { mass: 0, status: "over_vinf", ...meta };
     const outside =
       (L.c3_min != undefined && c3 < L.c3_min) || (L.c3_max != undefined && c3 > L.c3_max);
-    return { mass, status: outside ? "outside_range" : "ok" };
+    return {
+      mass,
+      status: outside ? "outside_range" : "ok",
+      sourceMode: meta.sourceMode,
+      confidence: outside ? weaker(meta.confidence, "speculative") : meta.confidence,
+    };
   }
 
-  const vs = L.vinfs;
-  if (vinf > vs[vs.length - 1]) return { mass: 0, status: "over_vinf" };
-  const below = vinf < vs[0];
-  const v = locate(vs, Math.max(vinf, vs[0]));
-  const status = below ? "below_table" : "ok";
-
-  // 1次元の表 (V∞のみ)
-  if (L.decls == undefined) {
-    return { mass: lerp(L.data[v.i], L.data[v.i + 1], v.t), status };
+  // --- strict: pykepの表そのまま ---
+  if (mode === "strict") {
+    const vs = L.vinfs;
+    if (vinf > vs[vs.length - 1]) {
+      return { mass: 0, status: "over_vinf", sourceMode: "raw", confidence: "table" };
+    }
+    const below = vinf < vs[0];
+    return {
+      mass: table_at(L, Math.max(c3, vs[0] ** 2), decl),
+      status: below ? "below_table" : "ok",
+      sourceMode: "raw",
+      confidence: "table",
+    };
   }
 
-  // 2次元の表: V∞方向に補間してから赤緯方向に補間する (双一次補間)
-  const ds = L.decls;
-  const d = locate(ds, Math.min(Math.max(decl, ds[0]), ds[ds.length - 1]));
-  const low = L.data[d.i];
-  const high = L.data[d.i + 1];
+  // --- extended: 芯は表、外は近似 ---
+  const r = extended_mass(id, L, c3, decl);
   return {
-    mass: lerp(lerp(low[v.i], low[v.i + 1], v.t), lerp(high[v.i], high[v.i + 1], v.t), d.t),
-    status,
+    mass: Math.max(r.mass, 0),
+    status: r.mass > 0 ? (r.sourceMode === "raw" ? "ok" : "approx") : "over_vinf",
+    sourceMode: r.sourceMode,
+    confidence: r.confidence,
   };
 }

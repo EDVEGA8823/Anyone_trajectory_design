@@ -239,7 +239,7 @@ function update_launch_mass(vinf, dv_kms) {
   }
 
   const decl = launch_declination(mission.get_launch_v_inf_vec());
-  const { mass, status } = launcher_mass(State.launcher, vinf, decl);
+  const { mass, status, sourceMode, confidence } = launcher_mass(State.launcher, vinf, decl);
 
   if (status === "over_vinf") {
     show("打ち上げ不可", "-", "この脱出速度はこの機種の能力を超えています");
@@ -248,17 +248,32 @@ function update_launch_mass(vinf, dv_kms) {
 
   // ロケット方程式。総ΔVの分の燃料を使うと、残るのはこれだけ。
   const dry = mass * Math.exp((-dv_kms * 1000) / (ISP * G0));
-  show(mass.toFixed(0), dry.toFixed(0), launch_mass_note(status, decl));
+  show(mass.toFixed(0), dry.toFixed(0), launch_mass_note(status, decl, sourceMode, confidence));
 }
 
-function launch_mass_note(status, decl) {
+// 値の出どころ (launchers.js の sourceMode / confidence) を一言で説明する
+const SOURCE_NOTE = {
+  raw: "公開されている性能表の値",
+  extrapolated: "表の外側を外挿した推定",
+  "parking-orbit-surrogate": "パーキング軌道経由とみなした近似 (赤緯0の90%)",
+  "free-DLA-envelope": "赤緯を選べる前提の包絡 (比較用)",
+};
+const CONFIDENCE_NOTE = {
+  table: "表の値",
+  reference: "参考値",
+  speculative: "粗い推定",
+};
+
+function launch_mass_note(status, decl, sourceMode, confidence) {
   const base =
     "赤緯 " + decl.toFixed(1) + "°・比推力 " + ISP + "秒で見積もり\n" +
     "打上げ質量: 燃料も含めた打上げ時の質量 (ウェット質量)\n" +
     "残る質量: 総ΔVの分の燃料を使い切った後に残る質量 (ドライ質量)";
-  if (status === "below_table") return base + "\n(この脱出速度は表の下限より小さいので、実際にはもう少し積めます)";
-  if (status === "outside_range") return base + "\n(この機種の見積もりが妥当な範囲の外なので参考値です)";
-  return base;
+  const from = SOURCE_NOTE[sourceMode];
+  const conf = CONFIDENCE_NOTE[confidence];
+  const origin = from ? "\n出どころ: " + from + (conf ? " / " + conf : "") : "";
+  if (status === "outside_range") return base + origin + "\n(この機種の見積もりが妥当な範囲の外です)";
+  return base + origin;
 }
 
 // ロケットの選択肢を作る (起動時に一度だけ)
