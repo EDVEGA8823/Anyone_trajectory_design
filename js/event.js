@@ -50,6 +50,17 @@ export function initEvents() {
     cancel_time.style.visibility = "hidden";
   });
 
+  // 時刻の微調整。マウスでの大まかな移動に対して、こちらは決まった日数だけ動かす。
+  // 通常の時刻変更と同じ経路(Update_time)を通るので、前後の最小間隔でのクリップも
+  // チェックしたノードの追従も同じように効く。
+  document.querySelectorAll(".date-nudge button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (State.editing_sequence == -1) return;
+      State.tmp_date += Number(btn.dataset.days);
+      Update_time();
+    });
+  });
+
   sequence_panel.addEventListener("click", handleSequencePanelClick);
 
   date_time.addEventListener("change", function () {

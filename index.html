@@ -73,9 +73,18 @@
             </div>
             <input type="datetime-local" id="date_time" value="2024-11-20T12:00" />
             <div class="leg-events" id="leg_events"></div>
-            <div class="row_right alway">
-              <button id="confirm_time">変更</button>
-              <button id="cancel_time">キャンセル</button>
+            <div class="row time-actions alway">
+              <div class="row date-nudge" title="時刻を細かくずらす (マウスで大まかに、ここで微調整)">
+                <button type="button" data-days="-10">-10</button>
+                <button type="button" data-days="-1">-1</button>
+                <button type="button" data-days="1">+1</button>
+                <button type="button" data-days="10">+10</button>
+                <span class="date-nudge-unit">日</span>
+              </div>
+              <div class="row_right">
+                <button id="confirm_time">変更</button>
+                <button id="cancel_time">キャンセル</button>
+              </div>
             </div>
           </div>
 

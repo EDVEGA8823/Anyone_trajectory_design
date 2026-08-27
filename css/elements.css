@@ -611,6 +611,42 @@ input:focus {
   flex-wrap: nowrap;
   gap: 8px;
 }
+
+/* 時刻の微調整と 変更/キャンセル を同じ行に収める */
+.row.time-actions {
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.row.date-nudge {
+  gap: 3px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.date-nudge button {
+  min-width: 30px;
+  height: 26px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.date-nudge button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.date-nudge-unit {
+  font-size: 10px;
+  color: var(--text-muted);
+}
 .edit-target {
   font-size: 11px;
   font-weight: 600;

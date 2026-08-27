@@ -790,15 +790,15 @@ export function renderLaunchControls() {
     form.appendChild(field);
   };
 
-  addField("vinf", "脱出速度 V∞ [km/s]", mission.launch_vinf().toFixed(3), 0.1, (v) => {
+  addField("vinf", "脱出速度 V∞ [km/s]", mission.launch_vinf().toFixed(3), 0.01, (v) => {
     mission.set_launch_vinf(v);
     refresh_after_swingby_change();
   });
-  addField("alpha", "方位角 α [deg]", (mission.launch_alpha() * RAD2DEG).toFixed(1), 5, (v) => {
+  addField("alpha", "方位角 α [deg]", (mission.launch_alpha() * RAD2DEG).toFixed(1), 0.1, (v) => {
     mission.set_launch_alpha(v * DEG2RAD);
     refresh_after_swingby_change();
   });
-  addField("delta", "仰角 δ [deg]", (mission.launch_delta() * RAD2DEG).toFixed(1), 5, (v) => {
+  addField("delta", "仰角 δ [deg]", (mission.launch_delta() * RAD2DEG).toFixed(1), 0.1, (v) => {
     mission.set_launch_delta(v * DEG2RAD);
     refresh_after_swingby_change();
   });
@@ -1135,7 +1135,7 @@ export function renderSwingbyControls() {
     rpLabel.textContent = "近点半径 rp [km]";
     const rpInput = document.createElement("input");
     rpInput.type = "number";
-    rpInput.step = "100";
+    rpInput.step = "10";
     if (min_rp != undefined) rpInput.min = String(Math.ceil(min_rp));
     rpInput.value = rp != undefined ? rp.toFixed(0) : "";
     rpInput.onchange = () => {
@@ -1150,7 +1150,7 @@ export function renderSwingbyControls() {
     betaLabel.textContent = "回転角 β [deg]";
     const betaInput = document.createElement("input");
     betaInput.type = "number";
-    betaInput.step = "5";
+    betaInput.step = "0.1";
     betaInput.value = (beta * RAD2DEG).toFixed(1);
     betaInput.onchange = () => {
       State.mission_sequence.set_beta(i, Number(betaInput.value) * DEG2RAD);
