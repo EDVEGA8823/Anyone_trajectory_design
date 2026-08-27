@@ -12,6 +12,7 @@ import {
   attachHandleDrag,
   closestOnAxis,
   intersectPlane,
+  makeRenderLoop,
 } from './view3d.js';
 
 // スイングバイ操作パネル用の小さな3Dビュー。
@@ -249,7 +250,9 @@ export function initBPlane() {
     onDrag: applyDrag,
   });
 
-  animate();
+  controls.addEventListener("change", () => invalidateBPlane());
+  window.addEventListener("resize", () => invalidateBPlane());
+  invalidateBPlane();
 }
 
 /** ドラッグでrp/βが変わったときに呼ぶコールバックを登録する */
@@ -307,6 +310,7 @@ function updateHandles() {
   // ここでも画面上の大きさを合わせておく
   scaleHandleToScreen(rpHandle, camera, renderer);
   scaleHandleToScreen(betaHandle, camera, renderer);
+  invalidateBPlane();
 }
 
 // ハンドルをドラッグしている間の反映
@@ -333,15 +337,22 @@ function applyDrag(key, raycaster) {
   if (handlers.onBeta) handlers.onBeta(-Math.atan2(p.y, p.x));
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  if (renderer && camera) resizeToDisplaySize();
+// B面ビューは絵が変わったときだけ描く (詳しくは view3d.js の makeRenderLoop)。
+// スイングバイ以外のノードを選んでいる間はそもそも非表示なので、その間は
+// 描画予約が入っても何もしない。
+const loop = makeRenderLoop(() => {
+  if (!renderer || !scene || !camera) return;
+  if (!renderer.domElement.offsetParent) return;
+  resizeToDisplaySize();
   if (controls) controls.update();
-  if (renderer && camera) {
-    scaleHandleToScreen(rpHandle, camera, renderer);
-    scaleHandleToScreen(betaHandle, camera, renderer);
-  }
-  if (renderer && scene && camera) renderer.render(scene, camera);
+  scaleHandleToScreen(rpHandle, camera, renderer);
+  scaleHandleToScreen(betaHandle, camera, renderer);
+  renderer.render(scene, camera);
+});
+
+/** B面ビューを描き直す予約を入れる */
+export function invalidateBPlane(frames) {
+  loop.invalidate(frames);
 }
 
 /**
@@ -605,6 +616,8 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
     lastViewKey = key;
     fitCamera(extent);
   }
+
+  invalidateBPlane();
 }
 
 // 全体が画角に収まる距離にカメラを置き直す

@@ -9,6 +9,42 @@
 export const HANDLE_HIT_PX = 18;
 export const HANDLE_PX = 9; // ハンドルの見た目の半径 [画面px]
 
+/**
+ * 「変化があったときだけ描く」ための描画ループ。
+ *
+ * このアプリの3Dビューはどれもアニメーションを持たず、ユーザーが何かを操作した
+ * ときにしか絵が変わらない。それでも requestAnimationFrame で回し続けると、
+ * 何も起きていない間も毎秒60回シーン全体を描き直すことになり、内蔵GPUだと
+ * それだけでファンが回る。そこで「汚れている(=描き直す必要がある)」間だけ
+ * rAFを回し、落ち着いたらループごと止める。
+ *
+ * invalidate() の既定値が2フレームなのは、レイアウト変更の直後など
+ * 「1フレーム目では新しい大きさがまだ確定していない」ことがあるため。
+ *
+ * @param {() => void} step 1フレーム分の描画
+ * @returns {{invalidate: (frames?: number) => void}}
+ */
+export function makeRenderLoop(step) {
+  let pending = 0;
+  let handle = 0;
+
+  function frame() {
+    handle = 0;
+    if (pending <= 0) return;
+    pending--;
+    step();
+    // step()の中で更にinvalidateされることもあるので、消化後に見直す
+    if (pending > 0 && handle === 0) handle = requestAnimationFrame(frame);
+  }
+
+  return {
+    invalidate(frames = 2) {
+      if (frames > pending) pending = frames;
+      if (handle === 0) handle = requestAnimationFrame(frame);
+    },
+  };
+}
+
 /** XY平面上の正方形グリッド (一辺 2*half を divisions 等分) */
 export function squareGridGeometry(half, divisions) {
   const pts = [];

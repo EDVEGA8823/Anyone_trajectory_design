@@ -11,6 +11,7 @@ import {
   attachHandleDrag,
   closestOnAxis,
   intersectPlane,
+  makeRenderLoop,
 } from './view3d.js';
 
 // 打上げ操作パネル用の小さな3Dビュー。
@@ -158,7 +159,9 @@ export function initLaunchView() {
     onDrag: applyDrag,
   });
 
-  animate();
+  controls.addEventListener("change", () => invalidateLaunchView());
+  window.addEventListener("resize", () => invalidateLaunchView());
+  invalidateLaunchView();
 }
 
 /** ドラッグでV∞・α・δが変わったときに呼ぶコールバックを登録する */
@@ -403,14 +406,20 @@ function setVisible(visible) {
   deltaArc.visible = visible;
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  // 打上げ以外を選んでいる間は非表示なので、描画も止めておく
-  if (!renderer || !renderer.domElement.offsetParent) return;
+// 打上げビューは絵が変わったときだけ描く (詳しくは view3d.js の makeRenderLoop)。
+// 打上げ以外を選んでいる間は非表示なので、描画予約が入っても何もしない。
+const loop = makeRenderLoop(() => {
+  if (!renderer || !scene || !camera) return;
+  if (!renderer.domElement.offsetParent) return;
   resizeToDisplaySize();
   if (controls) controls.update();
   scaleHandleToScreen(vinfHandle, camera, renderer);
   scaleHandleToScreen(alphaHandle, camera, renderer);
   scaleHandleToScreen(deltaHandle, camera, renderer);
   renderer.render(scene, camera);
+});
+
+/** 打上げビューを描き直す予約を入れる */
+export function invalidateLaunchView(frames) {
+  loop.invalidate(frames);
 }

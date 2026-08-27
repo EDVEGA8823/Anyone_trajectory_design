@@ -1,5 +1,6 @@
 import { State, PlotState } from './state.js';
 import { AU } from './trajectory.js';
+import { makeRenderLoop } from './view3d.js';
 
 export let renderer, scene, camera, sun, labelRenderer, controls;
 
@@ -20,9 +21,46 @@ const HEADER_HEIGHT = 64;
 const CANVAS_PADDING = 24;
 
 const axis = [];
-const xticks0_1 = [], yticks0_1 = [], zticks0_1 = [];
-const xticks1 = [], yticks1 = [], zticks1 = [];
-const xticks5 = [], yticks5 = [], zticks5 = [];
+
+// 目盛りは本数が多い (0.1AU刻みだけで100本 × 3軸)。1本ずつ THREE.Line にすると
+// それだけでドローコールが数百に膨れ、内蔵GPUでは描画がそのまま重さになる。
+// 透明度は軸ごとにしか変えないので、軸ごとに1つの LineSegments へまとめる。
+// これで目盛りのドローコールは 3刻み × 3軸 = 9本で済む。
+const tick_groups = []; // { coords, half, fade, x, y, z }
+
+/**
+ * 目盛りの束を作る。
+ * @param {number[]} coords 目盛りを打つ位置 (AU)
+ * @param {number} half     目盛り線の長さの半分 (AU)
+ * @param {number} fade     カメラ距離に応じて薄くする割合 (0で距離に依らない)
+ */
+function createTickGroup(coords, half, fade) {
+  const make = (arr) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(arr), 3));
+    const line = new THREE.LineSegments(
+      geometry,
+      new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true })
+    );
+    line.material.depthTest = false;
+    // 軸いっぱいに広がっていて常に画面内にあるうえ、Y軸の目盛りは向きを
+    // 描き換えるので、境界球の取り直しが要らないようカリングを切っておく
+    line.frustumCulled = false;
+    scene.add(line);
+    return line;
+  };
+
+  const xp = [], yp = [], zp = [];
+  coords.forEach((i) => {
+    xp.push(i, 0, -half, i, 0, half);
+    yp.push(0, i, -half, 0, i, half);
+    zp.push(-half, 0, i, half, 0, i);
+  });
+
+  const group = { coords, half, fade, x: make(xp), y: make(yp), z: make(zp) };
+  tick_groups.push(group);
+  return group;
+}
 
 export function initPlot() {
   const plot_area = document.getElementById("graph-panel");
@@ -31,7 +69,9 @@ export function initPlot() {
     canvas: document.querySelector("#plot"),
     antialias: true,
   });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  // 端末によっては devicePixelRatio が3にもなり、描くピクセル数が9倍になって
+  // しまう。線画中心の絵なので2で頭打ちにしても見た目はほとんど変わらない。
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(PlotState.width, PlotState.height);
 
   scene = new THREE.Scene();
@@ -63,23 +103,13 @@ export function initPlot() {
   axis.push(createLine([new THREE.Vector3(0, 50, 0), new THREE.Vector3(0, -50, 0)], 0xaaaaaa));
   axis.push(createLine([new THREE.Vector3(0, 0, -50), new THREE.Vector3(0, 0, 50)], 0xaaaaaa));
 
-  for (let i = -5; i < 5; i = i + 0.1) {
-    xticks0_1.push(createLine([new THREE.Vector3(i, 0, -0.05), new THREE.Vector3(i, 0, 0.05)], 0xaaaaaa));
-    yticks0_1.push(createLine([new THREE.Vector3(0, i, -0.05), new THREE.Vector3(0, i, 0.05)], 0xaaaaaa));
-    zticks0_1.push(createLine([new THREE.Vector3(-0.05, 0, i), new THREE.Vector3(0.05, 0, i)], 0xaaaaaa));
-  }
-  for (let i = -20; i < 20; i = i + 1) {
-    if (i == 0) continue;
-    xticks1.push(createLine([new THREE.Vector3(i, 0, -0.2), new THREE.Vector3(i, 0, 0.2)], 0xaaaaaa));
-    yticks1.push(createLine([new THREE.Vector3(0, i, -0.2), new THREE.Vector3(0, i, 0.2)], 0xaaaaaa));
-    zticks1.push(createLine([new THREE.Vector3(-0.2, 0, i), new THREE.Vector3(0.2, 0, i)], 0xaaaaaa));
-  }
-  for (let i = -50; i < 50; i = i + 5) {
-    if (i == 0) continue;
-    xticks5.push(createLine([new THREE.Vector3(i, 0, -1), new THREE.Vector3(i, 0, 1)], 0xaaaaaa));
-    yticks5.push(createLine([new THREE.Vector3(0, i, -1), new THREE.Vector3(0, i, 1)], 0xaaaaaa));
-    zticks5.push(createLine([new THREE.Vector3(-1, 0, i), new THREE.Vector3(1, 0, i)], 0xaaaaaa));
-  }
+  const coords0_1 = [], coords1 = [], coords5 = [];
+  for (let i = -5; i < 5; i = i + 0.1) coords0_1.push(i);
+  for (let i = -20; i < 20; i = i + 1) if (i != 0) coords1.push(i);
+  for (let i = -50; i < 50; i = i + 5) if (i != 0) coords5.push(i);
+  createTickGroup(coords0_1, 0.05, 0.06);
+  createTickGroup(coords1, 0.2, 0.02);
+  createTickGroup(coords5, 1, 0);
 
   for (let i = -50; i < 50; i++) {
     if (i == 0) continue;
@@ -141,7 +171,6 @@ export function initPlot() {
   // (=カメラを操作するまで軸ラベルの透明化が効かない不具合の原因だった)。
   labelRenderer.render(scene, camera);
   update_camera();
-  animate();
 }
 
 // --- 速度ベクトルの矢印 (打上げのV∞ / マヌーバのΔV) ---
@@ -225,11 +254,13 @@ export function updateVinfArrow(pos, v_inf) {
   vinf_state = state;
   vinf_arrow.visible = true;
   applyVectorScale(vinf_arrow, vinf_state);
+  invalidate();
 }
 
 export function hideVinfArrow() {
   vinf_state = null;
   if (vinf_arrow) vinf_arrow.visible = false;
+  invalidate();
 }
 
 /**
@@ -258,6 +289,7 @@ export function updateDsmArrows(list) {
     dsm_arrows[i].visible = true;
     applyVectorScale(dsm_arrows[i], state);
   }
+  invalidate();
 }
 
 export function createPlanets(planet_pos) {
@@ -284,12 +316,14 @@ export function createPlanets(planet_pos) {
     PlotState.planet_speres.push(sphere);
     sphere.name = String(i);
   });
+  invalidate();
 }
 
 export function update_planets(planet_pos) {
   planet_pos.forEach((pos, i) => {
     PlotState.planet_speres[i].position.set(pos[0] / AU, pos[2] / AU, -pos[1] / AU);
   });
+  invalidate();
 }
 
 export function createLine(initialPoints, c = 0x0000ff, width = 2) {
@@ -307,6 +341,7 @@ export function createLine(initialPoints, c = 0x0000ff, width = 2) {
   const line = new THREE.Line(geometry, material);
   line.material.depthTest = false;
   scene.add(line);
+  invalidate();
   return { line, positions, geometry };
 }
 
@@ -340,6 +375,7 @@ export function styleLeg(lineData, active) {
   if (!lineData) return;
   lineData.line.material.color.setHex(active ? COLOR_LEG_ACTIVE : COLOR_LEG_IDLE);
   lineData.line.material.opacity = active ? 1 : LEG_IDLE_OPACITY;
+  invalidate();
 }
 
 export function updateLine(lineData, newPoints) {
@@ -357,6 +393,7 @@ export function updateLine(lineData, newPoints) {
     positions[i] = 0;
   }
   geometry.attributes.position.needsUpdate = true;
+  invalidate();
 }
 
 export function updateLayout() {
@@ -382,6 +419,7 @@ export function updateLayout() {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
+  invalidate();
 }
 
 export function update_camera() {
@@ -396,38 +434,24 @@ export function update_camera() {
     axis[2].line.material.opacity = 1 - Math.abs(direction.z);
   }
 
-  for (let i = 0; i < yticks0_1.length; i++) {
-    yticks0_1[i].positions[0] = (-camera.position.z / PlotState.camera_dist) * 0.05;
-    yticks0_1[i].positions[2] = (camera.position.x / PlotState.camera_dist) * 0.05;
-    yticks0_1[i].positions[3] = (camera.position.z / PlotState.camera_dist) * 0.05;
-    yticks0_1[i].positions[5] = (-camera.position.x / PlotState.camera_dist) * 0.05;
-    yticks0_1[i].geometry.attributes.position.needsUpdate = true;
+  // Y軸の目盛りだけは、どの方向から見ても線として見えるようカメラの方を向かせる
+  // (X/Z軸の目盛りは黄道面に寝ているので向きを変える必要がない)。
+  for (const g of tick_groups) {
+    const attr = g.y.geometry.attributes.position;
+    const a = attr.array;
+    const cx = (camera.position.x / PlotState.camera_dist) * g.half;
+    const cz = (camera.position.z / PlotState.camera_dist) * g.half;
+    for (let k = 0; k < a.length; k += 6) {
+      a[k] = -cz;
+      a[k + 2] = cx;
+      a[k + 3] = cz;
+      a[k + 5] = -cx;
+    }
+    attr.needsUpdate = true;
 
-    xticks0_1[i].line.material.opacity = 1 - Math.abs(direction.x) - PlotState.camera_dist * 0.06;
-    yticks0_1[i].line.material.opacity = 1 - Math.abs(direction.y) - PlotState.camera_dist * 0.06;
-    zticks0_1[i].line.material.opacity = 1 - Math.abs(direction.z) - PlotState.camera_dist * 0.06;
-  }
-  for (let i = 0; i < yticks1.length; i++) {
-    yticks1[i].positions[0] = (-camera.position.z / PlotState.camera_dist) * 0.2;
-    yticks1[i].positions[2] = (camera.position.x / PlotState.camera_dist) * 0.2;
-    yticks1[i].positions[3] = (camera.position.z / PlotState.camera_dist) * 0.2;
-    yticks1[i].positions[5] = (-camera.position.x / PlotState.camera_dist) * 0.2;
-    yticks1[i].geometry.attributes.position.needsUpdate = true;
-
-    xticks1[i].line.material.opacity = 1 - Math.abs(direction.x) - PlotState.camera_dist * 0.02;
-    yticks1[i].line.material.opacity = 1 - Math.abs(direction.y) - PlotState.camera_dist * 0.02;
-    zticks1[i].line.material.opacity = 1 - Math.abs(direction.z) - PlotState.camera_dist * 0.02;
-  }
-  for (let i = 0; i < yticks5.length; i++) {
-    yticks5[i].positions[0] = -camera.position.z / PlotState.camera_dist;
-    yticks5[i].positions[2] = camera.position.x / PlotState.camera_dist;
-    yticks5[i].positions[3] = camera.position.z / PlotState.camera_dist;
-    yticks5[i].positions[5] = -camera.position.x / PlotState.camera_dist;
-    yticks5[i].geometry.attributes.position.needsUpdate = true;
-
-    xticks5[i].line.material.opacity = 1 - Math.abs(direction.x);
-    yticks5[i].line.material.opacity = 1 - Math.abs(direction.y);
-    zticks5[i].line.material.opacity = 1 - Math.abs(direction.z);
+    g.x.material.opacity = 1 - Math.abs(direction.x) - PlotState.camera_dist * g.fade;
+    g.y.material.opacity = 1 - Math.abs(direction.y) - PlotState.camera_dist * g.fade;
+    g.z.material.opacity = 1 - Math.abs(direction.z) - PlotState.camera_dist * g.fade;
   }
 
   const au_labels_x = document.getElementsByClassName("label_1au_x");
@@ -456,12 +480,20 @@ export function update_camera() {
   }
 
   applyAllVectorScales();
+  invalidate();
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  if (renderer && scene && camera) {
-    renderer.render(scene, camera);
-    if (labelRenderer) labelRenderer.render(scene, camera);
-  }
+// 太陽系ビューは動くものが無いので、絵が変わったときだけ描く。
+// 変えた側から invalidate() を呼ぶ約束にしてある (このファイル内の
+// 更新関数は自分で呼ぶので、外から呼ぶ必要があるのは plot.js を通さずに
+// シーンを触ったとき — 例えば .visible を直接切り替えたとき)。
+const loop = makeRenderLoop(() => {
+  if (!renderer || !scene || !camera) return;
+  renderer.render(scene, camera);
+  if (labelRenderer) labelRenderer.render(scene, camera);
+});
+
+/** 太陽系ビューを描き直す予約を入れる */
+export function invalidate(frames) {
+  loop.invalidate(frames);
 }

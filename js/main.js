@@ -16,15 +16,17 @@ import {
   COLOR_LEG_ACTIVE,
   COLOR_COAST,
   COLOR_ACHIEVED,
+  invalidate,
 } from './plot.js';
 import { initEvents, Update_time, delete_sequence, delete_checked } from './event.js';
 import { launcher_list, launcher_mass, launch_declination } from './launchers.js';
-import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
+import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './bplane.js';
 import {
   initLaunchView,
   updateLaunchView,
   setLaunchViewHandlers,
   setLaunchActiveHandle,
+  invalidateLaunchView,
 } from './launch_view.js';
 
 export function add_sequence(id) {
@@ -490,6 +492,7 @@ export function update_plot() {
 
   update_vinf_arrow();
   update_dsm_arrows();
+  invalidate();
 }
 
 // マヌーバ(DSM)のΔVを太陽系ビューに矢印で描く。
@@ -583,6 +586,7 @@ export function toggle_planet() {
   update_vinf_arrow();
   update_dsm_arrows();
   update_leg_highlight();
+  invalidate();
 }
 
 // レグの塗り分けだけを引き直す (選択が変わっただけで軌道は変わらないとき用)
@@ -603,6 +607,7 @@ export function update_coast_orbit() {
   const pts = i != -1 && State.mission_sequence ? State.mission_sequence.get_coast_orbit(i) : [];
   if (pts.length === 0) {
     if (PlotState.coast_line) PlotState.coast_line.line.visible = false;
+    invalidate();
     return;
   }
 
@@ -623,6 +628,7 @@ export function update_coast_orbit() {
   PlotState.coast_line.line.material.color.setHex(achieved ? COLOR_ACHIEVED : COLOR_COAST);
   updateDashedLine(PlotState.coast_line, pts);
   PlotState.coast_line.line.visible = true;
+  invalidate();
 }
 
 export function toggle_visibility(i, visible) {
@@ -635,6 +641,7 @@ export function toggle_visibility(i, visible) {
       PlotState.planet_speres[i].children[0].element.innerHTML = "";
     }
   }
+  invalidate();
 }
 
 export function updateControlPanelDisplay() {
@@ -682,6 +689,11 @@ export function updateControlPanelDisplay() {
   for (let i = 0; i < end_only.length; i++) {
     end_only[i].style.display = is_end ? "flex" : "none";
   }
+
+  // パネルの表示/非表示が切り替わると、隠れていたビューが現れることがある。
+  // オンデマンド描画なので、現れた側に描き直しを頼んでおく。
+  invalidateBPlane();
+  invalidateLaunchView();
 
   if (is_swingby) updateBPlaneView();
   if (is_maneuver) renderManeuverControls();
@@ -1309,6 +1321,24 @@ function boot() {
 
   // Update time for the initial load
   Update_time();
+
+  install_redraw_safety_net();
+}
+
+// 3つの3Dビューはどれも「変わったときだけ描く」方式にしてある(view3d.jsの
+// makeRenderLoop)。変えた側が invalidate を呼ぶのが本筋だが、このアプリの絵は
+// 例外なくユーザーの操作をきっかけに変わるので、操作そのものを合図にして
+// 一通り描き直す保険も掛けておく。
+// 何も起きていない間は1フレームも描かないので、この保険の費用はほぼゼロ。
+function install_redraw_safety_net() {
+  const redraw = () => {
+    invalidate();
+    invalidateBPlane();
+    invalidateLaunchView();
+  };
+  for (const type of ["pointerup", "pointerdown", "wheel", "input", "change", "keyup"]) {
+    document.addEventListener(type, redraw, { passive: true, capture: true });
+  }
 }
 
 boot();
