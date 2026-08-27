@@ -9,6 +9,9 @@ export let renderer, scene, camera, sun, labelRenderer, controls;
 export const COLOR_LEG_ACTIVE = 0x2a5bd7; // 選択中ノードに繋がるレグ
 export const COLOR_LEG_IDLE = 0x9fb0cc; // それ以外のレグ
 const COLOR_NODE_SELECTED = 0x1f4fd8;
+// 破線で描く2種類の軌道。マヌーバ未実行(赤)と、最終軌道で到達した軌道(緑)。
+export const COLOR_COAST = 0xd6543f;
+export const COLOR_ACHIEVED = 0x2f9e6e;
 const COLOR_NODE_NEIGHBOR = 0xa8bcdd;
 const LEG_IDLE_OPACITY = 0.4;
 
@@ -309,7 +312,7 @@ export function createLine(initialPoints, c = 0x0000ff, width = 2) {
 
 // 破線。LineDashedMaterialは頂点ごとの累積距離が必要なので、
 // 更新のたびに computeLineDistances() を呼び直す必要がある。
-export function createDashedLine(pointCount, c = 0xd6543f, dashSize = 0.06, gapSize = 0.04) {
+export function createDashedLine(pointCount, c = COLOR_COAST, dashSize = 0.06, gapSize = 0.04) {
   const positions = new Float32Array(pointCount * 3);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));

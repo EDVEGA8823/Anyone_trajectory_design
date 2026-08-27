@@ -14,6 +14,8 @@ import {
   updateDsmArrows,
   styleLeg,
   COLOR_LEG_ACTIVE,
+  COLOR_COAST,
+  COLOR_ACHIEVED,
 } from './plot.js';
 import { initEvents, Update_time, delete_sequence } from './event.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
@@ -35,6 +37,9 @@ export function add_sequence(id) {
     // マヌーバ(DSM)は天体ではなく深宇宙の一点なので、天体名の代わりにΔVを出す
     const dsm = State.mission_sequence.get_dsm_info(id);
     span1.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+  } else if (State.mission_sequence.type(id) === Sequence_Type.End) {
+    // 最終軌道も天体を持たないので、到達した軌道の種類を出す
+    span1.textContent = end_orbit_label(State.mission_sequence.get_end_info(id));
   } else if (State.mission_sequence.planet_num(id) == -1) {
     span1.textContent = "---";
   } else {
@@ -58,6 +63,9 @@ export function add_sequence(id) {
 
   const sequence = document.getElementById("sequence");
   sequence.appendChild(sequence_elem);
+
+  // 最終軌道の後ろには何も続かないので、追加ボタンも出さない
+  if (State.mission_sequence.type(id) === Sequence_Type.End) return;
 
   let add_sequence_elem = document.createElement("div");
   add_sequence_elem.className = "add_sequence";
@@ -130,6 +138,9 @@ export function change_sequence_propaty() {
     select.add(option);
   });
   select.selectedIndex = State.mission_sequence.planet_num(State.selected_sequence) + 1;
+  // 天体を持たない節(マヌーバ・最終軌道)では天体の選択自体を伏せる
+  const sel_type = State.selected_sequence != -1 ? State.mission_sequence.type(State.selected_sequence) : null;
+  select.disabled = sel_type === Sequence_Type.Maneuver || sel_type === Sequence_Type.End;
   select.onchange = async function () {
     await State.mission_sequence.set_planet_num(State.selected_sequence, select.selectedIndex - 1);
     change_sequence();
@@ -150,12 +161,18 @@ export function change_sequence_propaty() {
     option1.selected = true;
     sequence_propaty.add(option1);
 
+    // 最終軌道は「手動モードのノードの後の最後の節」でしか意味を持たないので、
+    // その条件を満たすときだけ選択肢に出す
+    const can_end = State.mission_sequence.can_end(State.selected_sequence);
+
     Object.values(Sequence_Type).forEach((value, i) => {
       let option = document.createElement("option");
       option.text = value;
       option.value = value;
       if (i > 1) {
-        if (State.mission_sequence.planet_num(State.selected_sequence) < 10) {
+        if (value == Sequence_Type.End) {
+          if (can_end) sequence_propaty.add(option);
+        } else if (State.mission_sequence.planet_num(State.selected_sequence) < 10) {
           if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
             sequence_propaty.add(option);
           }
@@ -171,6 +188,8 @@ export function change_sequence_propaty() {
 
   sequence_propaty.onchange = function () {
     State.mission_sequence.set_type(State.selected_sequence, sequence_propaty.value);
+    // 最終軌道にするとその手前のDSMが取り除かれ、ノードが1つ前にずれる
+    State.selected_sequence = Math.min(State.selected_sequence, State.mission_sequence.count - 1);
     change_sequence();
     update_plot();
     updateControlPanelDisplay();
@@ -278,15 +297,14 @@ export function make_plot() {
 }
 
 export function toggle_planet() {
-  // マヌーバ(DSM)ノードは天体を持たない(planet_num == -1)ので、
+  // マヌーバ(DSM)と最終軌道のノードは天体を持たない(planet_num == -1)ので、
   // 天体の有無だけで判定するとマーカーが出なくなる。種別も見て判定する。
-  const is_maneuver =
-    State.selected_sequence != -1 &&
-    State.mission_sequence.type(State.selected_sequence) === Sequence_Type.Maneuver;
+  const type = State.selected_sequence != -1 ? State.mission_sequence.type(State.selected_sequence) : null;
+  const no_planet_node = type === Sequence_Type.Maneuver || type === Sequence_Type.End;
 
   if (
     State.selected_sequence != -1 &&
-    (State.mission_sequence.planet_num(State.selected_sequence) != -1 || is_maneuver)
+    (State.mission_sequence.planet_num(State.selected_sequence) != -1 || no_planet_node)
   ) {
     for (let i = 0; i < PlotState.orbit_lines.length; i++) {
       toggle_visibility(i, false);
@@ -351,6 +369,15 @@ export function update_coast_orbit() {
     if (PlotState.coast_line) PlotState.coast_line.line.visible = false;
     PlotState.coast_line = createDashedLine(pts.length);
   }
+  // 同じ破線を2つの意味で使い回すので色で区別する。
+  //   マヌーバ未実行の軌道 = 赤 / 最終軌道で到達した軌道 = 緑
+  // 最終軌道ノード自体と、その手前の手動ノード(パラメータを動かしながら
+  // 結果の軌道を見たい)では「到達した軌道」を描いている
+  const mission = State.mission_sequence;
+  const achieved =
+    mission.type(i) === Sequence_Type.End ||
+    (i + 1 < mission.count && mission.type(i + 1) === Sequence_Type.End);
+  PlotState.coast_line.line.material.color.setHex(achieved ? COLOR_ACHIEVED : COLOR_COAST);
   updateDashedLine(PlotState.coast_line, pts);
   PlotState.coast_line.line.visible = true;
 }
@@ -404,8 +431,18 @@ export function updateControlPanelDisplay() {
     launch_only[i].style.display = is_launch ? "flex" : "none";
   }
 
+  const is_end =
+    State.selected_sequence != -1 &&
+    State.mission_sequence &&
+    State.mission_sequence.type(State.selected_sequence) === Sequence_Type.End;
+  const end_only = document.getElementsByClassName("end-only");
+  for (let i = 0; i < end_only.length; i++) {
+    end_only[i].style.display = is_end ? "flex" : "none";
+  }
+
   if (is_swingby) updateBPlaneView();
   if (is_maneuver) renderManeuverControls();
+  if (is_end) renderEndControls();
   if (is_launch) renderLaunchControls();
   // 打上げ以外に移ったらハンドルの選択は解除しておく
   else if (State.launch_handle) setLaunchHandle(null);
@@ -462,6 +499,11 @@ export function renderLaunchControls() {
       btn.type = "button";
       btn.textContent = text;
       btn.className = "mode-btn" + (is_auto === auto ? " active" : "");
+      // 最終軌道が続いている間は目的地が無いので自動には戻せない
+      if (auto && !mission.can_set_auto(i)) {
+        btn.disabled = true;
+        btn.title = "最終軌道で終えている間は手動のみ";
+      }
       btn.onclick = () => {
         mission.set_auto_mode(i, auto);
         refresh_after_swingby_change();
@@ -620,6 +662,69 @@ function pin_node_to_event(i, type) {
   Update_time(); // 時刻欄・節目一覧・操作パネル・軌道の描画をまとめて更新
 }
 
+// 到達した軌道の一言まとめ (シーケンス一覧のカードにも使う)
+export function end_orbit_label(info) {
+  if (info == null) return "軌道未確定";
+  if (info.e >= 1.001) return "太陽系脱出";
+  if (info.e >= 0.999) return "脱出境界";
+  return "太陽周回";
+}
+
+const SEC_PER_YEAR = 365.25 * 86400;
+
+// 最終軌道ノード: 目的地を持たずに終えるミッションの成果 (到達した太陽中心軌道) を出す。
+export function renderEndControls() {
+  const summary = document.getElementById("end_summary");
+  const container = document.getElementById("end_readout");
+  const i = State.selected_sequence;
+  if (!summary || !container || i == -1 || !State.mission_sequence) return;
+
+  const info = State.mission_sequence.get_end_info(i);
+  container.innerHTML = "";
+
+  if (info == null) {
+    summary.textContent = "前のレグが決まると計算されます";
+    summary.className = "end-summary";
+    return;
+  }
+
+  summary.textContent = end_orbit_label(info);
+  summary.className = "end-summary" + (info.escaping ? " escaping" : "");
+
+  const tiles = info.escaping
+    ? [
+        ["離心率", info.e.toFixed(3), "", true],
+        ["C3", info.c3.toFixed(2), "km²/s²", false],
+        ["近日点", (info.periapsis / AU).toFixed(3), "AU", false],
+        ["傾斜角", (info.inc * RAD2DEG).toFixed(2), "°", false],
+      ]
+    : [
+        ["近日点", (info.periapsis / AU).toFixed(3), "AU", true],
+        ["遠日点", (info.apoapsis / AU).toFixed(3), "AU", true],
+        ["離心率", info.e.toFixed(3), "", false],
+        ["傾斜角", (info.inc * RAD2DEG).toFixed(2), "°", false],
+        ["周期", (info.period / SEC_PER_YEAR).toFixed(2), "年", false],
+      ];
+
+  tiles.forEach(([title, value, unit, primary]) => {
+    const box = document.createElement("div");
+    box.className = "value_box" + (primary ? " primary" : "");
+    const t = document.createElement("div");
+    t.className = "title";
+    t.textContent = title;
+    const v = document.createElement("div");
+    v.className = "value";
+    v.textContent = value;
+    const u = document.createElement("div");
+    u.className = "unit";
+    u.textContent = unit;
+    box.appendChild(t);
+    box.appendChild(v);
+    box.appendChild(u);
+    container.appendChild(box);
+  });
+}
+
 // マヌーバ(DSM)ノードのΔVなどを操作パネルに表示する。
 // updateControlPanelDisplay は Update_time からも呼ばれるので、マヌーバを
 // マウスでドラッグしている間もこの表示がそのまま追従する。
@@ -726,6 +831,11 @@ export function renderSwingbyControls() {
   autoBtn.type = "button";
   autoBtn.textContent = "自動";
   autoBtn.className = "mode-btn" + (is_auto ? " active" : "");
+  // 最終軌道が続いている間は目的地が無いので自動には戻せない
+  if (!State.mission_sequence.can_set_auto(i)) {
+    autoBtn.disabled = true;
+    autoBtn.title = "最終軌道で終えている間は手動のみ";
+  }
   autoBtn.onclick = () => {
     State.mission_sequence.set_auto_mode(i, true);
     refresh_after_swingby_change();

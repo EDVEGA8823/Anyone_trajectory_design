@@ -13,6 +13,9 @@ export const Sequence_Type = {
   Orbit: "周回軌道投入",
   Rendezvous: "ランデブー",
   Maneuver: "マヌーバ",
+  // 目的地を持たずにミッションを終える節。ここまでで到達した太陽中心軌道
+  // (太陽周回軌道や太陽系脱出軌道) そのものが成果になるミッション用。
+  End: "最終軌道",
 };
 
 export const State = {

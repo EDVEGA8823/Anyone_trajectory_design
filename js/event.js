@@ -66,10 +66,11 @@ export function initEvents() {
 
 function handleSequencePanelClick(event) {
   if (event.target.className == "add_sequence") {
-    State.selected_sequence = Number(event.target.id);
-    State.mission_sequence.add(State.selected_sequence, State.tmp_date);
+    const at = Number(event.target.id);
+    // DSMが同時に挿入されると新しいノードは後ろにずれるので、実際の位置を受け取る
+    State.selected_sequence = State.mission_sequence.add(at, State.tmp_date);
     const points = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
-    State.arcs.splice(State.selected_sequence, 0, createLine(points, 0x0000ff));
+    State.arcs.splice(at, 0, createLine(points, 0x0000ff));
     updateAfterAdd();
     return;
   } else if (event.target.className == "sequence-panel") {
@@ -344,7 +345,8 @@ function Select_marker(v, x_0) {
 function start_drag_node(n) {
   const mission = State.mission_sequence;
 
-  if (mission.type(n) === Sequence_Type.Maneuver) {
+  // 天体を持たないノード(マヌーバ・最終軌道)は、乗っている軌道に沿って動かす
+  if (mission.type(n) === Sequence_Type.Maneuver || mission.type(n) === Sequence_Type.End) {
     const conic = mission.get_incoming_conic(n);
     if (conic == null) return false;
 

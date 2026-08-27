@@ -582,6 +582,26 @@ input:focus {
 }
 
 /* ==================================================================
+   最終軌道 (ミッションの終端)
+   ================================================================== */
+/* 到達した軌道の種類 (太陽周回 / 太陽系脱出) を一言で出す見出し */
+.end-summary {
+  align-self: flex-start;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f6b4f;
+  background: #e4f4ec;
+  border: 1px solid #9fd8bf;
+}
+.end-summary.escaping {
+  color: #8a4bc0;
+  background: #f2e9fb;
+  border-color: #cfaee8;
+}
+
+/* ==================================================================
    マヌーバ (DSM)
    ================================================================== */
 .maneuver-readout {

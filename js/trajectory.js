@@ -183,8 +183,12 @@ export function get_planets_pos_E(elements, E) {
     r_n = -a * (e * Math.cosh(E) - 1);
     r = math.add(math.multiply(P_hat, -a * (e - Math.cosh(E))), math.multiply(Q_hat, Math.sqrt(-a * p) * Math.sinh(E)));
     r_norm = math.norm(r);
+    // 双曲線の速度。位置 r = P|a|(e - coshH) + Q sqrt(|a|p) sinhH を時間微分すると
+    //   v = -P sqrt(mu|a|) sinhH / r + Q sqrt(mu p) coshH / r
+    // となり、P成分は楕円の場合と同じく負符号になる
+    // (ここが正だと双曲線の伝播で軌道エネルギーが保存せず、離心率が変わってしまう)
     v = math.add(
-      math.multiply(P_hat, (Math.sqrt(MU_SUN * -a) * Math.sinh(E)) / r_norm),
+      math.multiply(P_hat, (-Math.sqrt(MU_SUN * -a) * Math.sinh(E)) / r_norm),
       math.multiply(Q_hat, (Math.sqrt(MU_SUN * p) * Math.cosh(E)) / r_norm)
     );
   }
@@ -513,6 +517,7 @@ export class Mission {
   #m_beta = []; // スイングバイのb面内回転角 [rad] (Swingbyノードのみ意味を持つ)
   #m_swingby_info = []; // 直近に計算されたスイングバイ結果 (get_swingby_info用)
   #m_dsm_info = []; // 直近に計算されたDSM(マヌーバ)結果 (get_dsm_info用)
+  #m_end_info = []; // 最終軌道ノードで到達した軌道 (get_end_info用)
   // 軌道上の節目(近日点など)に固定されているノードの、その節目の種別。
   // 固定されていれば、前後の時刻を動かしてもその節目に追従し続ける。
   #m_pinned_event = [];
@@ -578,7 +583,8 @@ export class Mission {
   // マウスドラッグでマヌーバ位置(=日付)を動かすのに使う。
   get_incoming_conic(i) {
     if (i <= 0 || i >= this.#m_count) return null;
-    if (this.#m_types[i] !== Sequence_Type.Maneuver) return null;
+    // 天体を持たないノード(マヌーバ・最終軌道)は、この軌道の上を滑って動かせる
+    if (this.#m_types[i] !== Sequence_Type.Maneuver && this.#m_types[i] !== Sequence_Type.End) return null;
     const r = this.#m_s_c_pos[i - 1];
     const v = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][0] : undefined;
     if (r == undefined || v == undefined) return null;
@@ -594,6 +600,11 @@ export class Mission {
   #coast_conic(i) {
     if (i < 0 || i >= this.#m_count) return null;
     const type = this.#m_types[i];
+    // 最終軌道ノードでは「到達した軌道」そのものを1周分描く (未実行の軌道ではない)
+    if (type === Sequence_Type.End) {
+      const info = this.#m_end_info[i];
+      return info == undefined ? null : { par: info.par, epoch: this.#m_dates[i] };
+    }
     if (type === Sequence_Type.Maneuver) return this.get_incoming_conic(i);
     if ((type === Sequence_Type.Swingby || type === Sequence_Type.Launch) && !this.#m_is_auto_mode[i]) {
       // 直後に自動挿入されているマヌーバノードの「未実行時の軌道」を借りる
@@ -661,6 +672,37 @@ export class Mission {
   // マヌーバ(DSM)ノードiの直近の計算結果。マヌーバノードでない場合はnull。
   get_dsm_info(i) {
     return this.#m_dsm_info[i] ?? null;
+  }
+
+  // 最終軌道ノードで到達した太陽中心軌道 (#calc_end を参照)
+  get_end_info(i) {
+    return this.#m_end_info[i] ?? null;
+  }
+
+  // 指定した値だけで軌道が決まるノードか (= 目的地を持たなくても成立する)
+  #is_manual_node(i) {
+    const t = this.#m_types[i];
+    return (t === Sequence_Type.Launch || t === Sequence_Type.Swingby) && !this.#m_is_auto_mode[i];
+  }
+
+  /**
+   * ノードiを最終軌道(ミッションの終端)にできるか。
+   * 最後のノードで、かつ直前が手動モードのノード(またはそのDSM)のときだけ許す。
+   * 自動モードは「次の天体までをランベールで解く」ので、目的地が無いと軌道が
+   * 決まらない。手動モードなら上流の指定値だけで軌道が決まるので終われる。
+   */
+  can_end(i) {
+    if (i <= 0 || i !== this.#m_count - 1) return false;
+    if (this.#m_types[i] === Sequence_Type.End) return true;
+    if (this.#is_manual_node(i - 1)) return true;
+    // 手動モードに付いてくるDSMは、最終軌道にする際に取り除かれる
+    if (this.#m_types[i - 1] === Sequence_Type.Maneuver && this.#is_manual_node(i - 2)) return true;
+    return false;
+  }
+
+  // 自動モードに戻せるか。最終軌道が続いている間は目的地が無いので手動のみ。
+  can_set_auto(i) {
+    return !(i + 1 < this.#m_count && this.#m_types[i + 1] === Sequence_Type.End);
   }
 
   #calc_planet(i) {
@@ -911,6 +953,48 @@ export class Mission {
     this.#m_dsm_info[i] = { r: arrived.r, v_before: arrived.v, v_after: v_lam[0], dv_vec, dv };
   }
 
+  // 最終軌道ノード: 目的地を持たず、直前のノードの出発状態をこのノードの
+  // 日付まで伝播するだけ。到達した太陽中心軌道そのものがミッションの成果になる。
+  // (手動モードのノードの後にしか置けないので、軌道は上流の指定値だけで決まる)
+  #calc_end(i) {
+    this.#m_end_info[i] = undefined;
+    if (i <= 0 || i >= this.#m_count) return;
+
+    const r_prev = this.#m_s_c_pos[i - 1];
+    const v_prev = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][0] : undefined;
+    if (r_prev == undefined || v_prev == undefined) return;
+
+    const dt = (this.#m_dates[i] - this.#m_dates[i - 1]) * 86400;
+    if (!(dt > 0)) return;
+    const arrived = propagate(r_prev, v_prev, dt, MU_SUN);
+    if (arrived == undefined) return;
+
+    this.#m_s_c_pos[i] = arrived.r;
+    // ここで終わりなので、出発速度は到着速度と同じ (加速しない)
+    this.#m_s_c_vel[i] = [arrived.v, arrived.v];
+
+    const par = ic2par(arrived.r, arrived.v, MU_SUN);
+    const a = par[0];
+    const e = par[1];
+    if (!isFinite(a) || !isFinite(e)) return;
+
+    this.#m_end_info[i] = {
+      par,
+      a,
+      e,
+      inc: par[2],
+      periapsis: a * (1 - e), // 近日点距離 [km] (双曲線もa<0なので正になる)
+      apoapsis: e < 1 ? a * (1 + e) : undefined, // 遠日点距離 [km]
+      period: e < 1 ? get_peariod(a, MU_SUN) : undefined, // 公転周期 [s]
+      c3: -MU_SUN / a, // 太陽に対するC3 [km^2/s^2]。正なら太陽系脱出
+      escaping: e >= 1,
+      r: arrived.r,
+      v: arrived.v,
+      r_norm: math.norm(arrived.r),
+      speed: math.norm(arrived.v),
+    };
+  }
+
   #set_s_c(i) {
     if (i < 0 || i >= this.#m_count) return;
     if (this.#m_dates[i] == undefined) return;
@@ -919,6 +1003,12 @@ export class Mission {
     // 天体位置の存在チェックより先に処理する。
     if (this.#m_types[i] === Sequence_Type.Maneuver) {
       this.#calc_maneuver(i);
+      return;
+    }
+
+    // 最終軌道ノードも天体を持たない (伝播した先がそのまま到達点)
+    if (this.#m_types[i] === Sequence_Type.End) {
+      this.#calc_end(i);
       return;
     }
 
@@ -1158,11 +1248,22 @@ export class Mission {
   set_type(i, type) {
     const was_manual_swingby =
       this.#m_types[i] === Sequence_Type.Swingby && !this.#m_is_auto_mode[i];
+    const was_end = this.#m_types[i] === Sequence_Type.End;
     this.#m_types[i] = type;
 
     // スイングバイ(手動)を別の種別に変えたら、付随していたDSMのマヌーバノードも外す
     if (was_manual_swingby && type !== Sequence_Type.Swingby && this.#has_maneuver_after(i)) {
       this.#remove_node(i + 1);
+    }
+
+    if (type === Sequence_Type.End) {
+      // 天体を持たない節になるので、割り当てられていた天体は外す
+      this.#m_planet_nums[i] = -1;
+      // 直前のDSMは「次の天体へ届かせる」ためのものなので、目的地が無くなれば不要
+      if (i > 0 && this.#m_types[i - 1] === Sequence_Type.Maneuver) this.#remove_node(i - 1);
+    } else if (was_end && i > 0 && this.#is_manual_node(i - 1) && !this.#has_maneuver_after(i - 1)) {
+      // 最終軌道をやめて目的地を持つ節に戻したら、届かせるためのDSMを入れ直す
+      this.#insert_maneuver_after(i - 1);
     }
 
     this.#recompute_all();
@@ -1176,6 +1277,8 @@ export class Mission {
   set_auto_mode(i, is_auto) {
     const type = this.#m_types[i];
     const has_manual = type === Sequence_Type.Swingby || type === Sequence_Type.Launch;
+    // 最終軌道が続いている間は目的地が無いので自動には戻せない
+    if (is_auto && !this.can_set_auto(i)) return;
 
     // 手動に切り替えるときは、いまの軌道から初期値を取って飛びを防ぐ
     if (has_manual && !is_auto && this.#m_is_auto_mode[i] && type === Sequence_Type.Launch) {
@@ -1229,6 +1332,8 @@ export class Mission {
     const idx = i + 1;
     // 挿入位置の日付。次ノードが無い場合はレグが無いので何もしない
     if (idx >= this.#m_count) return;
+    // 次が最終軌道なら届かせる目的地が無いのでDSMは要らない
+    if (this.#m_types[idx] === Sequence_Type.End) return;
     const t0 = this.#m_dates[i];
     const t1 = this.#m_dates[idx];
     if (t0 == undefined || t1 == undefined) return;
@@ -1246,6 +1351,7 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 0, undefined);
     this.#m_swingby_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
+    this.#m_end_info.splice(idx, 0, undefined);
     this.#m_pinned_event.splice(idx, 0, undefined);
     this.#m_trajectory_arcs.splice(idx, 0, undefined);
     this.#m_count++;
@@ -1265,6 +1371,7 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 1);
     this.#m_swingby_info.splice(idx, 1);
     this.#m_dsm_info.splice(idx, 1);
+    this.#m_end_info.splice(idx, 1);
     this.#m_pinned_event.splice(idx, 1);
     this.#m_trajectory_arcs.splice(idx, 1);
     this.#m_count--;
@@ -1296,6 +1403,7 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 0, undefined);
     this.#m_swingby_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
+    this.#m_end_info.splice(idx, 0, undefined);
     this.#m_pinned_event.splice(idx, 0, undefined);
     this.#m_trajectory_arcs.splice(idx, 0, undefined);
 
@@ -1312,7 +1420,17 @@ export class Mission {
     this.#m_types[0] = Sequence_Type.Launch;
     this.#m_count++;
 
+    // 手動モードのノードの後ろに新しい目的地が来たら、そこへ届かせるための
+    // DSMを補う (最終軌道を消したあとに行き先を足した場合など)。
+    // このとき新しいノードは1つ後ろにずれる。
+    let added = idx;
+    if (idx > 0 && this.#is_manual_node(idx - 1) && !this.#has_maneuver_after(idx - 1)) {
+      this.#insert_maneuver_after(idx - 1);
+      added = idx + 1;
+    }
+
     this.#recompute_all();
+    return added;
   }
 
   /**
