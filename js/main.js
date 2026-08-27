@@ -11,6 +11,9 @@ import {
   updateLayout,
   updateVinfArrow,
   hideVinfArrow,
+  updateDsmArrows,
+  styleLeg,
+  COLOR_LEG_ACTIVE,
 } from './plot.js';
 import { initEvents, Update_time } from './event.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
@@ -178,6 +181,7 @@ export function update_plot() {
   // ノード数が増減して arcs と食い違うことがある。arcs側が多い場合も必ず
   // 走査し、描くものが無くなった弧は隠す (隠さないと前の線が残り続ける)。
   const count = State.mission_sequence.count;
+  const sel = State.selected_sequence;
   for (let i = 0; i < Math.max(count, State.arcs.length); i++) {
     const points = i < count ? State.mission_sequence.get_trajectory(i) : [];
     if (points.length == 0) {
@@ -186,13 +190,34 @@ export function update_plot() {
     }
     if (State.arcs[i] == undefined) {
       const blank = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
-      State.arcs[i] = createLine(blank, 0x0000ff);
+      State.arcs[i] = createLine(blank, COLOR_LEG_ACTIVE);
     }
     updateLine(State.arcs[i], points);
+    // レグ i はノード i と i+1 を繋ぐので、選択中ノードに繋がるのは
+    // sel-1 (入ってくる側) と sel (出ていく側) の2本。
+    // 何も選んでいないときは全部を主役の色で描く。
+    styleLeg(State.arcs[i], sel == -1 || i == sel || i == sel - 1);
     State.arcs[i].line.visible = true;
   }
 
   update_vinf_arrow();
+  update_dsm_arrows();
+}
+
+// マヌーバ(DSM)のΔVを太陽系ビューに矢印で描く。
+// 選択中のマヌーバは濃く、それ以外は薄く出す。
+export function update_dsm_arrows() {
+  const mission = State.mission_sequence;
+  if (!mission) return;
+
+  const list = [];
+  for (let i = 0; i < mission.count; i++) {
+    if (mission.type(i) !== Sequence_Type.Maneuver) continue;
+    const dsm = mission.get_dsm_info(i);
+    if (dsm == null) continue;
+    list.push({ pos: dsm.r, vec: dsm.dv_vec, selected: i === State.selected_sequence });
+  }
+  updateDsmArrows(list);
 }
 
 // 打上げのV∞ベクトルを太陽系ビューに矢印で描く。
@@ -269,6 +294,17 @@ export function toggle_planet() {
 
   update_coast_orbit();
   update_vinf_arrow();
+  update_dsm_arrows();
+  update_leg_highlight();
+}
+
+// レグの塗り分けだけを引き直す (選択が変わっただけで軌道は変わらないとき用)
+function update_leg_highlight() {
+  const sel = State.selected_sequence;
+  for (let i = 0; i < State.arcs.length; i++) {
+    if (!State.arcs[i] || !State.arcs[i].line.visible) continue;
+    styleLeg(State.arcs[i], sel == -1 || i == sel || i == sel - 1);
+  }
 }
 
 // 「DSMを実行しなかった場合にそのまま流されていく軌道」を赤い破線で表示する。

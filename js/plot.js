@@ -3,6 +3,15 @@ import { AU } from './trajectory.js';
 
 export let renderer, scene, camera, sun, labelRenderer, controls;
 
+// --- 太陽系ビューの配色 ---
+// 「いまどのノードのどのレグを触っているか」が一目で分かるよう、選択中の
+// ノードに繋がる2本のレグとそのノードだけを濃く描き、残りは淡く落とす。
+export const COLOR_LEG_ACTIVE = 0x2a5bd7; // 選択中ノードに繋がるレグ
+export const COLOR_LEG_IDLE = 0x9fb0cc; // それ以外のレグ
+const COLOR_NODE_SELECTED = 0x1f4fd8;
+const COLOR_NODE_NEIGHBOR = 0xa8bcdd;
+const LEG_IDLE_OPACITY = 0.4;
+
 // css/elements.css の --header-height / --canvas-padding と一致させること
 const HEADER_HEIGHT = 64;
 const CANVAS_PADDING = 24;
@@ -102,9 +111,13 @@ export function initPlot() {
     Label_z.layers.set(0);
   }
 
+  // 選択中ノード(index 1)とその前後(0, 2)のマーカー。
+  // 選択中だけを濃い色にして、前後は「掴めるが脇役」と分かる淡さにする。
   for (let i = 0; i < 3; i++) {
     const marker = new THREE.SphereGeometry(0.03, 32, 32);
-    const markerMaterial = new THREE.MeshStandardMaterial({ color: i == 1 ? 0x55d8ff : 0x0059b3 });
+    const markerMaterial = new THREE.MeshStandardMaterial({
+      color: i == 1 ? COLOR_NODE_SELECTED : COLOR_NODE_NEIGHBOR,
+    });
     const marker_sphere = new THREE.Mesh(marker, markerMaterial);
     marker_sphere.position.set(i, 0, 0);
     marker_sphere.visible = false;
@@ -112,7 +125,7 @@ export function initPlot() {
     scene.add(marker_sphere);
   }
 
-  createVinfArrow();
+  vinf_arrow = makeVectorArrow(VINF_COLOR, "vinf_arrow");
 
   controls.addEventListener("change", update_camera);
   window.addEventListener("resize", updateLayout);
@@ -128,30 +141,70 @@ export function initPlot() {
   animate();
 }
 
-// --- 打上げのV∞ベクトル ---
-// 出発天体から伸びる矢印として太陽系ビューに描く。
-// 長さは |V∞| に比例させるが、同時にカメラ距離にも比例させて、ズームしても
+// --- 速度ベクトルの矢印 (打上げのV∞ / マヌーバのΔV) ---
+// それぞれの点から伸びる矢印として太陽系ビューに描く。
+// 長さは大きさに比例させるが、同時にカメラ距離にも比例させて、ズームしても
 // 画面上の見え方が変わらないようにする (惑星マーカーの拡大と同じ考え方)。
 // これで、内惑星を見ている縮尺でも外惑星まで引いた縮尺でも同じ操作感になる。
 const VINF_COLOR = 0xff8c1a;
-const VINF_AU_PER_KMS = 0.12; // camera_dist = 7 のときの 1 km/s あたりの長さ [AU]
-const VINF_CAMERA_DIST_REF = 7;
-// 現実的なV∞(数km/s)では長さをそのまま比例させたいが、遷移がうまく繋がって
+const DSM_COLOR = 0x9b4fd8; // B面ビューの近点ΔVと同じ色
+const VEC_AU_PER_KMS = 0.12; // camera_dist = 7 のときの 1 km/s あたりの長さ [AU]
+const VEC_CAMERA_DIST_REF = 7;
+// 現実的な大きさ(数km/s)では長さをそのまま比例させたいが、遷移がうまく繋がって
 // いないときは数十km/sにもなり、比例のままだと矢印が画面外まで伸びてしまう。
 // tanhで頭打ちにして、通常の範囲ではほぼ比例・大きいところでは飽和させる
-// (単調なので、後でマウスで長さから大きさを決めるときも一意に戻せる)。
-const VINF_SOFT_KMS = 12;
+// (単調なので、マウスで長さから大きさを決めるときも一意に戻せる)。
+const VEC_SOFT_KMS = 12;
+// ΔVは数百m/sということも多く、比例のままだと矢印が見えないほど短くなるので
+// 下限を設ける (この長さ以下では向きだけを示す印になる)
+const VEC_MIN_AU = 0.05;
+
 let vinf_arrow;
 let vinf_state = null; // { pos: Vector3, dir: Vector3, mag } (描画座標系)
+const dsm_arrows = []; // マヌーバノードごとのΔV矢印 (使い回す)
+const dsm_states = [];
 
-function createVinfArrow() {
-  vinf_arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, VINF_COLOR, 0.2, 0.1);
+function makeVectorArrow(color, name) {
+  const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, color, 0.2, 0.1);
+  arrow.name = name;
   // 惑星の公転軌道や遷移軌道と重なっても隠れないよう、他の線と同様に手前に描く
-  vinf_arrow.line.material.depthTest = false;
-  vinf_arrow.cone.material.depthTest = false;
-  vinf_arrow.renderOrder = 3;
-  vinf_arrow.visible = false;
-  scene.add(vinf_arrow);
+  arrow.line.material.transparent = true;
+  arrow.line.material.depthTest = false;
+  arrow.cone.material.transparent = true;
+  arrow.cone.material.depthTest = false;
+  arrow.renderOrder = 3;
+  arrow.visible = false;
+  scene.add(arrow);
+  return arrow;
+}
+
+// 太陽中心の位置・ベクトルを、描画座標系 (x, z, -y) の状態に直す
+function vectorState(pos, vec) {
+  const mag = Math.hypot(vec[0], vec[1], vec[2]);
+  if (!(mag > 1e-9)) return null;
+  return {
+    pos: new THREE.Vector3(pos[0] / AU, pos[2] / AU, -pos[1] / AU),
+    // 方向だけなのでAUへの換算は不要
+    dir: new THREE.Vector3(vec[0], vec[2], -vec[1]).normalize(),
+    mag,
+  };
+}
+
+// いまのカメラ距離に合わせて矢印の長さを取り直す
+function applyVectorScale(arrow, state) {
+  if (!arrow || !state) return;
+  const shown = VEC_SOFT_KMS * Math.tanh(state.mag / VEC_SOFT_KMS);
+  const len = Math.max(shown * VEC_AU_PER_KMS, VEC_MIN_AU) * (PlotState.camera_dist / VEC_CAMERA_DIST_REF);
+  arrow.position.copy(state.pos);
+  arrow.setDirection(state.dir);
+  arrow.setLength(len, len * 0.24, len * 0.13);
+}
+
+function applyAllVectorScales() {
+  applyVectorScale(vinf_arrow, vinf_state);
+  for (let i = 0; i < dsm_arrows.length; i++) {
+    if (dsm_arrows[i].visible) applyVectorScale(dsm_arrows[i], dsm_states[i]);
+  }
 }
 
 /**
@@ -161,19 +214,14 @@ function createVinfArrow() {
  */
 export function updateVinfArrow(pos, v_inf) {
   if (!vinf_arrow) return;
-  const mag = Math.hypot(v_inf[0], v_inf[1], v_inf[2]);
-  if (!(mag > 1e-9)) {
+  const state = vectorState(pos, v_inf);
+  if (state == null) {
     hideVinfArrow();
     return;
   }
-  vinf_state = {
-    pos: new THREE.Vector3(pos[0] / AU, pos[2] / AU, -pos[1] / AU),
-    // 描画座標系は (x, z, -y)。方向だけなのでAUへの換算は不要。
-    dir: new THREE.Vector3(v_inf[0], v_inf[2], -v_inf[1]).normalize(),
-    mag,
-  };
+  vinf_state = state;
   vinf_arrow.visible = true;
-  applyVinfScale();
+  applyVectorScale(vinf_arrow, vinf_state);
 }
 
 export function hideVinfArrow() {
@@ -181,14 +229,32 @@ export function hideVinfArrow() {
   if (vinf_arrow) vinf_arrow.visible = false;
 }
 
-// いまのカメラ距離に合わせて矢印の長さを取り直す
-function applyVinfScale() {
-  if (!vinf_arrow || !vinf_state) return;
-  const shown = VINF_SOFT_KMS * Math.tanh(vinf_state.mag / VINF_SOFT_KMS);
-  const len = shown * VINF_AU_PER_KMS * (PlotState.camera_dist / VINF_CAMERA_DIST_REF);
-  vinf_arrow.position.copy(vinf_state.pos);
-  vinf_arrow.setDirection(vinf_state.dir);
-  vinf_arrow.setLength(len, len * 0.24, len * 0.13);
+/**
+ * マヌーバ(DSM)のΔV矢印をまとめて置き直す。
+ * 選択していないマヌーバの矢印も薄く出しておくと、どこで加速しているミッション
+ * なのかが一目で分かる。
+ * @param {{pos:number[], vec:number[], selected:boolean}[]} list
+ */
+export function updateDsmArrows(list) {
+  if (!scene) return;
+  for (let i = 0; i < Math.max(list.length, dsm_arrows.length); i++) {
+    if (i >= list.length) {
+      if (dsm_arrows[i]) dsm_arrows[i].visible = false;
+      continue;
+    }
+    const state = vectorState(list[i].pos, list[i].vec);
+    if (dsm_arrows[i] == undefined) dsm_arrows[i] = makeVectorArrow(DSM_COLOR, "dsm_arrow_" + i);
+    dsm_states[i] = state;
+    if (state == null) {
+      dsm_arrows[i].visible = false;
+      continue;
+    }
+    const opacity = list[i].selected ? 1 : 0.3;
+    dsm_arrows[i].line.material.opacity = opacity;
+    dsm_arrows[i].cone.material.opacity = opacity;
+    dsm_arrows[i].visible = true;
+    applyVectorScale(dsm_arrows[i], state);
+  }
 }
 
 export function createPlanets(planet_pos) {
@@ -260,6 +326,17 @@ export function createDashedLine(pointCount, c = 0xd6543f, dashSize = 0.06, gapS
 export function updateDashedLine(lineData, newPoints) {
   updateLine(lineData, newPoints);
   lineData.line.computeLineDistances();
+}
+
+/**
+ * 遷移軌道の弧を、選択中かどうかで塗り分ける。
+ * @param {object} lineData createLineの戻り値
+ * @param {boolean} active 選択中ノードに繋がるレグか
+ */
+export function styleLeg(lineData, active) {
+  if (!lineData) return;
+  lineData.line.material.color.setHex(active ? COLOR_LEG_ACTIVE : COLOR_LEG_IDLE);
+  lineData.line.material.opacity = active ? 1 : LEG_IDLE_OPACITY;
 }
 
 export function updateLine(lineData, newPoints) {
@@ -368,7 +445,14 @@ export function update_camera() {
     PlotState.planet_speres[i].scale.set(PlotState.camera_dist / 7, PlotState.camera_dist / 7, PlotState.camera_dist / 7);
   }
 
-  applyVinfScale();
+  // ノードのマーカーも惑星と同じくカメラ距離に合わせる。
+  // 選択中のノード(index 1)は前後のノードより一回り大きくして、
+  // どれを選んでいるのかが縮尺によらず分かるようにする。
+  for (let i = 0; i < PlotState.marker_spheres.length; i++) {
+    PlotState.marker_spheres[i].scale.setScalar((PlotState.camera_dist / 7) * (i == 1 ? 1.4 : 0.85));
+  }
+
+  applyAllVectorScales();
 }
 
 function animate() {
