@@ -195,6 +195,44 @@ const ISP = 320; // 比推力 [s]
 const G0 = 9.80665; // [m/s^2]
 const EARTH = 2; // State.planet_list の地球の番号
 
+// --- 統計バーの色分け ---
+// 「見た瞬間に、この設計が楽なのか苦しいのか」が分かるように、値の大きさで
+// 4段階に塗り分ける。閾値は惑星間ミッションでよく見る値からの目安。
+const LEVELS = ["good", "ok", "warn", "bad"];
+const C3_LEVELS = [10, 30, 60]; // [km^2/s^2] 小さいほど楽
+const DV_LEVELS = [300, 1000, 2500]; // [m/s] 小さいほど楽
+const KEEP_LEVELS = [0.25, 0.5, 0.8]; // 残る質量の割合。大きいほど楽
+
+// 小さいほど良い量
+function level_low(v, t) {
+  if (!isFinite(v)) return null;
+  if (v < t[0]) return "good";
+  if (v < t[1]) return "ok";
+  if (v < t[2]) return "warn";
+  return "bad";
+}
+// 大きいほど良い量
+function level_high(v, t) {
+  if (!isFinite(v)) return null;
+  if (v >= t[2]) return "good";
+  if (v >= t[1]) return "ok";
+  if (v >= t[0]) return "warn";
+  return "bad";
+}
+
+// 値とその枠に段階を反映する (okは既定色のまま)
+function paint(el, level, paint_box = true) {
+  if (!el) return;
+  const box = el.closest(".value_box");
+  LEVELS.forEach((l) => {
+    el.classList.remove("lvl-" + l);
+    if (box && paint_box) box.classList.remove("lvl-" + l);
+  });
+  if (!level) return;
+  el.classList.add("lvl-" + level);
+  if (box && paint_box) box.classList.add("lvl-" + level);
+}
+
 // 右下の統計バー (脱出速度・C3・総ΔV・打上げ質量) をまとめて更新する。
 // 時刻のドラッグ中も呼ばれるので、軽い処理だけにしておく。
 export function update_stat_bar() {
@@ -202,11 +240,19 @@ export function update_stat_bar() {
   if (!mission) return;
 
   const v = mission.get_v_inf();
-  document.getElementById("v_inf").textContent = v.toFixed(2);
-  document.getElementById("C3").textContent = (v * v).toFixed(2);
+  const v_el = document.getElementById("v_inf");
+  const c3_el = document.getElementById("C3");
+  v_el.textContent = v.toFixed(2);
+  c3_el.textContent = (v * v).toFixed(2);
+  // 脱出速度とC3は同じ量なので同じ色にする
+  const c3_level = mission.count > 0 ? level_low(v * v, C3_LEVELS) : null;
+  paint(v_el, c3_level);
+  paint(c3_el, c3_level);
 
   const dv = mission.get_total_dv(); // km/s
-  document.getElementById("total_dv").textContent = (dv * 1000).toFixed(0);
+  const dv_el = document.getElementById("total_dv");
+  dv_el.textContent = (dv * 1000).toFixed(0);
+  paint(dv_el, mission.count > 0 ? level_low(dv * 1000, DV_LEVELS) : null);
 
   update_launch_mass(v, dv);
 }
@@ -220,7 +266,8 @@ function update_launch_mass(vinf, dv_kms) {
 
   const mission = State.mission_sequence;
   const arrow = document.getElementById("mass_arrow");
-  const show = (wet, dry, note) => {
+  const box = wet_el.closest(".value_box");
+  const show = (wet, dry, note, level, approx = false) => {
     wet_el.textContent = wet;
     dry_el.textContent = dry;
     // 数値が出せないとき (「打ち上げ不可」など) は矢印と右側を畳んで1つだけ出す。
@@ -230,25 +277,44 @@ function update_launch_mass(vinf, dv_kms) {
     if (arrow) arrow.style.display = numeric ? "" : "none";
     dry_el.style.display = numeric ? "" : "none";
     if (group) group.title = note;
+    // 色は「燃料を使った後にどれだけ残るか」で決める。打上げ質量そのものは
+    // 機種で桁が変わるので色を付けず、既定の文字色のままにする。
+    paint(wet_el, numeric ? null : level, false);
+    paint(dry_el, level, false);
+    if (box) {
+      LEVELS.forEach((l) => box.classList.remove("lvl-" + l));
+      if (level) box.classList.add("lvl-" + level);
+      // 表の値そのものでない (外挿・近似) ときは枠を破線にする
+      box.classList.toggle("approx", approx);
+    }
   };
 
   // 打上げ能力の表・式はいずれも地球からの打上げのもの
   if (mission.count === 0 || mission.planet_num(0) !== EARTH) {
-    show("-", "-", "地球からの打上げのときだけ見積もれます");
+    show("-", "-", "地球からの打上げのときだけ見積もれます", null);
     return;
   }
 
   const decl = launch_declination(mission.get_launch_v_inf_vec());
   const { mass, status, sourceMode, confidence } = launcher_mass(State.launcher, vinf, decl);
+  // 破線は「かなり粗い推定」のときだけに絞る。既定のH3のように式で与える
+  // 参考値まで破線にすると、常に破線になって意味を持たなくなる。
+  const approx = confidence === "speculative";
 
   if (status === "over_vinf") {
-    show("打ち上げ不可", "-", "この脱出速度はこの機種の能力を超えています");
+    show("打ち上げ不可", "-", "この脱出速度はこの機種の能力を超えています", "bad", approx);
     return;
   }
 
   // ロケット方程式。総ΔVの分の燃料を使うと、残るのはこれだけ。
   const dry = mass * Math.exp((-dv_kms * 1000) / (ISP * G0));
-  show(mass.toFixed(0), dry.toFixed(0), launch_mass_note(status, decl, sourceMode, confidence));
+  show(
+    mass.toFixed(0),
+    dry.toFixed(0),
+    launch_mass_note(status, decl, sourceMode, confidence),
+    level_high(mass > 0 ? dry / mass : 0, KEEP_LEVELS),
+    approx
+  );
 }
 
 // 値の出どころ (launchers.js の sourceMode / confidence) を一言で説明する

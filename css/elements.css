@@ -21,6 +21,12 @@
   --accent-soft: #eaf0fd;
   --danger: #d6543f;
   --danger-soft: #fbebe8;
+  /* 値の大きさを一目で伝えるための色 (楽 / 普通 / 苦しい / かなり苦しい) */
+  --good: #2f9e6e;
+  --good-soft: #e9f6f0;
+  --warn: #b8770f;
+  --warn-soft: #fdf4e6;
+  --warn-border: #e8c68f;
 
   --bg: var(--gray-100);
   --surface: #ffffff;
@@ -298,11 +304,47 @@ h1 {
   font-weight: 600;
   color: var(--text-muted);
 }
+/* 「打ち上げ不可」のような文字にも段階の色を効かせる (後述の lvl-* より前に
+   置くと色が上書きされてしまうので、ここでは色を指定し直さない) */
+.value_box .value .as-text.lvl-bad {
+  color: var(--danger);
+}
 
 /* 打上げ時と燃料を使い切った後の質量を1つの枠にまとめる */
 .mass-box .mass-arrow {
   color: var(--text-muted);
   font-weight: 500;
+}
+
+/* 値の大きさによる色分け。数字は常に色を付け、注意すべき側 (warn/bad) だけ
+   枠と背景も染めて、パネルを見た瞬間に苦しい項目が目に入るようにする */
+/* 値そのものに付く場合と、質量のように .value の中の span に付く場合がある */
+.value_box .value.lvl-good,
+.value_box .value .lvl-good {
+  color: var(--good);
+}
+.value_box .value.lvl-warn,
+.value_box .value .lvl-warn {
+  color: var(--warn);
+}
+.value_box .value.lvl-bad,
+.value_box .value .lvl-bad {
+  color: var(--danger);
+}
+.value_box.lvl-good {
+  background: var(--good-soft);
+}
+.value_box.lvl-warn {
+  background: var(--warn-soft);
+  border-color: var(--warn-border);
+}
+.value_box.lvl-bad {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+/* 表の値そのものではない (外挿・近似で埋めた) ときは枠を破線にする */
+.value_box.approx {
+  border-style: dashed;
 }
 
 /* 打上げロケットの選択と、そこから出る質量のまとまり */
