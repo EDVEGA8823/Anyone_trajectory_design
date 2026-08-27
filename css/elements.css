@@ -523,24 +523,25 @@ input:focus {
 }
 
 /* ==================================================================
-   打上げ
+   打上げ (V∞ビュー)
    ================================================================== */
-.launch-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* B面の箱と同じく、縦の余りを引き受けてプレビューを大きく取る */
+#launch_box {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .launch-field {
   gap: 2px;
 }
-.launch-field label {
+.launch-field label,
+.launch-field input {
   text-transform: none; /* V∞ や α をそのまま出す */
   line-height: 1.2;
 }
 .launch-field input {
   padding: 5px 8px;
   font-size: 13px;
-  max-width: 160px;
+  width: 100%;
 }
 
 /* ==================================================================
@@ -562,9 +563,9 @@ input:focus {
 }
 
 /* ==================================================================
-   スイングバイ (B面ビュー)
+   操作パネルの3Dプレビュー (スイングバイのB面ビュー / 打上げのV∞ビュー)
    ================================================================== */
-/* 操作パネルをスクロールさせないため、B面の箱が縦の余りを引き受け、
+/* 操作パネルをスクロールさせないため、プレビューの箱が縦の余りを引き受け、
    プレビューはその中に収まる大きさまで縮む */
 #swingby_box {
   flex: 1 1 auto;
@@ -572,7 +573,7 @@ input:focus {
 }
 
 /* 幅が足りないときは数値欄がプレビューの下に回る */
-.bplane-row {
+.view-row {
   align-items: stretch;
   flex-wrap: wrap;
   flex: 1 1 auto;
@@ -584,15 +585,15 @@ input:focus {
    幅が足せなくなったら数値欄がプレビューの下に回る */
 /* canvasは絶対配置にして枠の大きさに影響を与えないようにする。
    こうしないと「canvasが大きい → 枠が縮まない」の循環で高さが決まらない。
-   実サイズ(正方形)は bplane.js が枠の幅と高さの小さい方から決める。 */
-.bplane-view {
+   実サイズ(正方形)は各ビューが枠の幅と高さの小さい方から決める。 */
+.view-3d {
   flex: 1 1 150px;
   min-width: 0;
   min-height: 130px;
   position: relative;
 }
 
-#bplane_canvas {
+.view-3d canvas {
   display: block;
   box-sizing: content-box;
   position: absolute;
@@ -606,16 +607,16 @@ input:focus {
 }
 /* 縦積みになるモバイル時は枠の高さが決まらないので、幅基準の正方形にする */
 @media (max-aspect-ratio: 1/1) {
-  .bplane-view {
+  .view-3d {
     aspect-ratio: 1 / 1;
   }
 }
-#bplane_canvas:active {
+.view-3d canvas:active {
   cursor: grabbing;
 }
 
 /* 凡例はプレビューの下に横一列で並べる */
-.bplane-legend {
+.view-legend {
   display: flex;
   flex-flow: row wrap;
   column-gap: 12px;
@@ -624,39 +625,49 @@ input:focus {
   font-size: 10px;
   color: var(--text-muted);
 }
-.bplane-legend span {
+.view-legend span {
   display: flex;
   align-items: center;
   gap: 5px;
   white-space: nowrap;
 }
-.bplane-legend i {
+.view-legend i {
   width: 10px;
   height: 2px;
   flex: 0 0 auto;
   border-radius: 1px;
 }
-.bplane-legend .sw-orbit {
+.view-legend .sw-orbit {
   background: #1a1c20;
 }
-.bplane-legend .sw-rp {
+.view-legend .sw-rp {
   background: #d6543f;
 }
-.bplane-legend .sw-b {
+.view-legend .sw-b {
   background: #3b6fe0;
 }
-.bplane-legend .sw-beta {
+.view-legend .sw-beta {
   background: #e0a03b;
 }
-.bplane-legend .sw-dv {
+.view-legend .sw-dv {
   background: #9b4fd8;
 }
-.bplane-legend .sw-porbit {
+.view-legend .sw-porbit {
   background: #4caf82;
+}
+.view-legend .sw-vinf {
+  background: #ff8c1a;
+}
+.view-legend .sw-alpha {
+  background: #3b6fe0;
+}
+.view-legend .sw-delta {
+  background: #e0a03b;
 }
 
 /* プレビューを広く取るため、右側の数値・入力欄は細い1カラムにする */
-.swingby-controls {
+.swingby-controls,
+.launch-controls {
   flex: 0 0 118px;
   width: 118px;
   min-width: 0;
@@ -764,6 +775,13 @@ input:focus {
 }
 .param-field--beta.active label::after {
   content: "\21BB"; /* 回転矢印 = B面内で回す */
+}
+.param-field--vinf.active label::after {
+  content: "\2195"; /* 上下矢印 = V∞の向きに伸び縮み */
+}
+.param-field--alpha.active label::after,
+.param-field--delta.active label::after {
+  content: "\21BB"; /* 回転矢印 = 向きを回す */
 }
 /* rp や β を大文字化すると別の記号に見えてしまうのでそのまま出す */
 .swingby-inputs label {

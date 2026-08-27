@@ -1,4 +1,17 @@
 import { planet_radius, planet_mu, min_flyby_rp } from './trajectory.js';
+import {
+  squareGridGeometry,
+  makeLine,
+  setLinePoints,
+  makeArrow,
+  setArrow,
+  makeHandle,
+  scaleHandleToScreen,
+  makeSquareResizer,
+  attachHandleDrag,
+  closestOnAxis,
+  intersectPlane,
+} from './view3d.js';
 
 // スイングバイ操作パネル用の小さな3Dビュー。
 // 通過天体を中心に、実際の双曲線軌道がB面(入射漸近線に垂直で天体中心を通る平面)を
@@ -25,12 +38,9 @@ let lastViewKey; // いま表示しているノード。切り替わったとき
 //   beta : B面内をぐるっと回るハンドル
 let rpHandle, betaHandle, rpGuide, betaGuide;
 let activeHandle = null; // null | "rp" | "beta"
-let dragging = null;
+let drag = null; // view3d.js のドラッグ下回り
 let handlers = {}; // { onRp(rp[km]), onBeta(beta[rad]) }
 let geom = null; // 直近の描画スケール (ハンドルの配置とドラッグの換算に使う)
-const raycaster = new THREE.Raycaster();
-const HANDLE_HIT_PX = 18; // 掴み判定の半径 [画面px]
-const HANDLE_PX = 9; // ハンドルの見た目の半径 [画面px]。遠近によらず一定にする
 
 // 黄道面グリッドは空間の基準なので、目の粗さを最初から最後まで変えない。
 // シーンの規模に合わせて張り直すと、rpのドラッグを離した瞬間などに
@@ -45,7 +55,7 @@ const ECLIPTIC_CELLS = 20; // 一辺の目の数
 // 下の resizeToDisplaySize が毎フレーム決める。
 const CANVAS_MAX = 460;
 const CANVAS_BORDER = 1; // CSSで引いている境界線の太さ
-let lastCanvasSize = 0;
+let resizeToDisplaySize;
 
 const COLOR_ORBIT = 0x1a1c20;
 const COLOR_ASYMPTOTE = 0xa1a4ad;
@@ -217,25 +227,19 @@ export function initBPlane() {
   controls.minDistance = 3;
   controls.maxDistance = 400;
 
-  // OrbitControlsはcanvas自身のpointerdownを見ている。同じ要素に後から足すと
-  // 登録順で先を越されてしまうので、documentのキャプチャ段階で先に判定して、
-  // ハンドルを掴んだときだけ伝播を止める。
-  document.addEventListener("pointerdown", onPointerDown, true);
-  window.addEventListener("pointermove", onPointerMove);
-  window.addEventListener("pointerup", onPointerUp);
+  resizeToDisplaySize = makeSquareResizer(renderer, camera, CANVAS_MAX, CANVAS_BORDER);
+  drag = attachHandleDrag({
+    getRenderer: () => renderer,
+    getCamera: () => camera,
+    getControls: () => controls,
+    getActiveHandle: () => {
+      const mesh = activeHandleMesh();
+      return mesh ? { key: activeHandle, mesh } : null;
+    },
+    onDrag: applyDrag,
+  });
 
   animate();
-}
-
-function makeHandle(color) {
-  const handle = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 20, 20),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
-  );
-  handle.material.depthTest = false;
-  handle.renderOrder = 4;
-  handle.visible = false;
-  return handle;
 }
 
 /** ドラッグでrp/βが変わったときに呼ぶコールバックを登録する */
@@ -248,7 +252,7 @@ export function setBPlaneActiveHandle(which) {
   const next = which === "rp" || which === "beta" ? which : null;
   if (next === activeHandle) return;
   activeHandle = next;
-  if (dragging && dragging !== activeHandle) endDrag();
+  if (drag && drag.dragging() !== activeHandle) drag.cancel();
   updateHandles();
 }
 
@@ -291,194 +295,32 @@ function updateHandles() {
 
   // 表示に切り替わった最初のフレームで大きすぎる状態が見えないよう、
   // ここでも画面上の大きさを合わせておく
-  scaleHandleToScreen(rpHandle);
-  scaleHandleToScreen(betaHandle);
+  scaleHandleToScreen(rpHandle, camera, renderer);
+  scaleHandleToScreen(betaHandle, camera, renderer);
 }
 
-function setRayFromEvent(event) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) return false;
-  raycaster.setFromCamera(
-    new THREE.Vector2(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1
-    ),
-    camera
-  );
-  return true;
-}
+// ハンドルをドラッグしている間の反映
+function applyDrag(key, raycaster) {
+  if (!geom) return;
 
-// ハンドルの当たり判定は画面上の距離で見る。小さな球の実形状で判定すると
-// 狙いにくいので、見た目より広めに取る。
-function hitHandle(event, handle) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  if (rect.width === 0) return false;
-  const p = handle.getWorldPosition(new THREE.Vector3()).project(camera);
-  const hx = rect.left + (p.x * 0.5 + 0.5) * rect.width;
-  const hy = rect.top + (-p.y * 0.5 + 0.5) * rect.height;
-  return Math.hypot(event.clientX - hx, event.clientY - hy) < HANDLE_HIT_PX;
-}
-
-// 天体中心を通る軸 d (world) と、マウスのレイとの最接近点の軸上パラメータ
-function closestOnAxis(d) {
-  const o = raycaster.ray.origin;
-  const r = raycaster.ray.direction;
-  const b = d.dot(r);
-  const den = 1 - b * b;
-  if (Math.abs(den) < 1e-6) return undefined; // レイが軸とほぼ平行
-  return (o.dot(d) - b * o.dot(r)) / den;
-}
-
-// マウスのレイとB面(root座標のXY平面)との交点を root のローカル座標で返す
-function intersectBPlane() {
-  const n = new THREE.Vector3(0, 0, 1).applyQuaternion(root.quaternion);
-  const o = raycaster.ray.origin;
-  const r = raycaster.ray.direction;
-  const dn = r.dot(n);
-  if (Math.abs(dn) < 1e-6) return null;
-  const t = -o.dot(n) / dn;
-  if (t <= 0) return null;
-  return root.worldToLocal(new THREE.Vector3().copy(o).addScaledVector(r, t));
-}
-
-function onPointerDown(event) {
-  if (!renderer || event.button !== 0) return;
-  if (event.target !== renderer.domElement) return;
-  const handle = activeHandleMesh();
-  if (!handle || !handle.visible) return;
-  if (!hitHandle(event, handle)) return;
-
-  dragging = activeHandle;
-  if (controls) controls.enabled = false;
-  renderer.domElement.style.cursor = "grabbing";
-  // ここで止めないとOrbitControlsが同時にカメラを回してしまう
-  event.stopPropagation();
-  event.preventDefault();
-}
-
-function onPointerMove(event) {
-  if (!renderer) return;
-
-  if (!dragging) {
-    // ハンドルの上に来たら掴めることが分かるようにする
-    const handle = activeHandleMesh();
-    if (handle && handle.visible && event.target === renderer.domElement) {
-      renderer.domElement.style.cursor = hitHandle(event, handle) ? "grab" : "";
-    }
-    return;
-  }
-  if (!geom || !setRayFromEvent(event)) return;
-
-  if (dragging === "rp") {
+  if (key === "rp") {
     // 近点方向は rp によってもわずかに回るので、毎回いまの向きを軸に取る
     const axis = geom.P_hat.clone().applyQuaternion(root.quaternion).normalize();
-    const t = closestOnAxis(axis);
+    const t = closestOnAxis(raycaster, axis);
     if (t == undefined) return;
     const rp = Math.max(geom.minRp, t * geom.radius);
     if (handlers.onRp) handlers.onRp(rp);
-  } else {
-    const p = intersectBPlane();
-    if (!p || p.lengthSq() < 1e-12) return;
-    // 描画側は bHat = (cos β, -sin β, 0) なので符号を戻す
-    if (handlers.onBeta) handlers.onBeta(-Math.atan2(p.y, p.x));
+    return;
   }
-  event.preventDefault();
-}
 
-function onPointerUp() {
-  if (!dragging) return;
-  endDrag();
-}
-
-function endDrag() {
-  dragging = null;
-  if (controls) controls.enabled = true;
-  if (renderer) renderer.domElement.style.cursor = "";
-}
-
-function squareGridGeometry(half, divisions) {
-  const pts = [];
-  for (let k = 0; k <= divisions; k++) {
-    const t = -half + (2 * half * k) / divisions;
-    pts.push(new THREE.Vector3(t, -half, 0), new THREE.Vector3(t, half, 0));
-    pts.push(new THREE.Vector3(-half, t, 0), new THREE.Vector3(half, t, 0));
-  }
-  return new THREE.BufferGeometry().setFromPoints(pts);
-}
-
-function makeLine(points, color, opacity = 1) {
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
-  const line = new THREE.Line(geometry, material);
-  line.material.depthTest = false;
-  return line;
-}
-
-function setLinePoints(line, points) {
-  line.geometry.dispose();
-  line.geometry = new THREE.BufferGeometry().setFromPoints(points);
-}
-
-// 進行方向を示す矢印。線分と同様に深度テストを切って手前に描く。
-function makeArrow(color, opacity = 1) {
-  const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 1, color, 0.001, 0.001);
-  arrow.line.material.transparent = true;
-  arrow.line.material.opacity = opacity;
-  arrow.line.material.depthTest = false;
-  arrow.cone.material.transparent = true;
-  arrow.cone.material.opacity = opacity;
-  arrow.cone.material.depthTest = false;
-  arrow.renderOrder = 2;
-  return arrow;
-}
-
-// 始点・終点(進行方向)を指定してArrowHelperを更新する。
-// maxHeadは矢じるしの絶対的な上限サイズ(rp_nなど場面のスケールに合わせる)。
-// 線がとても長い場合に矢じるしだけが不自然に巨大化するのを防ぐ。
-function setArrow(arrow, from, to, maxHead, headLenRatio = 0.22, headWidthRatio = 0.5) {
-  const diff = new THREE.Vector3().subVectors(to, from);
-  const len = diff.length();
-  if (len < 1e-9) return;
-  arrow.position.copy(from);
-  arrow.setDirection(diff.multiplyScalar(1 / len));
-  const headLength = Math.min(len * headLenRatio, len * 0.6, maxHead ?? Infinity);
-  arrow.setLength(len, headLength, headLength * headWidthRatio);
-}
-
-// 枠(.bplane-view)に収まる最大の正方形をキャンバスの大きさにする。
-// CSSのaspect-ratioは幅と高さの両方が制限されると比率を保ってくれないので、
-// 小さい方を採ってこちらで正方形を作る。
-// スイングバイ以外を選んでいる間は非表示(サイズ0)になるので、その場合は
-// 何もせず、表示に戻ったフレームで合わせ直す。
-function resizeToDisplaySize() {
-  const canvas = renderer.domElement;
-  const box = canvas.parentElement;
-  if (!box) return;
-
-  // canvasはborder-boxではなくcontent-boxなので、枠との差(境界線)を引いておく
-  const avail = Math.min(box.clientWidth, box.clientHeight) - CANVAS_BORDER * 2;
-  const size = Math.floor(Math.min(avail, CANVAS_MAX));
-  if (size <= 0) return;
-  if (size === lastCanvasSize) return;
-  lastCanvasSize = size;
-
-  canvas.style.width = size + "px";
-  canvas.style.height = size + "px";
-  renderer.setSize(size, size, false);
-  camera.aspect = 1;
-  camera.updateProjectionMatrix();
-}
-
-// ハンドルは掴む対象なので、遠近やズームによらず画面上の大きさを一定に保つ。
-// 透視投影では見かけの大きさが (世界での大きさ / カメラからの距離) に比例するので、
-// 距離に比例させた大きさを毎フレーム与える。
-function scaleHandleToScreen(handle) {
-  if (!handle || !handle.visible) return;
-  const h = renderer.domElement.clientHeight;
-  if (!h) return;
-  const dist = camera.position.distanceTo(handle.getWorldPosition(new THREE.Vector3()));
-  const halfFov = Math.tan((camera.fov * Math.PI) / 180 / 2);
-  handle.scale.setScalar((HANDLE_PX * 2 * dist * halfFov) / h);
+  // B面(root座標のXY平面)との交点を root のローカル座標で見る
+  const n = new THREE.Vector3(0, 0, 1).applyQuaternion(root.quaternion);
+  const hit = intersectPlane(raycaster, n);
+  if (!hit) return;
+  const p = root.worldToLocal(hit);
+  if (p.lengthSq() < 1e-12) return;
+  // 描画側は bHat = (cos β, -sin β, 0) なので符号を戻す
+  if (handlers.onBeta) handlers.onBeta(-Math.atan2(p.y, p.x));
 }
 
 function animate() {
@@ -486,8 +328,8 @@ function animate() {
   if (renderer && camera) resizeToDisplaySize();
   if (controls) controls.update();
   if (renderer && camera) {
-    scaleHandleToScreen(rpHandle);
-    scaleHandleToScreen(betaHandle);
+    scaleHandleToScreen(rpHandle, camera, renderer);
+    scaleHandleToScreen(betaHandle, camera, renderer);
   }
   if (renderer && scene && camera) renderer.render(scene, camera);
 }

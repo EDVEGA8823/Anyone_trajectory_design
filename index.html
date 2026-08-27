@@ -80,10 +80,22 @@
 
           <div class="column box launch-only" id="launch_box">
             <div class="row swingby-head">
-              <label>打上げ</label>
+              <label>打上げ (脱出速度)</label>
               <div class="row swingby-mode" id="launch_mode"></div>
             </div>
-            <div class="launch-controls" id="launch_controls"></div>
+            <div class="row view-row">
+              <div class="view-3d">
+                <canvas id="launch_canvas"></canvas>
+              </div>
+              <div class="launch-controls" id="launch_controls"></div>
+            </div>
+            <div class="view-legend">
+              <span><i class="sw-vinf"></i>脱出速度 V<sub>∞</sub></span>
+              <span><i class="sw-alpha"></i>方位角 α</span>
+              <span><i class="sw-delta"></i>仰角 δ</span>
+              <span><i class="sw-porbit"></i>天体の公転方向 (画面右基準)</span>
+              <span>グリッド 1目盛 = 1 km/s</span>
+            </div>
           </div>
 
           <div class="column box maneuver-only" id="maneuver_box">
@@ -96,13 +108,13 @@
               <label>スイングバイ (B面)</label>
               <div class="row swingby-mode" id="swingby_mode"></div>
             </div>
-            <div class="row bplane-row">
-              <div class="bplane-view">
+            <div class="row view-row">
+              <div class="view-3d">
                 <canvas id="bplane_canvas"></canvas>
               </div>
               <div class="swingby-controls"></div>
             </div>
-            <div class="bplane-legend">
+            <div class="view-legend">
               <span><i class="sw-orbit"></i>双曲線軌道</span>
               <span><i class="sw-rp"></i>近点半径 r<sub>p</sub></span>
               <span><i class="sw-b"></i>B面 / Bベクトル</span>

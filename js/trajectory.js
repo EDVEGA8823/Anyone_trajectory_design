@@ -538,6 +538,27 @@ export class Mission {
     return math.subtract(v_sc, v_pla);
   }
 
+  // いまの出発軌道を launch_frame で測った |V∞| と2つの角度。
+  // 手動モードでは設定値そのものになるが、自動モードでもランベール解から
+  // 逆算できるので、どちらのモードでも打上げビューに同じ形で表示できる。
+  get_launch_angles() {
+    const v_inf = this.get_launch_v_inf_vec();
+    const r_pla = this.#m_planet_pos[0];
+    const v_pla = this.#m_planet_vel[0];
+    if (v_inf == undefined || r_pla == undefined || v_pla == undefined) return undefined;
+
+    const frame = launch_frame(r_pla, v_pla);
+    if (frame == undefined) return undefined;
+    const V = math.norm(v_inf);
+    if (!(V > 0)) return undefined;
+
+    return {
+      vinf: V,
+      delta: Math.asin(Math.max(-1, Math.min(1, math.dot(v_inf, frame.z_hat) / V))),
+      alpha: Math.atan2(math.dot(v_inf, frame.y_hat), math.dot(v_inf, frame.x_hat)),
+    };
+  }
+
   // ミッション全体のΔVの合計 [km/s]。
   // 自動スイングバイの近点ΔV(パワード・フライバイ)と、
   // マヌーバノードのDSM ΔV(MGA-1DSM)を足し合わせる。
@@ -842,21 +863,11 @@ export class Mission {
   // 自動モードでの出発速度から、手動モードの初期値(|V∞|と2つの角度)を取る。
   // 手動に切り替えた瞬間に軌道が飛ばないようにするため。
   #init_launch_manual_from_auto() {
-    const v0 = this.#m_s_c_vel[0] != undefined ? this.#m_s_c_vel[0][0] : undefined;
-    const r_pla = this.#m_planet_pos[0];
-    const v_pla = this.#m_planet_vel[0];
-    if (v0 == undefined || r_pla == undefined || v_pla == undefined) return;
-
-    const frame = launch_frame(r_pla, v_pla);
-    if (frame == undefined) return;
-    const v_inf = math.subtract(v0, v_pla);
-    const V = math.norm(v_inf);
-    if (!(V > 0)) return;
-
-    const cz = math.dot(v_inf, frame.z_hat);
-    this.#m_launch_vinf = V;
-    this.#m_launch_delta = Math.asin(Math.max(-1, Math.min(1, cz / V)));
-    this.#m_launch_alpha = Math.atan2(math.dot(v_inf, frame.y_hat), math.dot(v_inf, frame.x_hat));
+    const angles = this.get_launch_angles();
+    if (angles == undefined) return;
+    this.#m_launch_vinf = angles.vinf;
+    this.#m_launch_delta = angles.delta;
+    this.#m_launch_alpha = angles.alpha;
   }
 
   // マヌーバ(DSM)ノード: 天体ではなく深宇宙の一点。

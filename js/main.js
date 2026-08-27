@@ -14,6 +14,12 @@ import {
 } from './plot.js';
 import { initEvents, Update_time } from './event.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
+import {
+  initLaunchView,
+  updateLaunchView,
+  setLaunchViewHandlers,
+  setLaunchActiveHandle,
+} from './launch_view.js';
 
 export function add_sequence(id) {
   let sequence_elem = document.createElement("div");
@@ -339,6 +345,30 @@ export function updateControlPanelDisplay() {
   if (is_swingby) updateBPlaneView();
   if (is_maneuver) renderManeuverControls();
   if (is_launch) renderLaunchControls();
+  // 打上げ以外に移ったらハンドルの選択は解除しておく
+  else if (State.launch_handle) setLaunchHandle(null);
+}
+
+// 打上げビュー(操作パネルの3Dプレビュー)に、いまの出発条件を反映する。
+// 自動モードでもランベール解から角度を逆算して同じ絵を出すので、
+// 「自動だとどこへ向かって飛び出しているのか」がそのまま読み取れる。
+export function updateLaunchViewFromMission() {
+  const i = State.selected_sequence;
+  const mission = State.mission_sequence;
+  if (i == -1 || !mission) return;
+
+  const planetNum = mission.planet_num(i);
+  const angles = mission.get_launch_angles();
+  updateLaunchView({
+    planetNum,
+    // 表示対象が変わったときだけ画角を取り直させる
+    key: i + ":" + planetNum,
+    vinf: angles ? angles.vinf : undefined,
+    alpha: angles ? angles.alpha : 0,
+    delta: angles ? angles.delta : 0,
+    planetPos: mission.planet_pos(i),
+    planetVel: mission.planet_vel(i),
+  });
 }
 
 // 打上げの自動/手動切り替えと、手動モードのパラメータ入力を描画する。
@@ -353,6 +383,11 @@ export function renderLaunchControls() {
   const mission = State.mission_sequence;
   const is_auto = mission.is_auto_mode(i);
   const vinf = mission.get_v_inf();
+
+  // 自動モードや別のノードに移ったらマウスハンドルは引っ込める
+  if (State.launch_handle && (is_auto || launch_handle_seq !== i)) setLaunchHandle(null);
+
+  updateLaunchViewFromMission();
 
   const modeRow = document.getElementById("launch_mode");
   if (modeRow) {
@@ -376,21 +411,26 @@ export function renderLaunchControls() {
   container.innerHTML = "";
 
   if (is_auto) {
-    container.appendChild(
-      makeReadout([
-        ["脱出速度 V∞", vinf.toFixed(3) + " km/s"],
-        ["C3", (vinf * vinf).toFixed(2) + " km²/s²"],
-      ])
-    );
+    // 自動でも向きは決まっているので、ビューと同じ量を数字でも並べる
+    const angles = mission.get_launch_angles();
+    const rows = [
+      ["脱出速度 V∞", vinf.toFixed(3) + " km/s"],
+      ["C3", (vinf * vinf).toFixed(2) + " km²/s²"],
+    ];
+    if (angles) {
+      rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°"]);
+      rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°"]);
+    }
+    container.appendChild(makeReadout(rows));
     return;
   }
 
   const form = document.createElement("div");
   form.className = "column swingby-inputs";
 
-  const addInput = (label_text, value, step, on_change) => {
-    const field = document.createElement("div");
-    field.className = "column launch-field";
+  // 欄を選ぶと、その欄に対応するハンドルが打上げビューに出てマウスで動かせる。
+  // (スイングバイの rp / β と同じ仕組み)
+  const addField = (key, label_text, value, step, on_change) => {
     const label = document.createElement("label");
     label.textContent = label_text;
     const input = document.createElement("input");
@@ -398,20 +438,20 @@ export function renderLaunchControls() {
     input.step = String(step);
     input.value = value;
     input.onchange = () => on_change(Number(input.value));
-    field.appendChild(label);
-    field.appendChild(input);
+    const field = makeParamField(key, label, input, LAUNCH_HANDLE);
+    field.classList.add("launch-field");
     form.appendChild(field);
   };
 
-  addInput("脱出速度 V∞ [km/s]", mission.launch_vinf().toFixed(3), 0.1, (v) => {
+  addField("vinf", "脱出速度 V∞ [km/s]", mission.launch_vinf().toFixed(3), 0.1, (v) => {
     mission.set_launch_vinf(v);
     refresh_after_swingby_change();
   });
-  addInput("方位角 α [deg]", (mission.launch_alpha() * RAD2DEG).toFixed(1), 5, (v) => {
+  addField("alpha", "方位角 α [deg]", (mission.launch_alpha() * RAD2DEG).toFixed(1), 5, (v) => {
     mission.set_launch_alpha(v * DEG2RAD);
     refresh_after_swingby_change();
   });
-  addInput("仰角 δ [deg]", (mission.launch_delta() * RAD2DEG).toFixed(1), 5, (v) => {
+  addField("delta", "仰角 δ [deg]", (mission.launch_delta() * RAD2DEG).toFixed(1), 5, (v) => {
     mission.set_launch_delta(v * DEG2RAD);
     refresh_after_swingby_change();
   });
@@ -729,6 +769,7 @@ export function renderSwingbyControls() {
 
 // マウスハンドルを出しているシーケンス番号 (別のノードに移ったら消すため)
 let handle_seq = -1;
+let launch_handle_seq = -1;
 
 // B面ビューのハンドルの出し分け。keyは "rp" | "beta" | null
 export function setSwingbyHandle(key) {
@@ -737,21 +778,33 @@ export function setSwingbyHandle(key) {
   setBPlaneActiveHandle(key);
 }
 
+// 打上げビューのハンドルの出し分け。keyは "vinf" | "alpha" | "delta" | null
+export function setLaunchHandle(key) {
+  State.launch_handle = key;
+  launch_handle_seq = key ? State.selected_sequence : -1;
+  setLaunchActiveHandle(key);
+}
+
+// makeParamField に渡す、どのビューのハンドルを操作する欄なのかの指定
+const SWINGBY_HANDLE = { get: () => State.swingby_handle, set: setSwingbyHandle };
+const LAUNCH_HANDLE = { get: () => State.launch_handle, set: setLaunchHandle };
+
 // ラベルと入力欄を、クリックでハンドルを出せる1つの欄にまとめる。
 // 選択中の欄のラベルをもう一度押すとハンドルを消す (カメラ操作に戻れるように)。
-function makeParamField(key, label, input) {
+function makeParamField(key, label, input, handle = SWINGBY_HANDLE) {
   const field = document.createElement("div");
   field.className = "column param-field param-field--" + key;
-  if (State.swingby_handle === key) field.classList.add("active");
+  if (handle.get() === key) field.classList.add("active");
   field.appendChild(label);
   field.appendChild(input);
   field.addEventListener("click", (event) => {
     const on_label = event.target === label;
-    setSwingbyHandle(State.swingby_handle === key && on_label ? null : key);
+    handle.set(handle.get() === key && on_label ? null : key);
     // ここでDOMを作り直すと入力欄のフォーカスが飛ぶので、見た目だけ切り替える
+    const active = handle.get();
     document
       .querySelectorAll(".param-field")
-      .forEach((el) => el.classList.toggle("active", el.classList.contains("param-field--" + State.swingby_handle)));
+      .forEach((el) => el.classList.toggle("active", active != null && el.classList.contains("param-field--" + active)));
   });
   return field;
 }
@@ -785,6 +838,17 @@ function apply_beta_from_drag(beta) {
   refresh_after_swingby_change();
 }
 
+// 打上げビューのハンドルをドラッグしている間の反映。
+// 入力欄に打ち込んだときと同じ経路を通す (δの±90度クランプもMission側で効く)。
+function apply_launch_from_drag(set) {
+  return (value) => {
+    const i = State.selected_sequence;
+    if (i == -1 || !State.mission_sequence) return;
+    set(State.mission_sequence, value);
+    refresh_after_swingby_change();
+  };
+}
+
 function refresh_after_swingby_change() {
   update_plot();
   change_sequence(); // マヌーバのΔVと総ΔVの表示を追従させる
@@ -816,6 +880,12 @@ function boot() {
   updateLayout();
   initBPlane();
   setBPlaneHandlers({ onRp: apply_rp_from_drag, onBeta: apply_beta_from_drag });
+  initLaunchView();
+  setLaunchViewHandlers({
+    onVinf: apply_launch_from_drag((m, v) => m.set_launch_vinf(v)),
+    onAlpha: apply_launch_from_drag((m, v) => m.set_launch_alpha(v)),
+    onDelta: apply_launch_from_drag((m, v) => m.set_launch_delta(v)),
+  });
 
   // Update time for the initial load
   Update_time();
