@@ -41,8 +41,9 @@ export function initEvents() {
   });
 
   cancel_time.addEventListener("click", function () {
+    // set_dateはUpdate_timeが呼ぶ。ここで直接動かしてしまうと差分が0になり、
+    // 一緒に動かしたチェック済みノードが戻らなくなる。
     State.tmp_date = State.old_date;
-    State.tmp_date = State.mission_sequence.set_date(State.editing_sequence, State.old_date);
     Update_time();
     confirm_time.style.visibility = "hidden";
     cancel_time.style.visibility = "hidden";
@@ -187,9 +188,36 @@ function update_edit_target_label() {
   edit_target.classList.toggle("other", n !== State.selected_sequence);
 }
 
+/**
+ * チェックしたノードを、いま動かしたノードと同じ差分だけ動かす。
+ * レグの間隔を保ったまま打上げ窓ごとずらす、といった操作のためのもの。
+ *
+ * 動かす順番が肝心で、増やすときは後ろのノードから、減らすときは前のノードから
+ * 動かす。逆にすると、まだ動いていない隣との最小間隔でクリップされてしまう。
+ *
+ * @param {number} anchor 実際に操作したノード (これ自身はもう動いている)
+ * @param {number} delta  そのノードが実際に動いた量 [日]
+ */
+function shift_checked(anchor, delta) {
+  const mission = State.mission_sequence;
+  if (!mission || !isFinite(delta) || delta === 0 || State.checked.size === 0) return;
+
+  const targets = Array.from(State.checked)
+    .filter((i) => i !== anchor && i >= 0 && i < mission.count)
+    // 節目(近日点など)に固定しているノードはその節目に自動で追従するので触らない
+    .filter((i) => mission.pinned_event(i) == null)
+    .sort((a, b) => (delta > 0 ? b - a : a - b));
+
+  for (const i of targets) mission.set_date(i, mission.date(i) + delta);
+}
+
 export function Update_time() {
   if (!State.mission_sequence) return;
-  State.tmp_date = State.mission_sequence.set_date(State.editing_sequence, State.tmp_date);
+  const anchor = State.editing_sequence;
+  const before = State.mission_sequence.date(anchor);
+  State.tmp_date = State.mission_sequence.set_date(anchor, State.tmp_date);
+  // 実際に動いた分 (クリップされたらその分だけ) を、チェックしたノードにも配る
+  if (before != undefined) shift_checked(anchor, State.tmp_date - before);
   date_time.value = JulianToDate(State.tmp_date)
     .toLocaleDateString("ja-JP", {
       year: "numeric",

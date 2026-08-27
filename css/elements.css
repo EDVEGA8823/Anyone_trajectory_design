@@ -378,6 +378,14 @@ h1 {
   color: var(--accent-strong);
   white-space: nowrap;
 }
+.bulk-hint {
+  flex: 1 1 100%;
+  order: 3; /* 件数と操作ボタンの下に回す */
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--accent-strong);
+  opacity: 0.85;
+}
 .bulk-actions {
   gap: 6px;
   flex: 0 0 auto;

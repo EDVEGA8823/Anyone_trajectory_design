@@ -114,6 +114,12 @@ export function renderBulkBar() {
   label.textContent = count + "件を選択中";
   bar.appendChild(label);
 
+  // 時刻の追従は見えない挙動なので、選んでいる間は明示しておく
+  const hint = document.createElement("span");
+  hint.className = "bulk-hint";
+  hint.textContent = "時刻は同じ差分で一緒に動きます";
+  bar.appendChild(hint);
+
   const actions = document.createElement("div");
   actions.className = "row bulk-actions";
 
