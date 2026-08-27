@@ -9,6 +9,8 @@ import {
   updateDashedLine,
   createPlanets,
   updateLayout,
+  updateVinfArrow,
+  hideVinfArrow,
 } from './plot.js';
 import { initEvents, Update_time } from './event.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
@@ -183,6 +185,29 @@ export function update_plot() {
     updateLine(State.arcs[i], points);
     State.arcs[i].line.visible = true;
   }
+
+  update_vinf_arrow();
+}
+
+// 打上げのV∞ベクトルを太陽系ビューに矢印で描く。
+// 打上げノードを選んでいる間だけ出す(手動モードではこの矢印がそのまま
+// 操作対象になる)。日付が動くと出発天体の位置もV∞も変わるので、
+// 軌道を引き直す update_plot と、選択が変わる toggle_planet の両方から呼ぶ。
+export function update_vinf_arrow() {
+  const i = State.selected_sequence;
+  const mission = State.mission_sequence;
+  if (i == -1 || !mission || mission.type(i) !== Sequence_Type.Launch) {
+    hideVinfArrow();
+    return;
+  }
+
+  const pos = mission.get_s_c_pos(i);
+  const v_inf = mission.get_launch_v_inf_vec();
+  if (pos == undefined || v_inf == undefined) {
+    hideVinfArrow();
+    return;
+  }
+  updateVinfArrow(pos, v_inf);
 }
 
 export function make_plot() {
@@ -237,6 +262,7 @@ export function toggle_planet() {
   }
 
   update_coast_orbit();
+  update_vinf_arrow();
 }
 
 // 「DSMを実行しなかった場合にそのまま流されていく軌道」を赤い破線で表示する。

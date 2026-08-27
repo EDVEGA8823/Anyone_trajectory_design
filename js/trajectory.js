@@ -525,8 +525,17 @@ export class Mission {
   #m_trajectory_arcs = [];
 
   get_v_inf() {
-    if (this.#m_planet_vel[0] == undefined || this.#m_s_c_vel[0] == undefined) return 0;
-    return math.norm(math.subtract(this.#m_s_c_vel[0][0], this.#m_planet_vel[0]));
+    const v_inf = this.get_launch_v_inf_vec();
+    return v_inf == undefined ? 0 : math.norm(v_inf);
+  }
+
+  // 打上げの双曲線余剰速度ベクトル [km/s] (太陽中心慣性系)。
+  // 出発天体の公転速度と出発時の探査機速度の差。3Dビューの矢印表示に使う。
+  get_launch_v_inf_vec() {
+    const v_pla = this.#m_planet_vel[0];
+    const v_sc = this.#m_s_c_vel[0] != undefined ? this.#m_s_c_vel[0][0] : undefined;
+    if (v_pla == undefined || v_sc == undefined) return undefined;
+    return math.subtract(v_sc, v_pla);
   }
 
   // ミッション全体のΔVの合計 [km/s]。

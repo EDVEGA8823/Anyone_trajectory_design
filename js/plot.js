@@ -112,6 +112,8 @@ export function initPlot() {
     scene.add(marker_sphere);
   }
 
+  createVinfArrow();
+
   controls.addEventListener("change", update_camera);
   window.addEventListener("resize", updateLayout);
 
@@ -124,6 +126,69 @@ export function initPlot() {
   labelRenderer.render(scene, camera);
   update_camera();
   animate();
+}
+
+// --- 打上げのV∞ベクトル ---
+// 出発天体から伸びる矢印として太陽系ビューに描く。
+// 長さは |V∞| に比例させるが、同時にカメラ距離にも比例させて、ズームしても
+// 画面上の見え方が変わらないようにする (惑星マーカーの拡大と同じ考え方)。
+// これで、内惑星を見ている縮尺でも外惑星まで引いた縮尺でも同じ操作感になる。
+const VINF_COLOR = 0xff8c1a;
+const VINF_AU_PER_KMS = 0.12; // camera_dist = 7 のときの 1 km/s あたりの長さ [AU]
+const VINF_CAMERA_DIST_REF = 7;
+// 現実的なV∞(数km/s)では長さをそのまま比例させたいが、遷移がうまく繋がって
+// いないときは数十km/sにもなり、比例のままだと矢印が画面外まで伸びてしまう。
+// tanhで頭打ちにして、通常の範囲ではほぼ比例・大きいところでは飽和させる
+// (単調なので、後でマウスで長さから大きさを決めるときも一意に戻せる)。
+const VINF_SOFT_KMS = 12;
+let vinf_arrow;
+let vinf_state = null; // { pos: Vector3, dir: Vector3, mag } (描画座標系)
+
+function createVinfArrow() {
+  vinf_arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, VINF_COLOR, 0.2, 0.1);
+  // 惑星の公転軌道や遷移軌道と重なっても隠れないよう、他の線と同様に手前に描く
+  vinf_arrow.line.material.depthTest = false;
+  vinf_arrow.cone.material.depthTest = false;
+  vinf_arrow.renderOrder = 3;
+  vinf_arrow.visible = false;
+  scene.add(vinf_arrow);
+}
+
+/**
+ * V∞の矢印を出発天体の位置に置き直す。
+ * @param {number[]} pos   出発天体の太陽中心位置 [km]
+ * @param {number[]} v_inf V∞ベクトル [km/s] (太陽中心慣性系)
+ */
+export function updateVinfArrow(pos, v_inf) {
+  if (!vinf_arrow) return;
+  const mag = Math.hypot(v_inf[0], v_inf[1], v_inf[2]);
+  if (!(mag > 1e-9)) {
+    hideVinfArrow();
+    return;
+  }
+  vinf_state = {
+    pos: new THREE.Vector3(pos[0] / AU, pos[2] / AU, -pos[1] / AU),
+    // 描画座標系は (x, z, -y)。方向だけなのでAUへの換算は不要。
+    dir: new THREE.Vector3(v_inf[0], v_inf[2], -v_inf[1]).normalize(),
+    mag,
+  };
+  vinf_arrow.visible = true;
+  applyVinfScale();
+}
+
+export function hideVinfArrow() {
+  vinf_state = null;
+  if (vinf_arrow) vinf_arrow.visible = false;
+}
+
+// いまのカメラ距離に合わせて矢印の長さを取り直す
+function applyVinfScale() {
+  if (!vinf_arrow || !vinf_state) return;
+  const shown = VINF_SOFT_KMS * Math.tanh(vinf_state.mag / VINF_SOFT_KMS);
+  const len = shown * VINF_AU_PER_KMS * (PlotState.camera_dist / VINF_CAMERA_DIST_REF);
+  vinf_arrow.position.copy(vinf_state.pos);
+  vinf_arrow.setDirection(vinf_state.dir);
+  vinf_arrow.setLength(len, len * 0.24, len * 0.13);
 }
 
 export function createPlanets(planet_pos) {
@@ -302,6 +367,8 @@ export function update_camera() {
   for (let i = 0; i < PlotState.planet_speres.length; i++) {
     PlotState.planet_speres[i].scale.set(PlotState.camera_dist / 7, PlotState.camera_dist / 7, PlotState.camera_dist / 7);
   }
+
+  applyVinfScale();
 }
 
 function animate() {
