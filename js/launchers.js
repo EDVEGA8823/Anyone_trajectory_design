@@ -28,6 +28,100 @@ const h3_vinf_max = (A) => {
   return Math.sqrt(Math.max(u * u - H3_C, 0));
 };
 
+// --- Atlas V 551 + Star 48B (New Horizonsの構成) ---
+// 上段に固体キックステージ Star 48B を積んだ3段構成。New Horizonsはこれで
+// C3 = 157.75 km^2/s^2 を出しており、Atlas単体の表 (C3 = 1〜60) だけでは
+// 届かない領域に相当する。
+//
+// 「Atlasが出せるC3」と「Star 48Bが足すΔV」の釣り合いから、探査機質量 m を逆算する。
+//   Star 48BのΔV : dv(m) = Isp * g0 * ln((m + mw) / (m + md))
+//   噴射前の速度  : v0 = sqrt(C3 + 2mu/r) - dv(m)
+//   Atlasが出すC3 : C3pre = v0^2 - 2mu/r
+//   釣り合いの条件: atlas551(C3pre) = m + mw + mAux   (探査機 + Star 48B + 付随機器)
+// mが増えると dv は減り C3pre は増え、Atlasの能力(左辺)は減る一方で右辺は増えるので、
+// 解は一意になる (二分法で挟み込む)。
+// Atlas単体の表は外挿しないので、C3preが 1〜60 に収まる範囲でのみ解を認める。
+//
+// New Horizonsの実績で較正した工学的な代用モデルであって、公式の打上げ能力ではない。
+const STAR48B = {
+  mw: 2140.5, // Star 48Bのウェット質量 [kg]
+  md: 130.6, // 同ドライ質量 [kg]
+  isp: 292.1, // 比推力 [s]
+  m_aux: 298.03853, // 付随機器 (支持構造など) [kg]
+  g0: 0.00980665, // [km/s^2]
+  mu: 398600.4418, // 地球の重力定数 [km^3/s^2]
+  r: 6378.137 + 320, // 噴射する高度の地心距離 [km]
+};
+const ATLAS551_C3_MIN = 1; // 元の表の範囲。ここから外へは外挿しない
+const ATLAS551_C3_MAX = 60;
+const STAR48B_C3_MIN = 60; // この構成で見積もりが妥当な最終C3の範囲
+const STAR48B_C3_MAX = 220;
+const STAR48B_M_MAX = 20000; // 探査機質量の探索上限 [kg]
+
+// Atlas V 551 単体の能力を C3 で引く (表はV∞に対する線形補間なので√を取る)
+function atlas551_at_c3(c3) {
+  const L = LAUNCHERS.atlas551;
+  const v = locate(L.vinfs, Math.sqrt(c3));
+  return lerp(L.data[v.i], L.data[v.i + 1], v.t);
+}
+
+// f(lo) と f(hi) の符号が違う区間から f = 0 の点を挟み込む。
+// 符号が変わらない (=解が無い) ときは undefined。
+function bisect(f, lo, hi, steps = 200) {
+  let f_lo = f(lo);
+  let f_hi = f(hi);
+  if (f_lo === 0) return lo;
+  if (f_hi === 0) return hi;
+  if (!(f_lo < 0) === !(f_hi < 0)) return undefined; // 同符号
+  for (let k = 0; k < steps; k++) {
+    const mid = 0.5 * (lo + hi);
+    const f_mid = f(mid);
+    if (f_mid === 0) return mid;
+    if (!(f_mid < 0) === !(f_lo < 0)) {
+      lo = mid;
+      f_lo = f_mid;
+    } else {
+      hi = mid;
+      f_hi = f_mid;
+    }
+  }
+  return 0.5 * (lo + hi);
+}
+
+/**
+ * Atlas V 551 + Star 48B が最終C3へ送り込める探査機質量 [kg]。
+ * 送り込めない場合は0。
+ * @param {number} c3 最終的なC3 [km^2/s^2]
+ */
+export function atlas551Star48B(c3) {
+  if (!isFinite(c3)) return 0;
+  const e2 = (2 * STAR48B.mu) / STAR48B.r; // 脱出速度の2乗
+  const vf = Math.sqrt(c3 + e2);
+  const ve = STAR48B.isp * STAR48B.g0; // 有効排気速度 [km/s]
+
+  // 探査機質量mのときにAtlasが出さねばならないC3 (mについて単調増加)。
+  // ΔVが噴射前の速度を上回る (=そもそも成り立たない) 場合は下限外として扱う。
+  const c3_pre = (m) => {
+    const v0 = vf - ve * Math.log((m + STAR48B.mw) / (m + STAR48B.md));
+    return v0 > 0 ? v0 * v0 - e2 : -Infinity;
+  };
+
+  // Atlasの表を外挿しない範囲 (C3pre = 1〜60) に対応する質量の窓
+  const m_lo =
+    c3_pre(0) >= ATLAS551_C3_MIN ? 0 : bisect((m) => c3_pre(m) - ATLAS551_C3_MIN, 0, STAR48B_M_MAX);
+  const m_hi =
+    c3_pre(STAR48B_M_MAX) <= ATLAS551_C3_MAX
+      ? STAR48B_M_MAX
+      : bisect((m) => c3_pre(m) - ATLAS551_C3_MAX, 0, STAR48B_M_MAX);
+  if (m_lo == undefined || m_hi == undefined || !(m_hi > m_lo)) return 0;
+
+  // 釣り合いの式 (mについて単調減少)
+  const balance = (m) => atlas551_at_c3(c3_pre(m)) - (m + STAR48B.mw + STAR48B.m_aux);
+  if (balance(m_lo) < 0) return 0; // 一番軽い成立点でも能力が足りない
+  if (balance(m_hi) > 0) return m_hi; // 表の範囲(C3pre<=60)で頭打ち。ここまでは確実に積める
+  return bisect(balance, m_lo, m_hi) ?? 0;
+}
+
 // --- 打上げ機ごとの表 ---
 // 2次元の表は decls を持ち、1次元の表 (赤緯依存が公表されていないもの) は持たない。
 // formula を持つものは表ではなく近似式で与える。
@@ -119,6 +213,16 @@ const LAUNCHERS = {
       [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
       [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
     ],
+  },
+  atlas551_star48b: {
+    label: "Atlas V 551 + Star 48B",
+    note:
+      "New Horizonsの構成。Atlas単体の表と Star 48B のΔVの釣り合いから逆算した推定で、" +
+      "公式の打上げ能力ではない。妥当なのはC3 60〜220 km²/s²の範囲",
+    formula: (c3) => atlas551Star48B(c3),
+    c3_min: STAR48B_C3_MIN,
+    c3_max: STAR48B_C3_MAX,
+    vinf_max: Math.sqrt(STAR48B_C3_MAX),
   },
   atlas551: {
     label: "Atlas V 551",
@@ -219,10 +323,16 @@ export function launcher_mass(id, vinf, decl = 0) {
   const L = LAUNCHERS[id];
   if (L == undefined || !isFinite(vinf) || vinf < 0) return { mass: 0, status: "unknown" };
 
-  // 近似式で与えられている機種 (H3)。式が0を下回ったら届かない扱い。
+  // 表ではなく式・逆算で与える機種 (H3, Atlas+Star 48B)。
+  // 質量が出せなければ「その機体では上げられない」扱い。
+  // c3_min / c3_max を持つものは、その外では参考値であることを status で伝える。
   if (L.formula != undefined) {
-    const mass = L.formula(vinf * vinf);
-    return mass > 0 ? { mass, status: "ok" } : { mass: 0, status: "over_vinf" };
+    const c3 = vinf * vinf;
+    const mass = L.formula(c3);
+    if (!(mass > 0)) return { mass: 0, status: "over_vinf" };
+    const outside =
+      (L.c3_min != undefined && c3 < L.c3_min) || (L.c3_max != undefined && c3 > L.c3_max);
+    return { mass, status: outside ? "outside_range" : "ok" };
   }
 
   const vs = L.vinfs;

@@ -257,6 +257,7 @@ function launch_mass_note(status, decl) {
     "打上げ質量: 燃料も含めた打上げ時の質量 (ウェット質量)\n" +
     "残る質量: 総ΔVの分の燃料を使い切った後に残る質量 (ドライ質量)";
   if (status === "below_table") return base + "\n(この脱出速度は表の下限より小さいので、実際にはもう少し積めます)";
+  if (status === "outside_range") return base + "\n(この機種の見積もりが妥当な範囲の外なので参考値です)";
   return base;
 }
 
