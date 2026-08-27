@@ -13,9 +13,37 @@
 // 表の中の極端に小さい値 (1e-3〜10 kg 程度) は「そこへは飛ばせない」ことを
 // 表す番兵で、実際の投入能力ではない (元データで負の値だったところ)。
 
+// H3の投入能力は表ではなく、C3 [km^2/s^2] に対する近似式で与える。
+//   質量 = A * exp(-(sqrt(C3 + 119.37529) - 10.9259) / 4.39338) - 5012.14
+// C3=0 で H3-24形態は 6000 kg、H3-22形態は 4090 kg になる係数。
+// 式が0を下回るC3から先は「その機体では届かない」扱いにする。
+const H3_B = 5012.14;
+const H3_C = 119.37529;
+const H3_D = 10.9259;
+const H3_E = 4.39338;
+const h3_mass = (A) => (c3) => A * Math.exp(-(Math.sqrt(c3 + H3_C) - H3_D) / H3_E) - H3_B;
+// 質量が0になるV∞ (上の式をC3について解いたもの)
+const h3_vinf_max = (A) => {
+  const u = -H3_E * Math.log(H3_B / A) + H3_D;
+  return Math.sqrt(Math.max(u * u - H3_C, 0));
+};
+
 // --- 打上げ機ごとの表 ---
 // 2次元の表は decls を持ち、1次元の表 (赤緯依存が公表されていないもの) は持たない。
+// formula を持つものは表ではなく近似式で与える。
 const LAUNCHERS = {
+  h3_24: {
+    label: "H3-24形態 (参考値)",
+    note: "C3に対する近似式による参考値。赤緯依存は見ていない",
+    formula: h3_mass(11012.14),
+    vinf_max: h3_vinf_max(11012.14),
+  },
+  h3_22: {
+    label: "H3-22形態 (参考値)",
+    note: "C3に対する近似式による参考値。赤緯依存は見ていない",
+    formula: h3_mass(9102.14),
+    vinf_max: h3_vinf_max(9102.14),
+  },
   ariane64: {
     label: "Ariane 64",
     note: "クールー射場。Ariane 6ユーザーズマニュアル等に基づく推定値",
@@ -141,7 +169,7 @@ export function launcher_list() {
     label: L.label,
     note: L.note,
     needs_decl: L.decls != undefined,
-    vinf_max: L.vinfs[L.vinfs.length - 1],
+    vinf_max: L.vinfs != undefined ? L.vinfs[L.vinfs.length - 1] : L.vinf_max,
   }));
 }
 
@@ -190,6 +218,12 @@ const lerp = (a, b, t) => a + (b - a) * t;
 export function launcher_mass(id, vinf, decl = 0) {
   const L = LAUNCHERS[id];
   if (L == undefined || !isFinite(vinf) || vinf < 0) return { mass: 0, status: "unknown" };
+
+  // 近似式で与えられている機種 (H3)。式が0を下回ったら届かない扱い。
+  if (L.formula != undefined) {
+    const mass = L.formula(vinf * vinf);
+    return mass > 0 ? { mass, status: "ok" } : { mass: 0, status: "over_vinf" };
+  }
 
   const vs = L.vinfs;
   if (vinf > vs[vs.length - 1]) return { mass: 0, status: "over_vinf" };

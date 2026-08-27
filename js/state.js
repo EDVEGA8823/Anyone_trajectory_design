@@ -44,6 +44,8 @@ export const State = {
 
   selected_planet: 3,
   selected_sequence: -1,
+  // 投入可能質量を見積もる打上げロケット (js/launchers.js のid)
+  launcher: "h3_24",
   // チェックボックスでまとめて操作するために選んでいるノードの番号。
   // 選択中シーケンス(selected_sequence)とは別の概念で、複数を保持する。
   // 添字で持っているので、ノードの増減があったときは clear_checks() で解除する。

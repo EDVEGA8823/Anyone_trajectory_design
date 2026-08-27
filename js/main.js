@@ -18,6 +18,7 @@ import {
   COLOR_ACHIEVED,
 } from './plot.js';
 import { initEvents, Update_time, delete_sequence, delete_checked } from './event.js';
+import { launcher_list, launcher_mass, launch_declination } from './launchers.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
 import {
   initLaunchView,
@@ -184,16 +185,91 @@ export function change_sequence() {
   for (let i = 0; i < State.mission_sequence.count; i++) {
     add_sequence(i);
   }
-  let v = State.mission_sequence.get_v_inf(State.selected_sequence);
-  const v_inf = document.getElementById("v_inf");
-  const C3 = document.getElementById("C3");
-  v_inf.textContent = v.toFixed(2);
-  C3.textContent = (v * v).toFixed(2);
-
-  const total_dv = document.getElementById("total_dv");
-  total_dv.textContent = (State.mission_sequence.get_total_dv() * 1000).toFixed(1); // km/s -> m/s
-
+  update_stat_bar();
   renderBulkBar();
+}
+
+// 探査機の推進系。ドライ質量(=燃料を使い切った後に残る質量)を出すのに要る。
+// 二液式のアポジエンジン程度を想定した既定値。
+const ISP = 320; // 比推力 [s]
+const G0 = 9.80665; // [m/s^2]
+const EARTH = 2; // State.planet_list の地球の番号
+
+// 右下の統計バー (脱出速度・C3・総ΔV・打上げ質量) をまとめて更新する。
+// 時刻のドラッグ中も呼ばれるので、軽い処理だけにしておく。
+export function update_stat_bar() {
+  const mission = State.mission_sequence;
+  if (!mission) return;
+
+  const v = mission.get_v_inf();
+  document.getElementById("v_inf").textContent = v.toFixed(2);
+  document.getElementById("C3").textContent = (v * v).toFixed(2);
+
+  const dv = mission.get_total_dv(); // km/s
+  document.getElementById("total_dv").textContent = (dv * 1000).toFixed(1);
+
+  update_launch_mass(v, dv);
+}
+
+// 選んだロケットで打ち上げられる質量と、総ΔVを出し切った後に残る質量。
+function update_launch_mass(vinf, dv_kms) {
+  const wet_el = document.getElementById("wet_mass");
+  const dry_el = document.getElementById("dry_mass");
+  const group = document.querySelector(".launcher-group");
+  if (!wet_el || !dry_el) return;
+
+  const mission = State.mission_sequence;
+  const show = (wet, dry, note) => {
+    wet_el.textContent = wet;
+    dry_el.textContent = dry;
+    if (group) group.title = note;
+  };
+
+  // 打上げ能力の表・式はいずれも地球からの打上げのもの
+  if (mission.count === 0 || mission.planet_num(0) !== EARTH) {
+    show("-", "-", "地球からの打上げのときだけ見積もれます");
+    return;
+  }
+
+  const decl = launch_declination(mission.get_launch_v_inf_vec());
+  const { mass, status } = launcher_mass(State.launcher, vinf, decl);
+
+  if (status === "over_vinf") {
+    show("届かず", "-", "この脱出速度はこの機種の能力を超えています");
+    return;
+  }
+
+  // ロケット方程式。総ΔVの分の燃料を使うと、残るのはこれだけ。
+  const dry = mass * Math.exp((-dv_kms * 1000) / (ISP * G0));
+  show(mass.toFixed(0), dry.toFixed(0), launch_mass_note(status, decl));
+}
+
+function launch_mass_note(status, decl) {
+  const base =
+    "赤緯 " + decl.toFixed(1) + "°・比推力 " + ISP + "秒で見積もり\n" +
+    "打上げ質量: 燃料も含めた打上げ時の質量 (ウェット質量)\n" +
+    "残る質量: 総ΔVの分の燃料を使い切った後に残る質量 (ドライ質量)";
+  if (status === "below_table") return base + "\n(この脱出速度は表の下限より小さいので、実際にはもう少し積めます)";
+  return base;
+}
+
+// ロケットの選択肢を作る (起動時に一度だけ)
+export function initLauncherSelect() {
+  const select = document.getElementById("launcher");
+  if (!select) return;
+  select.innerHTML = "";
+  launcher_list().forEach((l) => {
+    const option = document.createElement("option");
+    option.value = l.id;
+    option.text = l.label;
+    option.title = l.note;
+    select.add(option);
+  });
+  select.value = State.launcher;
+  select.onchange = () => {
+    State.launcher = select.value;
+    update_stat_bar();
+  };
 }
 
 export function change_sequence_propaty() {
@@ -1129,6 +1205,7 @@ function boot() {
   change_sequence_propaty();
 
   // Setup three.js
+  initLauncherSelect();
   initPlot();
   make_plot();
   updateLayout();

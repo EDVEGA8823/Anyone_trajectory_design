@@ -4,6 +4,7 @@ import {
   change_sequence_propaty,
   clear_checks,
   renderLegEvents,
+  update_stat_bar,
   toggle_planet,
   updateControlPanelDisplay,
   update_plot,
@@ -234,10 +235,7 @@ export function Update_time() {
   // 惑星ドラッグでの時刻変更でも、選択中がスイングバイならB面ビュー/右側の
   // 数値表示をリアルタイムに追従させる (rp・beta・近点ΔVは日付に依存するため)
   updateControlPanelDisplay();
-  let v = State.mission_sequence.get_v_inf(State.selected_sequence);
-  v_inf.textContent = v.toFixed(2);
-  C3.textContent = (v * v).toFixed(2);
-  total_dv.textContent = (State.mission_sequence.get_total_dv() * 1000).toFixed(1); // km/s -> m/s
+  update_stat_bar();
   update_edit_target_label();
   renderLegEvents();
 }
