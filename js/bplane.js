@@ -2,6 +2,7 @@ import { planet_radius, planet_mu, min_flyby_rp } from './trajectory.js';
 import {
   squareGridGeometry,
   makeLine,
+  makeDashedLine,
   setLinePoints,
   makeArrow,
   setArrow,
@@ -26,7 +27,7 @@ import {
 export let renderer, scene, camera, controls;
 
 let planetMesh, keepOutSphere, eclipticPlane, bplaneGroup, hyperbolaLine, asymptoteArrow, travelArrowhead;
-let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine;
+let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine, coastHyperbola;
 let orbitArrow, dvArrow;
 let root, sunLight;
 let lastViewKey; // いま表示しているノード。切り替わったときだけ画角を取り直す
@@ -64,6 +65,7 @@ const COLOR_RP = 0xd6543f;
 const COLOR_BETA = 0xe0a03b;
 const COLOR_DV = 0x9b4fd8;
 const COLOR_PLANET_ORBIT = 0x4caf82;
+const COLOR_COAST = 0x8a8f99; // 近点ΔVを打たなかった場合の出射側
 
 const PLANET_COLORS = [
   0x9c9c9c, 0xe0c58f, 0x3a7bd5, 0xc1440e, 0xd9a066, 0xe4d2a4, 0x9fd8e0, 0x4f6fd8, 0xc9b28a,
@@ -169,7 +171,14 @@ export function initBPlane() {
   bplaneGroup.add(pierceMarker);
 
   hyperbolaLine = makeLine([new THREE.Vector3()], COLOR_ORBIT, 1);
+  hyperbolaLine.name = "hyperbola";
   root.add(hyperbolaLine);
+
+  // 近点ΔVを打たなかった場合の出射側。実際に飛ぶ経路(実線)と区別できるよう
+  // 破線にする (太陽系ビューの「マヌーバ未実行」の破線と同じ考え方)。
+  coastHyperbola = makeDashedLine([new THREE.Vector3()], COLOR_COAST, 0.9);
+  coastHyperbola.name = "coast_hyperbola";
+  root.add(coastHyperbola);
 
   // 探査機の進行方向 (双曲線の出射側先端に付ける矢じるし)。
   // 軌道本体(COLOR_ORBIT=ほぼ黒)と同じ色だと重なって見分けがつかないため、
@@ -357,6 +366,8 @@ function toDrawing(w, i_hat, j_hat, k_hat) {
  * @param {number} [params.rp]      近点半径 [km]
  * @param {number} [params.beta]    B面内での回転角 [rad]
  * @param {number} [params.vinf]    入射V∞ [km/s]
+ * @param {number} [params.vinfOut] 脱出V∞ [km/s]。近点ΔVを打つ自動モードでは
+ *                                  入射と値が変わり、出射側が別の双曲線になる
  * @param {number} [params.dv]      近点ΔV [km/s]
  * @param {number[]} [params.planetVel] 天体の太陽中心速度 [km/s]
  * @param {number[]} [params.planetPos] 天体の太陽中心位置 [km]
@@ -364,7 +375,7 @@ function toDrawing(w, i_hat, j_hat, k_hat) {
  * @param {number[]} [params.jHat]
  * @param {number[]} [params.kHat]
  */
-export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, dv = 0, planetVel, planetPos, iHat, jHat, kHat }) {
+export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, dv = 0, planetVel, planetPos, iHat, jHat, kHat }) {
   if (!scene || planetNum == undefined || planetNum == -1) return;
 
   const radius = planet_radius[planetNum];
@@ -410,18 +421,56 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, dv = 0, plane
   // --- 双曲線本体 ---
   // 真近点角で切ると漸近線近くで急に遠方へ飛んでいくため、動径がビューの
   // 大きさを超えたところで切る。こうすると常に画面内に収まる。
-  const p_n = a_n * (1 - e * e);
   const rMax = halfSize * 2.3;
-  const cosClip = (p_n / rMax - 1) / e;
-  const nuMax = Math.min(Math.acos(Math.max(-1, Math.min(1, cosClip))), nu_inf * 0.995);
-  const pts = [];
-  const N = 160;
-  for (let k = 0; k <= N; k++) {
-    const nu = -nuMax + (2 * nuMax * k) / N;
-    const r = p_n / (1 + e * Math.cos(nu));
-    pts.push(new THREE.Vector3().addScaledVector(P_hat, r * Math.cos(nu)).addScaledVector(Q_hat, r * Math.sin(nu)));
-  }
+  // 近点から真近点角 nu の点 (軌道要素 e, p から)
+  const conicPoint = (e_b, p_b, nu) => {
+    const r = p_b / (1 + e_b * Math.cos(nu));
+    return new THREE.Vector3().addScaledVector(P_hat, r * Math.cos(nu)).addScaledVector(Q_hat, r * Math.sin(nu));
+  };
+  // 動径が rMax を超えない範囲での真近点角の上限
+  const clipNu = (e_b, p_b) => {
+    const cosClip = (p_b / rMax - 1) / e_b;
+    const nu_inf_b = Math.acos(-1 / e_b);
+    return Math.min(Math.acos(Math.max(-1, Math.min(1, cosClip))), nu_inf_b * 0.995);
+  };
+  const branch = (e_b, p_b, nu0, nu1, N = 80) =>
+    Array.from({ length: N + 1 }, (_, k) => conicPoint(e_b, p_b, nu0 + ((nu1 - nu0) * k) / N));
+
+  const p_n = a_n * (1 - e * e);
+  const nuMax = clipNu(e, p_n);
+
+  // --- 出射側 ---
+  // 自動モード(パワード・フライバイ)では近点でΔVを打つので、出射側は入射側とは
+  // 別の双曲線になる。近点の位置と進行方向(動径に垂直)は噴射の前後で共通なので、
+  // 同じ P_hat / rp のまま、エネルギー(=脱出V∞)だけが違う枝として描ける。
+  //
+  // rpが下限でクランプされて曲げ角が足りない場合、Missionは不足分を近点ΔVの
+  // 向き変更で補う前提でΔVを見積もっている。ただしその向き変更を実際に加えると
+  // 噴射点は出射側の近点ではなくなり、自由飛行の分だけ余計に曲がってしまう
+  // (曲げ角が要求値を通り越す)。ここでは幾何として辻褄の合う2本
+  // (入射側・出射側とも近点を共有する双曲線)を描き、足りない分は
+  // 右側の「曲げ不足」の数値に任せる。
+  const vinf_out = vinfOut != undefined && vinfOut > 0 ? vinfOut : vinf;
+  const a_out = -mu / (vinf_out * vinf_out) / radius;
+  const e_out = 1 - rp_n / a_out;
+  const p_out = a_out * (1 - e_out * e_out);
+  const nuMaxOut = clipNu(e_out, p_out);
+
+  const inPts = branch(e, p_n, -nuMax, 0);
+  const outPts = branch(e_out, p_out, 0, nuMaxOut);
+  const pts = inPts.concat(outPts.slice(1));
   setLinePoints(hyperbolaLine, pts);
+
+  // ΔVを打たなかった場合の出射側 (無推力なら入射と同じ双曲線の鏡像になる)。
+  // ΔVがほぼ無い手動モードでは実際の経路と重なるだけなので描かない。
+  const powered = Math.abs(vinf_out - vinf) > 1e-6;
+  if (powered) {
+    // 破線の刻みは場面の大きさに合わせる (固定だと縮尺次第で実線に見えてしまう)
+    coastHyperbola.material.dashSize = halfSize * 0.06;
+    coastHyperbola.material.gapSize = halfSize * 0.04;
+    setLinePoints(coastHyperbola, branch(e, p_n, 0, nuMax));
+  }
+  coastHyperbola.visible = powered;
 
   // 探査機の進行方向を示す矢じるし。双曲線は曲がっているのでArrowHelperではなく、
   // 出射側の末尾2点から接線方向を取り、そこに小さな円錐を向けて置く。
@@ -588,6 +637,7 @@ function applyOrientation(vHat, sHat, northHat) {
 
 function setOrbitVisible(visible) {
   hyperbolaLine.visible = visible;
+  if (!visible) coastHyperbola.visible = false;
   travelArrowhead.visible = visible;
   asymptoteArrow.visible = visible;
   pierceMarker.visible = visible;

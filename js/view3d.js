@@ -28,9 +28,21 @@ export function makeLine(points, color, opacity = 1) {
   return line;
 }
 
+/** 破線。LineDashedMaterialは頂点ごとの累積距離が要るので計算しておく */
+export function makeDashedLine(points, color, opacity = 1, dashSize = 0.3, gapSize = 0.2) {
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineDashedMaterial({ color, transparent: true, opacity, dashSize, gapSize });
+  const line = new THREE.Line(geometry, material);
+  line.material.depthTest = false;
+  line.computeLineDistances();
+  return line;
+}
+
 export function setLinePoints(line, points) {
   line.geometry.dispose();
   line.geometry = new THREE.BufferGeometry().setFromPoints(points);
+  // 破線は頂点を張り替えるたびに累積距離を取り直す必要がある
+  if (line.material.isLineDashedMaterial) line.computeLineDistances();
 }
 
 // 方向を示す矢印。線分と同様に深度テストを切って手前に描く。

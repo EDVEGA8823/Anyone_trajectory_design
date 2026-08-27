@@ -13,6 +13,14 @@ import { JulianToDate, DateToJulian } from './trajectory.js';
 
 let date_time, sequence, confirm_time, cancel_time, v_inf, C3, total_dv, sequence_panel, plot_area, edit_target;
 
+// 惑星やノードのマーカーを掴める範囲。カメラ距離に比例させることで、
+// ズームしても画面上の当たり判定の広さが変わらないようにしている。
+// 画面上の半径にすると 縦の画角(2*tan(fov/2)=0.536) から
+//   PICK_RADIUS / 0.536 ≒ 画面高さの 3.4% (キャンバス700pxで24px程度)
+// マーカーの見た目(半径 0.0036〜0.006 * カメラ距離)より広いが、
+// 掴んでドラッグする操作なのでこのくらいの余裕を持たせている。
+const PICK_RADIUS = 0.018;
+
 export function initEvents() {
   date_time = document.getElementById("date_time");
   sequence = document.getElementById("sequence");
@@ -277,10 +285,7 @@ function Select_planet() {
         if(!PlotState.planet_speres[i] || !PlotState.planet_speres[i].visible) continue;
       let p = PlotState.planet_speres[i].position;
       let dist = new THREE.Vector3().subVectors(p, x_0).cross(v).length() / v.length();
-      // 当たり判定の半径。カーソルが指マークに変わる(ラベルのcursor:pointer)
-      // 領域より実際の判定が狭く、クリックしても反応しないことがあったため
-      // 元の 0.015 から拡大した。
-      if (dist < 0.03 * PlotState.camera_dist) {
+      if (dist < PICK_RADIUS * PlotState.camera_dist) {
         State.selected_planet = i;
         State.is_selected = true;
         break;
@@ -324,7 +329,7 @@ function Select_marker(v, x_0) {
     if (!marker || !marker.visible) continue;
 
     const dist = new THREE.Vector3().subVectors(marker.position, x_0).cross(v).length() / v.length();
-    if (dist >= 0.03 * PlotState.camera_dist) continue;
+    if (dist >= PICK_RADIUS * PlotState.camera_dist) continue;
 
     const n = sel + k - 1;
     if (n < 0 || n >= State.mission_sequence.count) continue;

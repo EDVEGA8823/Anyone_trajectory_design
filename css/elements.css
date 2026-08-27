@@ -677,6 +677,10 @@ input:focus {
 .view-legend .sw-orbit {
   background: #1a1c20;
 }
+/* 破線で描いているものは凡例も破線にする */
+.view-legend .sw-coast {
+  background: repeating-linear-gradient(to right, #8a8f99 0 3px, transparent 3px 5px);
+}
 .view-legend .sw-rp {
   background: #d6543f;
 }

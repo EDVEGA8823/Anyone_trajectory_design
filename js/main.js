@@ -682,6 +682,8 @@ export function updateBPlaneView() {
     rp,
     beta,
     vinf: info ? info.v_inf_in : undefined,
+    // 近点ΔVを打つ自動モードでは、出射側は入射側と別の双曲線になる
+    vinfOut: info ? info.v_inf_out : undefined,
     dv: info ? info.dv_periapsis : 0,
     planetVel: State.mission_sequence.planet_vel(i),
     planetPos: State.mission_sequence.planet_pos(i),
