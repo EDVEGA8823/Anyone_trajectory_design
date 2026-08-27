@@ -74,6 +74,26 @@ function handleSequencePanelClick(event) {
   updateAfterAdd();
 }
 
+// シーケンスの枠内のゴミ箱ボタンから呼ばれる。
+// 手動モードのノードを消すと相棒のDSMも一緒に消えるので、消えた個数を見て
+// 選択位置を詰め直す。
+export function delete_sequence(i) {
+  const mission = State.mission_sequence;
+  if (!mission) return;
+
+  const before = mission.count;
+  if (!mission.remove(i)) return;
+  const removed = before - mission.count;
+
+  let sel = State.selected_sequence;
+  if (sel >= i) sel = sel >= i + removed ? sel - removed : i; // 消えたノードを選んでいたらその位置へ
+  sel = Math.min(sel, mission.count - 1);
+  State.selected_sequence = mission.count === 0 ? -1 : Math.max(sel, 0);
+
+  update_plot();
+  updateAfterAdd();
+}
+
 function updateAfterAdd() {
   updateControlPanelDisplay();
   change_sequence();

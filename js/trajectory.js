@@ -1314,4 +1314,40 @@ export class Mission {
 
     this.#recompute_all();
   }
+
+  /**
+   * シーケンスを1つ削除する。
+   *
+   * マヌーバ(DSM)ノードは手動モードに付随して自動で出し入れするものなので、
+   * ここでは消せない (自動/手動の切り替えで消す)。手動モードのノードを消す
+   * ときは、その相棒のDSMも一緒に片付ける。
+   *
+   * @returns {boolean} 削除したか
+   */
+  remove(i) {
+    if (i < 0 || i >= this.#m_count) return false;
+    if (this.#m_types[i] === Sequence_Type.Maneuver) return false;
+
+    if (this.#has_maneuver_after(i)) this.#remove_node(i + 1);
+    this.#remove_node(i);
+
+    // 行き先が無くなってDSMだけが末尾に残ったら、その持ち主を自動に戻す
+    while (this.#m_count > 0 && this.#m_types[this.#m_count - 1] === Sequence_Type.Maneuver) {
+      this.#remove_node(this.#m_count - 1);
+      if (this.#m_count > 0) this.#m_is_auto_mode[this.#m_count - 1] = true;
+    }
+
+    // 先頭は常に打上げ。繰り上がったノードには前の打上げの手動パラメータを
+    // 引き継がせる意味が無いので、自動に戻しておく。
+    if (i == 0 && this.#m_count > 0) {
+      this.#m_types[0] = Sequence_Type.Launch;
+      if (!this.#m_is_auto_mode[0]) {
+        if (this.#has_maneuver_after(0)) this.#remove_node(1);
+        this.#m_is_auto_mode[0] = true;
+      }
+    }
+
+    this.#recompute_all();
+    return true;
+  }
 }

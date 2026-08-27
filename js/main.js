@@ -15,7 +15,7 @@ import {
   styleLeg,
   COLOR_LEG_ACTIVE,
 } from './plot.js';
-import { initEvents, Update_time } from './event.js';
+import { initEvents, Update_time, delete_sequence } from './event.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
 import {
   initLaunchView,
@@ -50,6 +50,12 @@ export function add_sequence(id) {
   sequence_elem.appendChild(span2);
   sequence_elem.id = id;
 
+  // マヌーバ(DSM)は手動モードに付随して自動で出し入れするノードなので、
+  // 個別には消せない (前のノードを自動に戻すと消える)。
+  if (State.mission_sequence.type(id) !== Sequence_Type.Maneuver) {
+    sequence_elem.appendChild(make_delete_button(id));
+  }
+
   const sequence = document.getElementById("sequence");
   sequence.appendChild(sequence_elem);
 
@@ -58,6 +64,26 @@ export function add_sequence(id) {
   add_sequence_elem.id = id + 1;
   add_sequence_elem.textContent = "+ シーケンスを追加";
   sequence.appendChild(add_sequence_elem);
+}
+
+// シーケンスの枠の右上に置く削除ボタン
+function make_delete_button(id) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "seq-delete";
+  btn.title = "このシーケンスを削除";
+  // stroke="currentColor" にしてCSS側の色(ホバーで赤)に追従させる。
+  // アイコン自体はクリック判定を持たせない (押されたのはボタン、として扱う)
+  btn.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
+    ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M3 6h18M9 6V4h6v2M6 6l1 14h10l1-14M10 11v5M14 11v5"/></svg>';
+  btn.onclick = (event) => {
+    // 枠のクリック(=シーケンスの選択)まで伝わらないようにする
+    event.stopPropagation();
+    delete_sequence(id);
+  };
+  return btn;
 }
 
 export function change_sequence() {
