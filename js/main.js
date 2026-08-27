@@ -206,7 +206,7 @@ export function update_stat_bar() {
   document.getElementById("C3").textContent = (v * v).toFixed(2);
 
   const dv = mission.get_total_dv(); // km/s
-  document.getElementById("total_dv").textContent = (dv * 1000).toFixed(1);
+  document.getElementById("total_dv").textContent = (dv * 1000).toFixed(0);
 
   update_launch_mass(v, dv);
 }
@@ -219,9 +219,16 @@ function update_launch_mass(vinf, dv_kms) {
   if (!wet_el || !dry_el) return;
 
   const mission = State.mission_sequence;
+  const arrow = document.getElementById("mass_arrow");
   const show = (wet, dry, note) => {
     wet_el.textContent = wet;
     dry_el.textContent = dry;
+    // 数値が出せないとき (「打ち上げ不可」など) は矢印と右側を畳んで1つだけ出す。
+    // 文字は数値より長いので、幅を食わないよう小さくもする。
+    const numeric = /^[\d.]+$/.test(wet);
+    wet_el.classList.toggle("as-text", !numeric);
+    if (arrow) arrow.style.display = numeric ? "" : "none";
+    dry_el.style.display = numeric ? "" : "none";
     if (group) group.title = note;
   };
 
@@ -235,7 +242,7 @@ function update_launch_mass(vinf, dv_kms) {
   const { mass, status } = launcher_mass(State.launcher, vinf, decl);
 
   if (status === "over_vinf") {
-    show("届かず", "-", "この脱出速度はこの機種の能力を超えています");
+    show("打ち上げ不可", "-", "この脱出速度はこの機種の能力を超えています");
     return;
   }
 

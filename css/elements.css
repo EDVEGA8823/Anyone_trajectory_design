@@ -232,8 +232,8 @@ h1 {
 .row.stat-bar {
   flex-wrap: wrap;
   flex: 0 0 auto;
-  gap: 6px;
-  padding: 8px;
+  gap: 4px;
+  padding: 6px;
   overflow-x: auto;
 }
 .row.stat-group {
@@ -250,9 +250,9 @@ h1 {
   align-items: baseline;
   justify-content: start;
   flex: 0 0 auto;
-  column-gap: 4px;
+  column-gap: 3px;
   margin: 0;
-  padding: 4px 8px;
+  padding: 3px 6px;
   background: var(--surface-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -270,7 +270,7 @@ h1 {
 }
 
 .value_box .value {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
   line-height: 1.15;
@@ -285,18 +285,32 @@ h1 {
 
 /* 項目名に添える補足 (「燃料込み」など)。大文字化されると読みにくいので戻す */
 .value_box .title .sub {
-  margin-left: 4px;
+  margin-left: 3px;
+  font-size: 8px;
   font-weight: 500;
   text-transform: none;
   opacity: 0.85;
 }
 
+/* 数値ではなく「打ち上げ不可」などの文字を出すとき */
+.value_box .value .as-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* 打上げ時と燃料を使い切った後の質量を1つの枠にまとめる */
+.mass-box .mass-arrow {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 /* 打上げロケットの選択と、そこから出る質量のまとまり */
 .launcher-group select {
   flex: 0 0 auto;
-  max-width: 150px;
-  padding: 4px 8px;
-  font-size: 12px;
+  max-width: 118px;
+  padding: 3px 4px;
+  font-size: 11px;
   font-weight: 600;
 }
 
