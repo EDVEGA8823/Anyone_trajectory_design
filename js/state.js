@@ -44,6 +44,10 @@ export const State = {
 
   selected_planet: 3,
   selected_sequence: -1,
+  // チェックボックスでまとめて操作するために選んでいるノードの番号。
+  // 選択中シーケンス(selected_sequence)とは別の概念で、複数を保持する。
+  // 添字で持っているので、ノードの増減があったときは clear_checks() で解除する。
+  checked: new Set(),
   // B面ビューでマウスで動かせるようにしている手動スイングバイのパラメータ
   // (null | "rp" | "beta")。右側の該当する欄を選ぶと立つ。
   swingby_handle: null,

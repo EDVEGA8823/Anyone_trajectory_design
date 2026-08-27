@@ -2,6 +2,7 @@ import { State, User_Mode, PlotState, Sequence_Type } from './state.js';
 import {
   change_sequence,
   change_sequence_propaty,
+  clear_checks,
   renderLegEvents,
   toggle_planet,
   updateControlPanelDisplay,
@@ -71,6 +72,7 @@ function handleSequencePanelClick(event) {
     State.selected_sequence = State.mission_sequence.add(at, State.tmp_date);
     const points = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
     State.arcs.splice(at, 0, createLine(points, 0x0000ff));
+    clear_checks(); // ノードが増えて添字がずれるため
     updateAfterAdd();
     return;
   } else if (event.target.className == "sequence-panel") {
@@ -83,6 +85,35 @@ function handleSequencePanelClick(event) {
   updateAfterAdd();
 }
 
+// チェックしたシーケンスをまとめて削除する。
+// 後ろから消していけば、まだ消していないノードの番号がずれない。
+// (手動モードのノードを消すと相棒のDSMも一緒に消えるが、それも後ろ側なので同じ)
+// マヌーバ(DSM)は自動/手動に付随するノードなので remove が受け付けず、
+// 持ち主ごと消された場合を除いて残る。
+export function delete_checked() {
+  const mission = State.mission_sequence;
+  if (!mission || State.checked.size === 0) return;
+
+  const targets = Array.from(State.checked).sort((a, b) => b - a);
+  const first = targets[targets.length - 1];
+  let removed = 0;
+  for (const i of targets) {
+    if (mission.remove(i)) removed++;
+  }
+  if (removed === 0) {
+    clear_checks();
+    return;
+  }
+
+  // 選択中ノードは、消えた範囲より前ならそのまま、そうでなければ手前に寄せる
+  const sel = Math.min(State.selected_sequence, first);
+  State.selected_sequence = mission.count === 0 ? -1 : Math.max(Math.min(sel, mission.count - 1), 0);
+
+  clear_checks();
+  update_plot();
+  updateAfterAdd();
+}
+
 // シーケンスの枠内のゴミ箱ボタンから呼ばれる。
 // 手動モードのノードを消すと相棒のDSMも一緒に消えるので、消えた個数を見て
 // 選択位置を詰め直す。
@@ -92,6 +123,7 @@ export function delete_sequence(i) {
 
   const before = mission.count;
   if (!mission.remove(i)) return;
+  clear_checks(); // ノードが減って添字がずれるため
   const removed = before - mission.count;
 
   let sel = State.selected_sequence;

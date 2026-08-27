@@ -332,6 +332,11 @@ h1 {
 .sequence span {
   white-space: nowrap;
 }
+/* 天体名はチェックボックスの隣に置く (幅が足りず日付が折り返しても左寄せのまま) */
+.sequence > span:first-of-type {
+  flex: 1 1 auto;
+  text-align: left;
+}
 .sequence:hover {
   box-shadow: var(--shadow-sm);
   border-color: var(--gray-300);
@@ -339,6 +344,64 @@ h1 {
 .sequence.selected {
   background: var(--accent-soft);
   border-color: var(--accent);
+}
+
+/* まとめて操作する対象のチェック。選択(操作パネルに出す1件)とは別なので、
+   枠の色ではなく左の枠線で示す */
+.seq-check {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 0 2px 0 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.sequence.checked {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* チェックしたものへの操作をまとめたバー (1件以上選んでいる間だけ出す) */
+.bulk-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+}
+.bulk-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-strong);
+  white-space: nowrap;
+}
+.bulk-actions {
+  gap: 6px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+.bulk-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.bulk-btn:hover {
+  border-color: var(--gray-300);
+}
+.bulk-btn.danger:hover {
+  color: #d6543f;
+  border-color: #d6543f;
+  background: #fdeeeb;
 }
 
 /* タイトル部分（連番 + シーケンス種別） */

@@ -17,7 +17,7 @@ import {
   COLOR_COAST,
   COLOR_ACHIEVED,
 } from './plot.js';
-import { initEvents, Update_time, delete_sequence } from './event.js';
+import { initEvents, Update_time, delete_sequence, delete_checked } from './event.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle } from './bplane.js';
 import {
   initLaunchView,
@@ -32,6 +32,9 @@ export function add_sequence(id) {
   sequence_elem.title = id + 1 + ".  " + State.mission_sequence.type(id);
   if (id == State.selected_sequence) sequence_elem.classList.add("selected");
   
+  if (State.checked.has(id)) sequence_elem.classList.add("checked");
+  sequence_elem.appendChild(make_check_box(id));
+
   const span1 = document.createElement("span");
   if (State.mission_sequence.type(id) === Sequence_Type.Maneuver) {
     // マヌーバ(DSM)は天体ではなく深宇宙の一点なので、天体名の代わりにΔVを出す
@@ -72,6 +75,72 @@ export function add_sequence(id) {
   add_sequence_elem.id = id + 1;
   add_sequence_elem.textContent = "+ シーケンスを追加";
   sequence.appendChild(add_sequence_elem);
+}
+
+// まとめて操作するためのチェックボックス。
+// シーケンスの選択(操作パネルに出すノード)とは独立なので、押しても選択は動かさない。
+function make_check_box(id) {
+  const box = document.createElement("input");
+  box.type = "checkbox";
+  box.className = "seq-check";
+  box.checked = State.checked.has(id);
+  box.title = "まとめて操作する対象にする";
+  box.onclick = (event) => {
+    event.stopPropagation(); // 枠のクリック(=シーケンスの選択)まで伝えない
+    if (box.checked) State.checked.add(id);
+    else State.checked.delete(id);
+    const card = box.closest(".sequence");
+    if (card) card.classList.toggle("checked", box.checked);
+    renderBulkBar();
+  };
+  return box;
+}
+
+// チェックした分をまとめて操作するバー。1つ以上選ばれている間だけ出す。
+export function renderBulkBar() {
+  const bar = document.getElementById("bulk_bar");
+  if (!bar) return;
+  bar.innerHTML = "";
+
+  const count = State.checked.size;
+  if (count === 0) {
+    bar.style.display = "none";
+    return;
+  }
+  bar.style.display = "flex";
+
+  const label = document.createElement("span");
+  label.className = "bulk-count";
+  label.textContent = count + "件を選択中";
+  bar.appendChild(label);
+
+  const actions = document.createElement("div");
+  actions.className = "row bulk-actions";
+
+  const del = document.createElement("button");
+  del.type = "button";
+  del.className = "bulk-btn danger";
+  del.textContent = "まとめて削除";
+  del.onclick = () => delete_checked();
+  actions.appendChild(del);
+
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "bulk-btn";
+  clear.textContent = "選択解除";
+  clear.onclick = () => {
+    clear_checks();
+    change_sequence();
+  };
+  actions.appendChild(clear);
+
+  bar.appendChild(actions);
+}
+
+// ノードの増減で添字がずれるので、構成が変わったときは選択を解除する
+export function clear_checks() {
+  State.checked.clear();
+  renderBulkBar();
 }
 
 // シーケンスの枠の右上に置く削除ボタン
@@ -117,6 +186,8 @@ export function change_sequence() {
 
   const total_dv = document.getElementById("total_dv");
   total_dv.textContent = (State.mission_sequence.get_total_dv() * 1000).toFixed(1); // km/s -> m/s
+
+  renderBulkBar();
 }
 
 export function change_sequence_propaty() {
@@ -188,6 +259,7 @@ export function change_sequence_propaty() {
 
   sequence_propaty.onchange = function () {
     State.mission_sequence.set_type(State.selected_sequence, sequence_propaty.value);
+    clear_checks(); // DSMが出入りして添字がずれるため
     // 最終軌道にするとその手前のDSMが取り除かれ、ノードが1つ前にずれる
     State.selected_sequence = Math.min(State.selected_sequence, State.mission_sequence.count - 1);
     change_sequence();
@@ -1025,6 +1097,7 @@ function apply_launch_from_drag(set) {
 }
 
 function refresh_after_swingby_change() {
+  clear_checks(); // DSMが出入りして添字がずれるため
   update_plot();
   change_sequence(); // マヌーバのΔVと総ΔVの表示を追従させる
   // 自動/手動の切り替えではマヌーバノードが出入りしてノードの並びが変わるので、
