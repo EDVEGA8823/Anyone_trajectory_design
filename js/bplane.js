@@ -213,6 +213,7 @@ export function initBPlane() {
   // 近点ΔV。近点は天体表面のすぐ外側になることが多く、そのままだと
   // 天体に隠れてしまうので、他の線と同様に深度テストを切って手前に描く。
   dvArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, COLOR_DV, 0.25, 0.14);
+  dvArrow.name = "dv_arrow";
   dvArrow.line.material.depthTest = false;
   dvArrow.cone.material.depthTest = false;
   dvArrow.renderOrder = 2;
@@ -368,6 +369,9 @@ function toDrawing(w, i_hat, j_hat, k_hat) {
  * @param {number} [params.vinf]    入射V∞ [km/s]
  * @param {number} [params.vinfOut] 脱出V∞ [km/s]。近点ΔVを打つ自動モードでは
  *                                  入射と値が変わり、出射側が別の双曲線になる
+ * @param {number} [params.turnDeficit] rpが下限でクランプされて足りない曲げ角 [rad]。
+ *                                  この分は近点ΔVで向きを変えることになるので、
+ *                                  ΔVの向きに効く
  * @param {number} [params.dv]      近点ΔV [km/s]
  * @param {number[]} [params.planetVel] 天体の太陽中心速度 [km/s]
  * @param {number[]} [params.planetPos] 天体の太陽中心位置 [km]
@@ -375,7 +379,7 @@ function toDrawing(w, i_hat, j_hat, k_hat) {
  * @param {number[]} [params.jHat]
  * @param {number[]} [params.kHat]
  */
-export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, dv = 0, planetVel, planetPos, iHat, jHat, kHat }) {
+export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turnDeficit = 0, dv = 0, planetVel, planetPos, iHat, jHat, kHat }) {
   if (!scene || planetNum == undefined || planetNum == -1) return;
 
   const radius = planet_radius[planetNum];
@@ -530,9 +534,22 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, dv =
   };
   updateHandles();
 
-  // --- 近点ΔV (近点では速度は動径に垂直 = Q_hat 方向) ---
+  // --- 近点ΔV ---
+  // 噴射前の速度は近点なので動径に垂直 (= Q_hat 方向)。噴射後の速度は
+  //   ・大きさ: 脱出V∞に対応する近点速度 (減速することも多い)
+  //   ・向き  : 曲げ角が足りているなら同じく Q_hat。rpが下限でクランプされて
+  //             足りない場合は、その不足分だけ曲がる向き(+Q から -P 側)に回す
+  // なので ΔV = v_out - v_in は必ずしも順行方向ではない。
+  //   ΔV = Q(vp_out cos td - vp_in) - P(vp_out sin td)
+  // (この大きさは Mission 側の余弦定理による dv_periapsis と一致する)
   if (dv > 1e-9) {
     const vp = Math.sqrt(vinf * vinf + (2 * mu) / rp);
+    const vp_out = Math.sqrt(vinf_out * vinf_out + (2 * mu) / rp);
+    const td = turnDeficit ?? 0;
+    const dvVec = Q_hat.clone()
+      .multiplyScalar(vp_out * Math.cos(td) - vp)
+      .addScaledVector(P_hat, -vp_out * Math.sin(td));
+    if (dvVec.lengthSq() < 1e-18) dvVec.copy(Q_hat);
     // ΔVの大きさを近点速度との比で表し、見やすい長さに写像する
     // 近点付近は天体スケールなので、ビュー全体の大きさだけで決めると小さすぎる。
     // 近点半径も下限の基準に入れて、常に読み取れる長さにする。
@@ -541,7 +558,7 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, dv =
       extent * 0.6
     );
     dvArrow.position.copy(periapsis);
-    dvArrow.setDirection(Q_hat);
+    dvArrow.setDirection(dvVec.normalize());
     dvArrow.setLength(len, len * 0.32, len * 0.18);
     dvArrow.visible = true;
   } else {
