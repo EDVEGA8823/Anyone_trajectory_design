@@ -3,8 +3,6 @@ import {
   makeLine,
   makeDashedLine,
   setLinePoints,
-  makeArrow,
-  setArrow,
   makeHandle,
   scaleHandleToScreen,
   makeSquareResizer,
@@ -47,6 +45,11 @@ let resizeToDisplaySize;
 const CANVAS_MAX = 460;
 const CANVAS_BORDER = 1;
 
+// 軌道面グリッドの広さ (画角を合わせたときの表示範囲に対する倍率) と目の数。
+// 後から遠点を広げても外へはみ出しにくいよう、最初から広めに敷いておく。
+const GRID_SPAN = 3;
+const GRID_DIVISIONS = 24;
+
 const COLOR_ORBIT = 0x3b6fe0; // 周回軌道 (楕円)
 const COLOR_HYPERBOLA = 0x1a1c20; // 双曲線 (B面ビューの軌道と同じ色)
 const COLOR_COAST = 0x8a8f99; // 近点ΔVを打たなかった場合 (B面ビューと同じ)
@@ -80,7 +83,8 @@ export function initOrbitView() {
   sunLight.position.set(0.5, 1, 0.6);
   scene.add(sunLight);
 
-  // 軌道面。大きさは軌道に合わせて毎回張り直す (規模が桁で変わるため)
+  // 軌道面。広さは画角を合わせるときにだけ決め、rp/raを動かしても変えない
+  // (掴んで動かしている最中にグリッドが伸び縮みすると縮尺の感覚が崩れる)。
   planeGrid = new THREE.LineSegments(
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.16, depthWrite: false })
@@ -134,12 +138,10 @@ export function initOrbitView() {
   apoapsisMarker = marker(COLOR_RA);
   root.add(apoapsisMarker);
 
-  // 近点ΔV。天体のすぐ外側になるので、他の線と同様に手前に描く
-  dvArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, COLOR_DV, 0.25, 0.14);
+  // 近点ΔV。このビューの主役なので、線ではなく太さのあるメッシュで描く。
+  // 天体のすぐ外側になるので、他の線と同様に深度テストを切って手前に出す。
+  dvArrow = makeThickArrow(COLOR_DV);
   dvArrow.name = "dv_arrow";
-  dvArrow.line.material.depthTest = false;
-  dvArrow.cone.material.depthTest = false;
-  dvArrow.renderOrder = 3;
   root.add(dvArrow);
 
   rpGuide = makeLine([new THREE.Vector3()], COLOR_RP, 0.35);
@@ -174,6 +176,37 @@ export function initOrbitView() {
   controls.addEventListener("change", () => invalidateOrbitView());
   window.addEventListener("resize", () => invalidateOrbitView());
   invalidateOrbitView();
+}
+
+/**
+ * 太さのある矢印。ArrowHelperの線は環境によらず1px固定で細く、ΔVのように
+ * 「まずこれを見てほしい」ものには弱いので、円柱(軸)と円錐(頭)で作る。
+ * 既定の向きは +Y。setThickArrow で位置・向き・長さを与える。
+ */
+function makeThickArrow(color) {
+  const g = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ color });
+  material.depthTest = false;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16), material);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 20), material);
+  g.add(shaft);
+  g.add(head);
+  g.renderOrder = 3;
+  g.userData = { shaft, head };
+  return g;
+}
+
+function setThickArrow(arrow, from, dir, len, radius) {
+  const { shaft, head } = arrow.userData;
+  const headLen = len * 0.35;
+  const shaftLen = len - headLen;
+  // CylinderもConeも原点中心なので、根元が0に来るよう半分ずらす
+  shaft.scale.set(radius, shaftLen, radius);
+  shaft.position.set(0, shaftLen / 2, 0);
+  head.scale.set(radius * 2.4, headLen, radius * 2.4);
+  head.position.set(0, shaftLen + headLen / 2, 0);
+  arrow.position.copy(from);
+  arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
 }
 
 function marker(color) {
@@ -338,10 +371,6 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   apoapsisMarker.position.copy(apo);
   periapsisMarker.scale.setScalar(extent * 0.022);
   apoapsisMarker.scale.setScalar(extent * 0.022);
-  // 円軌道では遠点は近点と区別できないので描かない
-  const eccentric = ra_n > rp_n * 1.01;
-  raLine.visible = eccentric;
-  apoapsisMarker.visible = eccentric;
 
   // --- 進行方向 ---
   // 探査機は真近点角が増える向きに進むので、点列の順方向がそのまま進行方向。
@@ -368,14 +397,10 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   // 天体の大きさを基準にすると矢印が見えなくなってしまう。
   const v_hyp = vinf > 0 ? Math.sqrt(vinf * vinf + (2 * mu) / rp) : undefined;
   const frac = v_hyp && dv > 0 ? Math.min(dv / v_hyp, 1) : 0;
-  const dv_len = extent * (0.08 + 0.25 * frac);
+  const dv_len = extent * (0.12 + 0.35 * frac);
   const dv_dir = kind === "escape" ? -1 : 1;
-  setArrow(dvArrow, peri, peri.clone().add(new THREE.Vector3(0, 0, dv_dir * dv_len)), head * 1.2, 0.3, 0.5);
+  setThickArrow(dvArrow, peri, new THREE.Vector3(0, 0, dv_dir), dv_len, extent * 0.016);
   dvArrow.visible = frac > 0;
-
-  // --- 軌道面 ---
-  planeGrid.geometry.dispose();
-  planeGrid.geometry = planeGridGeometry(0, extent, 8);
 
   geom = { rp_n, ra_n, R, extent, center_x };
   updateHandles();
@@ -389,17 +414,25 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   invalidateOrbitView();
 }
 
-// ハンドルの位置と、動かせる向きを示す補助線を引き直す
+// ハンドルの位置と、動かせる向きを示す補助線を引き直す。
+// 近点・遠点の印 (球と半径線) も、掴めるのがどれか分かるよう、その欄を選んで
+// いる間だけ出す。常に出していると、掴めない印まで操作対象に見えてしまう。
 function updateHandles() {
   if (!rpHandle) return;
 
   const ready = geom != null;
   const showRp = ready && activeHandle === "rp";
+  // 円軌道 (遠点=近点) でも遠点のハンドルは出す。ここで隠すと、いったん円に
+  // してしまうとマウスでは遠点を広げ直せなくなってしまう。
   const showRa = ready && activeHandle === "ra";
   rpHandle.visible = showRp;
   rpGuide.visible = showRp;
+  rpLine.visible = showRp;
+  periapsisMarker.visible = showRp;
   raHandle.visible = showRa;
   raGuide.visible = showRa;
+  raLine.visible = showRa;
+  apoapsisMarker.visible = showRa;
   if (!ready) return;
 
   if (showRp) {
@@ -439,6 +472,10 @@ function applyDrag(key, raycaster) {
 
 // 全体が画角に収まる距離にカメラを置き直す
 function fitCamera(extent) {
+  // グリッドも画角と一緒にここで決める (以後 rp/ra を動かしても張り替えない)
+  planeGrid.geometry.dispose();
+  planeGrid.geometry = planeGridGeometry(0, extent * GRID_SPAN, GRID_DIVISIONS);
+
   const fitDist = (extent * 1.3) / Math.tan((camera.fov * Math.PI) / 180 / 2);
   camera.position.setLength(fitDist);
   // 画角は以後取り直さないので、ズームで自力で追えるよう範囲を広く取る
@@ -455,12 +492,13 @@ function setVisible(visible) {
   planetMesh.visible = visible;
   planeGrid.visible = visible;
   orbitLine.visible = visible;
-  rpLine.visible = visible;
-  periapsisMarker.visible = visible;
+  // 近点・遠点の印はどの欄を選んでいるかで決まるので updateHandles が持つ
   if (!visible) {
     keepOutSphere.visible = false;
     hyperbolaLine.visible = false;
     coastHyperbola.visible = false;
+    rpLine.visible = false;
+    periapsisMarker.visible = false;
     raLine.visible = false;
     apoapsisMarker.visible = false;
     dvArrow.visible = false;
