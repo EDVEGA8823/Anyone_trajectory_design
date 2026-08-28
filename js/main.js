@@ -431,7 +431,12 @@ export function change_sequence_propaty() {
     sequence_propaty.removeChild(sequence_propaty.firstChild);
   }
 
-  if (State.selected_sequence != 0) {
+  // マヌーバは手動レグに付随する節なので、他の種別には変えられない
+  // (要らなくなったら削除するか、手動ノードを自動に戻す)
+  const is_maneuver = sel_type === Sequence_Type.Maneuver;
+  sequence_propaty.disabled = is_maneuver;
+
+  if (State.selected_sequence != 0 && !is_maneuver) {
     let option1 = document.createElement("option");
     option1.text = "変更";
     option1.value = "default";
@@ -1058,16 +1063,59 @@ export function renderManeuverControls() {
   const i = State.selected_sequence;
   if (!container || i == -1 || !State.mission_sequence) return;
 
-  const dsm = State.mission_sequence.get_dsm_info(i);
+  const mission = State.mission_sequence;
+  const dsm = mission.get_dsm_info(i);
+  const is_auto = mission.is_auto_mode(i);
+  const inputs = document.getElementById("maneuver_inputs");
+  const badge = document.getElementById("maneuver_badge");
   container.innerHTML = "";
+  if (inputs) inputs.innerHTML = "";
 
-  // 手動マヌーバはΔVの指定がまだ実装されていない。無推力で通過するだけなので、
-  // 何も起きないのが不具合に見えないよう明示しておく。
-  if (!State.mission_sequence.is_auto_mode(i)) {
-    const note = document.createElement("div");
-    note.className = "swingby-hint";
-    note.textContent = "手動マヌーバ (ΔVの指定は未実装。いまは無推力で通過)";
-    container.appendChild(note);
+  // 並びの最後の自動マヌーバは次の目的地へ繋ぐ役目を負っていて値は計算で決まる。
+  // 手前の手動マヌーバはユーザーが (ΔV, α, δ) を指定する。どちらなのかを明示する。
+  if (badge) {
+    badge.textContent = is_auto ? "自動 (行き先へ接続)" : "手動";
+    badge.className = "orbit-badge" + (is_auto ? "" : " safe");
+  }
+
+  // 手動マヌーバの設計変数。打上げの手動モードとまったく同じ流儀 (大きさ + 2角)。
+  if (!is_auto && inputs) {
+    const addField = (label_text, value, step, hint, on_change) => {
+      const label = document.createElement("label");
+      label.textContent = label_text;
+      if (hint) label.title = hint;
+      const input = document.createElement("input");
+      input.type = "number";
+      input.step = String(step);
+      input.value = value;
+      input.onchange = () => {
+        on_change(Number(input.value));
+        refresh_after_swingby_change();
+      };
+      const field = document.createElement("div");
+      field.className = "column param-field";
+      field.appendChild(label);
+      field.appendChild(input);
+      inputs.appendChild(field);
+    };
+
+    addField("ΔV [m/s]", (mission.dsm_dv(i) * 1000).toFixed(0), 1, "噴射の大きさ", (v) =>
+      mission.set_dsm_dv(i, v / 1000)
+    );
+    addField(
+      "方位角 α [deg]",
+      (mission.dsm_alpha(i) * RAD2DEG).toFixed(1),
+      0.1,
+      "軌道面内で、進行方向から測った角 (進行方向が0)",
+      (v) => mission.set_dsm_alpha(i, v * DEG2RAD)
+    );
+    addField(
+      "仰角 δ [deg]",
+      (mission.dsm_delta(i) * RAD2DEG).toFixed(1),
+      0.1,
+      "軌道面からの傾き (軌道面の法線向きが正)。±90度まで",
+      (v) => mission.set_dsm_delta(i, v * DEG2RAD)
+    );
   }
 
   if (dsm == null) {
@@ -1085,6 +1133,11 @@ export function renderManeuverControls() {
     ["実行後", norm(dsm.v_after).toFixed(3), "km/s", false],
     ["太陽距離", (norm(dsm.r) / AU).toFixed(3), "AU", false],
   ];
+  // 自動マヌーバでも向きは決まっているので、手動と同じ2角で読めるようにする
+  if (is_auto && dsm.angles) {
+    tiles.push(["方位角 α", (dsm.angles.alpha * RAD2DEG).toFixed(1), "°", false]);
+    tiles.push(["仰角 δ", (dsm.angles.delta * RAD2DEG).toFixed(1), "°", false]);
+  }
   tiles.forEach(([title, value, unit, primary]) => {
     const box = document.createElement("div");
     box.className = "value_box" + (primary ? " primary" : "");

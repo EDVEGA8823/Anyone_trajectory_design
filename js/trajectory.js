@@ -190,6 +190,38 @@ export function entry_conic(mu, v_inf, r_e, gamma) {
   return { v_e, h, p, e, nu_e, rp: p / (1 + e) };
 }
 
+// --- 進行方向を基準にした推力 (手動マヌーバ) ---
+//
+// 打上げの手動モードとまったく同じ流儀で向きを決める。
+//   x_hat = 進行方向, z_hat = 軌道面の法線, y_hat = z×x
+// を基準に、方位角αと仰角δで向きを、大きさをΔVで与える。
+// 打上げは「天体の公転速度」を基準に取るのに対し、マヌーバは「探査機自身の
+// 速度」を基準に取る、という違いしかないので計算はそのまま使い回せる。
+export const impulse_frame = launch_frame;
+
+/**
+ * 速度vで進んでいる探査機に、進行方向基準の(ΔV, α, δ)で推力を与える。
+ * @returns {{dv_vec:number[], v_after:number[]}|undefined}
+ */
+export function apply_impulse(r, v, dv, alpha, delta) {
+  const out = launch_velocity(r, v, dv, alpha, delta);
+  return out == undefined ? undefined : { dv_vec: out.v_inf_vec, v_after: out.v_out };
+}
+
+/**
+ * ΔVベクトルを進行方向基準の2角に分解する (get_launch_angles と同じ考え方)。
+ * 自動マヌーバでも「どっち向きに、どれだけ噴いているのか」を同じ形で読める。
+ */
+export function impulse_angles(r, v, dv_vec) {
+  const frame = impulse_frame(r, v);
+  const dv = math.norm(dv_vec);
+  if (frame == undefined || !(dv > 1e-12)) return undefined;
+  return {
+    alpha: Math.atan2(math.dot(dv_vec, frame.y_hat), math.dot(dv_vec, frame.x_hat)),
+    delta: Math.asin(Math.max(-1, Math.min(1, math.dot(dv_vec, frame.z_hat) / dv))),
+  };
+}
+
 export const i_hat = [1, 0, 0];
 export const j_hat = [0, 1, 0];
 export const k_hat = [0, 0, 1];
@@ -638,6 +670,11 @@ export class Mission {
   #m_orbit_ra = [];
   #m_orbit_info = []; // 直近に計算された投入/脱出の結果 (get_orbit_info用)
 
+  // 手動マヌーバの設計変数。打上げの手動モードと同じ (大きさと2つの角度)。
+  #m_dsm_dv = []; // ΔVの大きさ [km/s]
+  #m_dsm_alpha = []; // 方位角 [rad] (進行方向が0)
+  #m_dsm_delta = []; // 仰角 [rad] (軌道面から法線向きが正)
+
   // 大気圏突入ノードの突入経路角 [rad] (水平から測り、降下方向が負) と計算結果
   #m_entry_gamma = [];
   #m_entry_info = [];
@@ -1063,16 +1100,27 @@ export class Mission {
     if (arrived == undefined) return;
     this.#m_s_c_pos[i] = arrived.r;
 
-    // 手動マヌーバ: ΔVの指定はこれから実装する。いまは無推力で通り過ぎるだけに
-    // して、軌道が途切れないようにしておく (総ΔVにも入らない)。
+    // 手動マヌーバ: 打上げの手動モードと同じく、進行方向を基準にした
+    // (ΔV, 方位角, 仰角) で噴射する。ここから先はまた無推力で流れていき、
+    // 目的地への到達は並びの最後の自動マヌーバが担保する。
     if (!this.#m_is_auto_mode[i]) {
-      this.#m_s_c_vel[i] = [arrived.v, undefined];
+      const applied = apply_impulse(
+        arrived.r,
+        arrived.v,
+        this.dsm_dv(i),
+        this.dsm_alpha(i),
+        this.dsm_delta(i)
+      );
+      const v_after = applied != undefined ? applied.v_after : arrived.v;
+      const dv_vec = applied != undefined ? applied.dv_vec : [0, 0, 0];
+      this.#m_s_c_vel[i] = [v_after, undefined];
       this.#m_dsm_info[i] = {
         r: arrived.r,
         v_before: arrived.v,
-        v_after: arrived.v,
-        dv_vec: [0, 0, 0],
-        dv: 0,
+        v_after,
+        dv_vec,
+        dv: math.norm(dv_vec),
+        angles: { alpha: this.dsm_alpha(i), delta: this.dsm_delta(i) },
         mode: "manual",
       };
       return;
@@ -1095,7 +1143,16 @@ export class Mission {
     const dv = math.norm(dv_vec);
 
     this.#m_s_c_vel[i] = v_lam;
-    this.#m_dsm_info[i] = { r: arrived.r, v_before: arrived.v, v_after: v_lam[0], dv_vec, dv };
+    this.#m_dsm_info[i] = {
+      r: arrived.r,
+      v_before: arrived.v,
+      v_after: v_lam[0],
+      dv_vec,
+      dv,
+      // 自動でも向きは決まっているので、手動と同じ形 (2角) でも読めるようにする
+      angles: impulse_angles(arrived.r, arrived.v, dv_vec),
+      mode: "auto",
+    };
   }
 
   // 最終軌道ノード: 目的地を持たず、直前のノードの出発状態をこのノードの
@@ -1734,6 +1791,31 @@ export class Mission {
     this.#recompute_all();
   }
 
+  // --- 手動マヌーバの設計変数 (打上げの手動モードと同じ流儀) ---
+  dsm_dv(i) {
+    return this.#m_dsm_dv[i] ?? 0;
+  }
+  dsm_alpha(i) {
+    return this.#m_dsm_alpha[i] ?? 0;
+  }
+  dsm_delta(i) {
+    return this.#m_dsm_delta[i] ?? 0;
+  }
+  set_dsm_dv(i, dv) {
+    this.#m_dsm_dv[i] = Math.max(0, dv);
+    this.#recompute_all();
+  }
+  set_dsm_alpha(i, alpha) {
+    this.#m_dsm_alpha[i] = alpha;
+    this.#recompute_all();
+  }
+  set_dsm_delta(i, delta) {
+    // 仰角は±90度まで (これを超えると方位角側で表せる)
+    const lim = Math.PI / 2;
+    this.#m_dsm_delta[i] = Math.max(-lim, Math.min(lim, delta));
+    this.#recompute_all();
+  }
+
   #has_maneuver_after(i) {
     return i + 1 < this.#m_count && this.#m_types[i + 1] === Sequence_Type.Maneuver;
   }
@@ -1824,6 +1906,9 @@ export class Mission {
     this.#m_orbit_info.splice(idx, 0, undefined);
     this.#m_entry_gamma.splice(idx, 0, undefined);
     this.#m_entry_info.splice(idx, 0, undefined);
+    this.#m_dsm_dv.splice(idx, 0, undefined);
+    this.#m_dsm_alpha.splice(idx, 0, undefined);
+    this.#m_dsm_delta.splice(idx, 0, undefined);
     this.#m_planet_pos.splice(idx, 0, undefined);
     this.#m_planet_vel.splice(idx, 0, undefined);
     this.#m_s_c_pos.splice(idx, 0, undefined);
@@ -1849,6 +1934,9 @@ export class Mission {
     this.#m_orbit_info.splice(idx, 1);
     this.#m_entry_gamma.splice(idx, 1);
     this.#m_entry_info.splice(idx, 1);
+    this.#m_dsm_dv.splice(idx, 1);
+    this.#m_dsm_alpha.splice(idx, 1);
+    this.#m_dsm_delta.splice(idx, 1);
     this.#m_planet_pos.splice(idx, 1);
     this.#m_planet_vel.splice(idx, 1);
     this.#m_s_c_pos.splice(idx, 1);
@@ -1888,6 +1976,9 @@ export class Mission {
     this.#m_orbit_info.splice(idx, 0, undefined);
     this.#m_entry_gamma.splice(idx, 0, undefined);
     this.#m_entry_info.splice(idx, 0, undefined);
+    this.#m_dsm_dv.splice(idx, 0, undefined);
+    this.#m_dsm_alpha.splice(idx, 0, undefined);
+    this.#m_dsm_delta.splice(idx, 0, undefined);
     // 平行配列はすべて同じ位置にずらす。ここを漏らすと途中挿入のときに
     // 添字がずれて別ノードの計算結果を参照してしまう。
     this.#m_planet_pos.splice(idx, 0, undefined);
