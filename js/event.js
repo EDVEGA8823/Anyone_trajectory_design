@@ -148,7 +148,9 @@ export function delete_sequence(i) {
   updateAfterAdd();
 }
 
-function updateAfterAdd() {
+// シーケンスの並びが丸ごと変わったあとの作り直し。
+// ノードの追加・削除のほか、ファイルからの読み込みでも使う。
+export function updateAfterAdd() {
   updateControlPanelDisplay();
   change_sequence();
   change_sequence_propaty();

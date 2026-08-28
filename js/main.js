@@ -63,7 +63,8 @@ import {
   setPorkchopHandlers,
   porkchopNote,
 } from './porkchop.js';
-import { initTopbar } from './topbar.js';
+import { initTopbar, setTopbarHandlers } from './topbar.js';
+import { saveMissionFile, openMissionFile, initMissionFileDrop } from './mission_file.js';
 import {
   initEntryView,
   updateEntryView,
@@ -2037,8 +2038,11 @@ function boot() {
   });
 
   setPorkchopHandlers({ onPick: apply_porkchop_pick });
-  // 上部バーは並びだけ作ってある。中身は setTopbarHandlers で後から差し込む
+  // 上部バーは並びだけ作ってある。中身のあるものをここで差し込む
+  // (差し込まれていないボタンは「準備中」と出るだけ)
   initTopbar();
+  setTopbarHandlers({ save: saveMissionFile, load: openMissionFile });
+  initMissionFileDrop();
 
   const z_btn = document.getElementById("z_zoom");
   if (z_btn) z_btn.addEventListener("click", toggle_z_zoom);

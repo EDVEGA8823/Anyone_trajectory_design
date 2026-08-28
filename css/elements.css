@@ -300,6 +300,25 @@ body {
   }
 }
 
+/* 保存したファイルを画面に落として読み込めることを示す枠 */
+body.file-drop::after {
+  content: "ミッションのファイルを落として読み込む";
+  position: fixed;
+  inset: 8px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-lg);
+  background: rgba(59, 111, 224, 0.06);
+  color: var(--accent-strong);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
 /* 画面上部に短く出る知らせ */
 .toast {
   position: fixed;

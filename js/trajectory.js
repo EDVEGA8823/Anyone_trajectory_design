@@ -2034,6 +2034,109 @@ export class Mission {
   }
 
   /**
+   * ミッションを保存用の素の値に書き出す。
+   *
+   * 出すのは設計変数だけ (種別・天体・日付・手動パラメータ)。位置や速度、
+   * ΔVといった計算結果は入れない。読み込み側で全部計算し直すので、入れても
+   * 大きくなるうえに古くなるだけで、食い違えばむしろ害になる。
+   *
+   * 種別は日本語のラベルではなく Sequence_Type のキー (Launch など) で書く。
+   * 表示の文言を変えても、また英語表示を入れても、保存したファイルが読める。
+   */
+  serialize() {
+    const key_of = {};
+    for (const [k, v] of Object.entries(Sequence_Type)) key_of[v] = k;
+
+    const nodes = [];
+    for (let i = 0; i < this.#m_count; i++) {
+      const n = { type: key_of[this.#m_types[i]] ?? "None", date: this.#m_dates[i] };
+      if (this.#m_planet_nums[i] != undefined && this.#m_planet_nums[i] !== -1) n.planet = this.#m_planet_nums[i];
+      if (!this.#m_is_auto_mode[i]) n.manual = true;
+      if (this.#m_rp[i] != undefined) n.rp = this.#m_rp[i];
+      if (this.#m_beta[i]) n.beta = this.#m_beta[i];
+      if (this.#m_orbit_rp[i] != undefined) n.orbit_rp = this.#m_orbit_rp[i];
+      if (this.#m_orbit_ra[i] != undefined) n.orbit_ra = this.#m_orbit_ra[i];
+      if (this.#m_entry_gamma[i] != undefined) n.entry_gamma = this.#m_entry_gamma[i];
+      if (this.#m_dsm_dv[i] != undefined) {
+        n.dsm = { dv: this.#m_dsm_dv[i], alpha: this.#m_dsm_alpha[i] ?? 0, delta: this.#m_dsm_delta[i] ?? 0 };
+      }
+      if (this.#m_pinned_event[i] != undefined) n.pinned = this.#m_pinned_event[i];
+      nodes.push(n);
+    }
+
+    return {
+      launch: { vinf: this.#m_launch_vinf, alpha: this.#m_launch_alpha, delta: this.#m_launch_delta },
+      nodes,
+    };
+  }
+
+  /**
+   * serialize() で書き出したものからミッションを組み立て直す。
+   *
+   * 手で書き換えたファイルも来うるので、値は読める形に直してから入れる
+   * (知らない種別は「---」、範囲外の天体は未割当、日付の前後が詰まりすぎて
+   * いれば最小間隔まで広げる)。前提が崩れた節を普通の節に戻す正規化は
+   * #recompute_all がやるので、多少おかしくても壊れた状態にはならない。
+   *
+   * @returns {boolean} 読めたか
+   */
+  restore(data) {
+    if (!data || !Array.isArray(data.nodes) || data.nodes.length === 0) return false;
+
+    const nodes = data.nodes;
+    const num = (v, fallback) => (typeof v === "number" && isFinite(v) ? v : fallback);
+    const blank = () => new Array(nodes.length).fill(undefined);
+
+    this.#m_count = nodes.length;
+    this.#m_types = nodes.map((n) => Sequence_Type[n.type] ?? Sequence_Type.None);
+    this.#m_types[0] = Sequence_Type.Launch; // 先頭は常に打上げ
+    this.#m_dates = nodes.map((n, i) => num(n.date, i * MIN_NODE_GAP));
+    this.#m_planet_nums = nodes.map((n) => {
+      const p = Math.round(num(n.planet, -1));
+      return p >= 0 && p < planet_mu.length ? p : -1;
+    });
+    this.#m_is_auto_mode = nodes.map((n) => !n.manual);
+    this.#m_rp = nodes.map((n) => num(n.rp, undefined));
+    this.#m_beta = nodes.map((n) => num(n.beta, 0));
+    this.#m_orbit_rp = nodes.map((n) => num(n.orbit_rp, undefined));
+    this.#m_orbit_ra = nodes.map((n) => num(n.orbit_ra, undefined));
+    this.#m_entry_gamma = nodes.map((n) => num(n.entry_gamma, undefined));
+    this.#m_dsm_dv = nodes.map((n) => (n.dsm ? num(n.dsm.dv, 0) : undefined));
+    this.#m_dsm_alpha = nodes.map((n) => (n.dsm ? num(n.dsm.alpha, 0) : undefined));
+    this.#m_dsm_delta = nodes.map((n) => (n.dsm ? num(n.dsm.delta, 0) : undefined));
+    this.#m_pinned_event = nodes.map((n) =>
+      Object.values(Leg_Event).includes(n.pinned) ? n.pinned : undefined
+    );
+
+    // 日付は必ず前から順に、最小間隔を空けて並ぶようにする
+    for (let i = 1; i < this.#m_count; i++) {
+      if (this.#m_dates[i] - this.#m_dates[i - 1] < MIN_NODE_GAP) {
+        this.#m_dates[i] = this.#m_dates[i - 1] + MIN_NODE_GAP;
+      }
+    }
+
+    const launch = data.launch ?? {};
+    this.#m_launch_vinf = Math.max(0, num(launch.vinf, 3));
+    this.#m_launch_alpha = num(launch.alpha, 0);
+    this.#m_launch_delta = num(launch.delta, 0);
+
+    // 計算結果は持ち込まない。読み込んだ設計変数から全部やり直す
+    this.#m_planet_pos = blank();
+    this.#m_planet_vel = blank();
+    this.#m_s_c_pos = blank();
+    this.#m_s_c_vel = blank();
+    this.#m_orbit_info = blank();
+    this.#m_entry_info = blank();
+    this.#m_swingby_info = blank();
+    this.#m_dsm_info = blank();
+    this.#m_end_info = blank();
+    this.#m_trajectory_arcs = blank();
+
+    this.#recompute_all();
+    return true;
+  }
+
+  /**
    * シーケンスを1つ削除する。
    *
    * マヌーバ(DSM)ノードは手動モードに付随して自動で出し入れするものなので、
