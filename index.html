@@ -169,7 +169,21 @@
               <label>マヌーバ (DSM)</label>
               <span class="orbit-badge" id="maneuver_badge"></span>
             </div>
-            <div class="row maneuver-inputs" id="maneuver_inputs"></div>
+            <div class="row view-row" id="dsm_view_row">
+              <div class="view-3d">
+                <canvas id="dsm_canvas"></canvas>
+              </div>
+              <div class="column orbit-controls">
+                <div class="column swingby-inputs" id="maneuver_inputs"></div>
+              </div>
+            </div>
+            <div class="view-legend" id="dsm_legend">
+              <span><i class="sw-dv"></i>ΔV</span>
+              <span><i class="sw-alpha"></i>方位角 α</span>
+              <span><i class="sw-delta"></i>仰角 δ</span>
+              <span><i class="sw-track"></i>探査機の進行方向 (画面右基準)</span>
+              <span id="dsm_scale">グリッド 1目盛 = - m/s</span>
+            </div>
             <div class="row maneuver-readout" id="maneuver_readout"></div>
           </div>
 

@@ -784,26 +784,6 @@ input:focus {
 /* ==================================================================
    マヌーバ (DSM)
    ================================================================== */
-/* マヌーバの入力欄。パネルの幅を使えるので3つ横に並べる */
-.maneuver-inputs {
-  flex-flow: row wrap;
-  gap: 4px 14px;
-  align-items: flex-start;
-}
-.maneuver-inputs .param-field {
-  flex: 1 1 110px;
-  min-width: 0;
-}
-.maneuver-inputs label {
-  text-transform: none;
-  line-height: 1.2;
-}
-.maneuver-inputs input {
-  padding: 5px 8px;
-  font-size: 13px;
-  width: 100%;
-}
-
 .maneuver-readout {
   flex-wrap: wrap;
   gap: 6px;
@@ -931,6 +911,9 @@ input:focus {
 .view-legend .sw-horizon {
   background: #8a8f99;
 }
+.view-legend .sw-track {
+  background: #2a5bd7;
+}
 
 /* プレビューを広く取るため、右側の数値・入力欄は細い1カラムにする */
 .swingby-controls,
@@ -1025,9 +1008,10 @@ input:focus {
 
 /* --- 周回軌道投入 / 軌道脱出 --- */
 /* プレビューの横に、入力欄と結果を縦に積む (他のビューと同じ細い1カラム) */
-/* 大気圏突入は入力が1つ・読み値も4行と短いので、枠の高さがプレビューの
-   大きさを決めてしまう。マウスで触る図なので下限を与えて小さくしすぎない */
-.entry-only .view-3d {
+/* 大気圏突入とマヌーバは入力欄が少なく、枠の高さがプレビューの大きさを
+   決めてしまう。マウスで触る図なので下限を与えて小さくしすぎない */
+.entry-only .view-3d,
+.maneuver-only .view-3d {
   min-height: 260px;
 }
 
@@ -1119,6 +1103,9 @@ input:focus {
 }
 .param-field--gamma.active label::after {
   content: "\21BB"; /* 回転矢印 = 突入点まわりに入射方向を回す */
+}
+.param-field--dv.active label::after {
+  content: "\2195"; /* 上下矢印 = ΔVの向きに伸び縮み */
 }
 /* rp や β を大文字化すると別の記号に見えてしまうのでそのまま出す */
 .swingby-inputs label {

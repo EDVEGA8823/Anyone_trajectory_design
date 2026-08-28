@@ -67,6 +67,9 @@ export const State = {
   orbit_handle: null,
   // 大気圏突入ビューでマウスで動かせるようにしているパラメータ (null | "gamma")。
   entry_handle: null,
+  // マヌーバビューでマウスで動かせるようにしているパラメータ
+  // (null | "dv" | "alpha" | "delta")。
+  dsm_handle: null,
   // 時刻編集の対象ノード。通常は selected_sequence と同じだが、選択中ノードの
   // 前後のマーカーを掴むとそのノードに切り替わる(選択自体は動かさない)。
   editing_sequence: -1,

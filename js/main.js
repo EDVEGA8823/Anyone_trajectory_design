@@ -44,6 +44,14 @@ import {
   invalidateOrbitView,
 } from './orbit_view.js';
 import {
+  initDsmView,
+  updateDsmView,
+  setDsmViewHandlers,
+  setDsmActiveHandle,
+  invalidateDsmView,
+  dsmViewScale,
+} from './dsm_view.js';
+import {
   initEntryView,
   updateEntryView,
   setEntryViewHandlers,
@@ -765,9 +773,11 @@ export function updateControlPanelDisplay() {
   invalidateLaunchView();
   invalidateOrbitView();
   invalidateEntryView();
+  invalidateDsmView();
 
   if (is_swingby) updateBPlaneView();
   if (is_maneuver) renderManeuverControls();
+  else if (State.dsm_handle) setDsmHandle(null);
   if (is_end) renderEndControls();
   if (is_orbit) renderOrbitControls();
   else if (State.orbit_handle) setOrbitHandle(null);
@@ -1078,9 +1088,19 @@ export function renderManeuverControls() {
     badge.className = "orbit-badge" + (is_auto ? "" : " safe");
   }
 
+  // 別のノードに移ったらマウスハンドルは引っ込める
+  if (State.dsm_handle && (is_auto || dsm_handle_seq !== i)) setDsmHandle(null);
+
+  // 3Dビューは手動マヌーバのときだけ出す (自動は計算で決まる値なので触れない)
+  const view_row = document.getElementById("dsm_view_row");
+  const legend = document.getElementById("dsm_legend");
+  if (view_row) view_row.style.display = is_auto ? "none" : "flex";
+  if (legend) legend.style.display = is_auto ? "none" : "flex";
+
   // 手動マヌーバの設計変数。打上げの手動モードとまったく同じ流儀 (大きさ + 2角)。
   if (!is_auto && inputs) {
-    const addField = (label_text, value, step, hint, on_change) => {
+    // 欄を選ぶと、その欄に対応するハンドルがマヌーバビューに出てマウスで動かせる
+    const addField = (key, label_text, value, step, hint, on_change) => {
       const label = document.createElement("label");
       label.textContent = label_text;
       if (hint) label.title = hint;
@@ -1092,17 +1112,14 @@ export function renderManeuverControls() {
         on_change(Number(input.value));
         refresh_after_swingby_change();
       };
-      const field = document.createElement("div");
-      field.className = "column param-field";
-      field.appendChild(label);
-      field.appendChild(input);
-      inputs.appendChild(field);
+      inputs.appendChild(makeParamField(key, label, input, DSM_HANDLE));
     };
 
-    addField("ΔV [m/s]", (mission.dsm_dv(i) * 1000).toFixed(0), 1, "噴射の大きさ", (v) =>
+    addField("dv", "ΔV [m/s]", (mission.dsm_dv(i) * 1000).toFixed(0), 1, "噴射の大きさ", (v) =>
       mission.set_dsm_dv(i, v / 1000)
     );
     addField(
+      "alpha",
       "方位角 α [deg]",
       (mission.dsm_alpha(i) * RAD2DEG).toFixed(1),
       0.1,
@@ -1110,12 +1127,26 @@ export function renderManeuverControls() {
       (v) => mission.set_dsm_alpha(i, v * DEG2RAD)
     );
     addField(
+      "delta",
       "仰角 δ [deg]",
       (mission.dsm_delta(i) * RAD2DEG).toFixed(1),
       0.1,
       "軌道面からの傾き (軌道面の法線向きが正)。±90度まで",
       (v) => mission.set_dsm_delta(i, v * DEG2RAD)
     );
+
+    updateDsmView({
+      // 目盛りを選び直すのは、ノードが変わったときと、ΔVの桁が変わったとき
+      // だけにする。操作のたびに目盛りが動くと大きさの感覚が崩れるが、桁が
+      // 変わったまま据え置くと矢印がグリッドから外れて読めなくなる。
+      key: "dsm" + i + ":" + Math.floor(Math.log10(Math.max(mission.dsm_dv(i), 0.05))),
+      dv: mission.dsm_dv(i),
+      alpha: mission.dsm_alpha(i),
+      delta: mission.dsm_delta(i),
+      ready: dsm != null,
+    });
+    const scale = document.getElementById("dsm_scale");
+    if (scale) scale.textContent = "グリッド 1目盛 = " + (dsmViewScale() * 1000).toFixed(0) + " m/s";
   }
 
   if (dsm == null) {
@@ -1632,6 +1663,7 @@ let handle_seq = -1;
 let launch_handle_seq = -1;
 let orbit_handle_seq = -1;
 let entry_handle_seq = -1;
+let dsm_handle_seq = -1;
 
 // B面ビューのハンドルの出し分け。keyは "rp" | "beta" | null
 export function setSwingbyHandle(key) {
@@ -1656,6 +1688,13 @@ export function setOrbitHandle(key) {
   setOrbitActiveHandle(key === "orbit_rp" ? "rp" : key === "orbit_ra" ? "ra" : null);
 }
 
+// マヌーバビューのハンドルの出し分け。keyは "dv" | "alpha" | "delta" | null
+export function setDsmHandle(key) {
+  State.dsm_handle = key;
+  dsm_handle_seq = key ? State.selected_sequence : -1;
+  setDsmActiveHandle(key);
+}
+
 // 大気圏突入ビューのハンドルの出し分け。keyは "gamma" | null
 export function setEntryHandle(key) {
   State.entry_handle = key;
@@ -1668,6 +1707,7 @@ const SWINGBY_HANDLE = { get: () => State.swingby_handle, set: setSwingbyHandle 
 const LAUNCH_HANDLE = { get: () => State.launch_handle, set: setLaunchHandle };
 const ORBIT_HANDLE = { get: () => State.orbit_handle, set: setOrbitHandle };
 const ENTRY_HANDLE = { get: () => State.entry_handle, set: setEntryHandle };
+const DSM_HANDLE = { get: () => State.dsm_handle, set: setDsmHandle };
 
 // ラベルと入力欄を、クリックでハンドルを出せる1つの欄にまとめる。
 // 選択中の欄のラベルをもう一度押すとハンドルを消す (カメラ操作に戻れるように)。
@@ -1718,6 +1758,16 @@ function apply_beta_from_drag(beta) {
   if (i == -1 || !State.mission_sequence) return;
   State.mission_sequence.set_beta(i, beta);
   refresh_after_swingby_change();
+}
+
+// マヌーバビューのハンドルをドラッグしている間の反映。
+function apply_dsm_from_drag(set) {
+  return (value) => {
+    const i = State.selected_sequence;
+    if (i == -1 || !State.mission_sequence) return;
+    set(State.mission_sequence, i, value);
+    refresh_after_swingby_change();
+  };
 }
 
 // 大気圏突入ビューのハンドルをドラッグしている間の反映。
@@ -1796,6 +1846,12 @@ function boot() {
   });
   initEntryView();
   setEntryViewHandlers({ onGamma: apply_entry_gamma_from_drag });
+  initDsmView();
+  setDsmViewHandlers({
+    onDv: apply_dsm_from_drag((m, i, v) => m.set_dsm_dv(i, v)),
+    onAlpha: apply_dsm_from_drag((m, i, v) => m.set_dsm_alpha(i, v)),
+    onDelta: apply_dsm_from_drag((m, i, v) => m.set_dsm_delta(i, v)),
+  });
 
   // Update time for the initial load
   Update_time();
@@ -1815,6 +1871,7 @@ function install_redraw_safety_net() {
     invalidateLaunchView();
     invalidateOrbitView();
     invalidateEntryView();
+    invalidateDsmView();
   };
   for (const type of ["pointerup", "pointerdown", "wheel", "input", "change", "keyup"]) {
     document.addEventListener(type, redraw, { passive: true, capture: true });
