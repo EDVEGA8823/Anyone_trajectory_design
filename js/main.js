@@ -1098,7 +1098,6 @@ export function renderOrbitControls() {
   const readout = document.getElementById("orbit_readout");
   const title = document.getElementById("orbit_title");
   const badge = document.getElementById("orbit_badge");
-  const note = document.getElementById("orbit_note");
   if (!inputs || !readout || i == -1 || !State.mission_sequence) return;
 
   const mission = State.mission_sequence;
@@ -1118,9 +1117,15 @@ export function renderOrbitControls() {
   readout.innerHTML = "";
 
   if (lim == undefined) {
-    note.textContent = is_insert
-      ? "天体を選ぶと計算されます"
-      : "軌道脱出は、直前の「周回軌道投入」と同じ天体からのみ行えます";
+    // 縦を使わないよう、説明は読み値の枠に1行だけ出す
+    readout.appendChild(
+      makeReadout([
+        [
+          "",
+          is_insert ? "天体を選ぶと計算されます" : "直前の「周回軌道投入」と同じ天体からのみ",
+        ],
+      ])
+    );
     updateOrbitView({ planetNum: -1 });
     return;
   }
@@ -1129,9 +1134,11 @@ export function renderOrbitControls() {
   const ra = mission.orbit_ra(i);
 
   // 欄を選ぶと、その欄に対応するハンドルが3Dビューに出てマウスで動かせる
-  const addField = (key, label_text, value, step, min, max, apply) => {
+  const addField = (key, label_text, hint, value, step, min, max, apply) => {
     const label = document.createElement("label");
     label.textContent = label_text;
+    // 上下限の理由などはツールチップに逃がす。パネルの縦は3Dビューに使いたい。
+    if (hint) label.title = hint;
     const input = document.createElement("input");
     input.type = "number";
     input.step = String(step);
@@ -1151,11 +1158,28 @@ export function renderOrbitControls() {
   const R = lim.radius;
   // 刻みは天体の大きさに合わせる (地球で10km、木星で1000km程度)
   const step = Math.max(10, Math.round(R / 500) * 10);
-  addField("orbit_rp", "近点高度 [km]", rp - R, step, lim.rp_min - R, lim.ra_max - R, (v) =>
-    mission.set_orbit_rp(i, v + R)
+  addField(
+    "orbit_rp",
+    "近点高度 [km]",
+    `下限 ${(lim.rp_min - R).toFixed(0)} km (大気・放射線帯)`,
+    rp - R,
+    step,
+    lim.rp_min - R,
+    lim.ra_max - R,
+    (v) => mission.set_orbit_rp(i, v + R)
   );
-  addField("orbit_ra", "遠点高度 [km]", ra - R, step * 10, rp - R, lim.ra_max - R, (v) =>
-    mission.set_orbit_ra(i, v + R)
+  addField(
+    "orbit_ra",
+    "遠点高度 [km]",
+    `上限 ${format_radius(lim.ra_max - R)} (ヒル半径の半分。これより外は太陽の摂動で軌道を保てない)` +
+      (info && info.dv_min != undefined
+        ? "\n上限まで広げたときの" + (is_insert ? "投入" : "脱出") + "ΔV " + (info.dv_min * 1000).toFixed(0) + " m/s"
+        : ""),
+    ra - R,
+    step * 10,
+    rp - R,
+    lim.ra_max - R,
+    (v) => mission.set_orbit_ra(i, v + R)
   );
 
   // 3Dビュー。V∞が未確定でも周回軌道そのものは描けるので、常に更新する。
@@ -1171,9 +1195,9 @@ export function renderOrbitControls() {
   });
 
   if (info == null) {
-    note.textContent = is_insert
-      ? "前のレグが決まるとΔVが計算されます"
-      : "次の目的地が決まるとΔVが計算されます";
+    readout.appendChild(
+      makeReadout([["", is_insert ? "前のレグが決まると計算" : "次の目的地が決まると計算"]])
+    );
     return;
   }
 
@@ -1187,19 +1211,9 @@ export function renderOrbitControls() {
     ["離心率", info.e.toFixed(4)],
     ["周期", format_period(info.period)],
   ];
+  // 遠点がヒル半径の上限に張り付いていることは、値の脇に短く添えるだけにする
+  if (info.ra_clamped) rows[3][1] += " (上限)";
   readout.appendChild(makeReadout(rows));
-
-  // 遠点を広げるほど投入は安くなるが、ヒル半径の半分より外は太陽の摂動で
-  // 軌道を保てない。下限(=放物線捕獲)がいくらなのかも併せて示す。
-  const parts = [];
-  if (info.ra_clamped) {
-    // 入力欄が高度なので、上限も高度で言う
-    parts.push(`遠点高度は上限 ${format_radius(info.ra_max - R)} (ヒル半径の半分)`);
-  } else if (info.dv_min != undefined) {
-    parts.push(`遠点を上限まで広げると ${(info.dv_min * 1000).toFixed(0)} m/s`);
-  }
-  parts.push("近点接線噴射。軌道の向きは自由に選べるものとしている");
-  note.textContent = parts.join(" / ");
 }
 
 function refresh_after_orbit_change() {

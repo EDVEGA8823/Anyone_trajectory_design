@@ -908,10 +908,6 @@ input:focus {
 .view-legend .sw-ra {
   background: #e0a03b;
 }
-/* 周回軌道ビューの双曲線 (黒い破線) */
-.view-legend .sw-hyp {
-  background: repeating-linear-gradient(to right, #1a1c20 0 3px, transparent 3px 5px);
-}
 
 /* プレビューを広く取るため、右側の数値・入力欄は細い1カラムにする */
 .swingby-controls,

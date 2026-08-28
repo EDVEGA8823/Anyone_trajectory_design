@@ -17,8 +17,8 @@ import {
 // 天体を中心に、V∞で入ってくる(出ていく)双曲線と、近点を共有する周回軌道の
 // 楕円を重ねて描き、近点でのΔVを矢印で示す。
 //
-// 【座標系】1単位 = 天体半径。軌道面をXY平面、近点方向を +X、進行方向を
-// 反時計回り(近点での速度が +Y)に取る。
+// 【座標系】1単位 = 天体半径。軌道面は水平 (XZ平面) に寝かせ、カメラは上から
+// 見下ろす。近点方向を +X、進行方向を画面上で反時計回り(近点での速度が -Z)に取る。
 //   ・楕円と双曲線は近点を共有し、+X軸について対称なので、この置き方だと
 //     2つの軌道の関係がそのまま読み取れる。
 //   ・軌道面の「実際の向き」は描いていない。近点接線噴射のΔVは軌道の向きに
@@ -34,6 +34,7 @@ export let renderer, scene, camera, controls;
 let root;
 let planetMesh, keepOutSphere, orbitLine, hyperbolaLine, planeGrid;
 let rpLine, raLine, periapsisMarker, apoapsisMarker, dvArrow, travelArrowhead;
+let coastHyperbola;
 let rpHandle, raHandle, rpGuide, raGuide;
 
 let activeHandle = null; // null | "rp" | "ra"
@@ -41,7 +42,6 @@ let drag = null;
 let handlers = {}; // { onRp(rp[km]), onRa(ra[km]) }
 let geom = null; // 直近の描画状態 (ハンドルの配置とドラッグの換算に使う)
 let lastViewKey;
-let lastFitExtent = 0;
 let resizeToDisplaySize;
 
 const CANVAS_MAX = 460;
@@ -49,6 +49,7 @@ const CANVAS_BORDER = 1;
 
 const COLOR_ORBIT = 0x3b6fe0; // 周回軌道 (楕円)
 const COLOR_HYPERBOLA = 0x1a1c20; // 双曲線 (B面ビューの軌道と同じ色)
+const COLOR_COAST = 0x8a8f99; // 近点ΔVを打たなかった場合 (B面ビューと同じ)
 const COLOR_RP = 0xd6543f;
 const COLOR_RA = 0xe0a03b;
 const COLOR_DV = 0x9b4fd8;
@@ -56,10 +57,6 @@ const COLOR_DV = 0x9b4fd8;
 const PLANET_COLORS = [
   0x9c9c9c, 0xe0c58f, 0x3a7bd5, 0xc1440e, 0xd9a066, 0xe4d2a4, 0x9fd8e0, 0x4f6fd8, 0xc9b28a,
 ];
-
-// 遠点を大きく動かすと軌道の規模が桁で変わるので、そのときだけ画角を取り直す。
-// 少し動かすたびにカメラが動くと大きさの感覚が崩れるため、閾値を広めに取る。
-const REFIT_RATIO = 2.5;
 
 export function initOrbitView() {
   const canvas = document.getElementById("orbit_canvas");
@@ -73,13 +70,14 @@ export function initOrbitView() {
   scene.add(root);
 
   camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100000);
-  // 軌道面をほぼ正面から見つつ、平面であることが分かる程度に傾ける
-  camera.position.set(0.18, 0.34, 1).setLength(30);
+  // 水平に寝かせた軌道面を上から見下ろす。真上だとOrbitControlsの回転軸と
+  // 重なって操作が不安定になるので、少しだけ手前(+Z)に倒す。
+  camera.position.set(0, 1, 0.42).setLength(30);
   camera.lookAt(0, 0, 0);
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   const sunLight = new THREE.DirectionalLight(0xfff4e0, 1.4);
-  sunLight.position.set(0.6, 0.8, 1);
+  sunLight.position.set(0.5, 1, 0.6);
   scene.add(sunLight);
 
   // 軌道面。大きさは軌道に合わせて毎回張り直す (規模が桁で変わるため)
@@ -103,11 +101,16 @@ export function initOrbitView() {
   );
   root.add(keepOutSphere);
 
-  // 双曲線は「これから通る/通ってきた」経路なので破線、周回軌道は実線にして、
-  // 噴射の前後がひと目で分かるようにする
-  hyperbolaLine = makeDashedLine([new THREE.Vector3()], COLOR_HYPERBOLA, 0.9);
+  // 実際に飛ぶ経路は実線。周回軌道投入では「近点で噴かなかった場合にそのまま
+  // 飛び去る側」を灰色の破線で足して、噴射の有無で何が変わるのかを見せる
+  // (B面ビューの「ΔV未実施」と同じ流儀)。
+  hyperbolaLine = makeLine([new THREE.Vector3()], COLOR_HYPERBOLA, 1);
   hyperbolaLine.name = "hyperbola";
   root.add(hyperbolaLine);
+
+  coastHyperbola = makeDashedLine([new THREE.Vector3()], COLOR_COAST, 0.9);
+  coastHyperbola.name = "coast_hyperbola";
+  root.add(coastHyperbola);
 
   orbitLine = makeLine([new THREE.Vector3()], COLOR_ORBIT, 1);
   orbitLine.name = "parking_orbit";
@@ -201,10 +204,11 @@ function activeHandleMesh() {
   return null;
 }
 
-// 円錐曲線 r = p / (1 + e cos ν) 上の点。近点が +X、進行が反時計回り。
+// 円錐曲線 r = p / (1 + e cos ν) 上の点。軌道面は水平(XZ)で、近点が +X。
+// 上から見下ろすと真近点角が増える向き = 反時計回りになる。
 function conicPoint(p, e, nu) {
   const r = p / (1 + e * Math.cos(nu));
-  return new THREE.Vector3(r * Math.cos(nu), r * Math.sin(nu), 0);
+  return new THREE.Vector3(r * Math.cos(nu), 0, -r * Math.sin(nu));
 }
 
 function conicPoints(p, e, nu0, nu1, n) {
@@ -213,13 +217,13 @@ function conicPoints(p, e, nu0, nu1, n) {
   return pts;
 }
 
-// XY平面上の正方形グリッド (中心 cx, 一辺 2*half)
+// 水平面(XZ)上の正方形グリッド (中心 cx, 一辺 2*half)
 function planeGridGeometry(cx, half, divisions) {
   const pts = [];
   for (let k = 0; k <= divisions; k++) {
     const t = -half + (2 * half * k) / divisions;
-    pts.push(new THREE.Vector3(cx + t, -half, 0), new THREE.Vector3(cx + t, half, 0));
-    pts.push(new THREE.Vector3(cx - half, t, 0), new THREE.Vector3(cx + half, t, 0));
+    pts.push(new THREE.Vector3(cx + t, 0, -half), new THREE.Vector3(cx + t, 0, half));
+    pts.push(new THREE.Vector3(cx - half, 0, t), new THREE.Vector3(cx + half, 0, t));
   }
   return new THREE.BufferGeometry().setFromPoints(pts);
 }
@@ -273,21 +277,32 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   const r_max = Math.max(ra_n * 1.05, rp_n * 6);
   const e_h = vinf > 0 ? 1 + (rp * vinf * vinf) / mu : undefined;
   let hyperPts = null;
+  let coastPts = null;
   if (e_h != undefined && e_h > 1) {
     const p_h = rp_n * (1 + e_h);
     // 漸近線に達する真近点角。数値的にちょうど乗らないよう少し内側で止める
     const nu_inf = Math.acos(-1 / e_h);
     const c = (p_h / r_max - 1) / e_h;
     const nu_max = Math.min(nu_inf - 1e-3, Math.acos(Math.max(-1, Math.min(1, c))));
-    // 投入は入ってくる側 (ν<0)、脱出は出ていく側 (ν>0) を描く
+    // 実際に飛ぶ側を実線で描く。投入は入ってくる側 (ν<0)、脱出は出ていく側 (ν>0)。
     hyperPts =
       kind === "escape"
         ? conicPoints(p_h, e_h, 0, nu_max, 160)
         : conicPoints(p_h, e_h, -nu_max, 0, 160);
     setLinePoints(hyperbolaLine, hyperPts);
     hyperbolaLine.visible = true;
+
+    // 投入では「近点で噴かなかった場合」= 同じ双曲線をそのまま出ていく側を破線で。
+    // 脱出では噴かなければ周回軌道に留まるだけ(=実線の楕円)なので、描かない。
+    if (kind === "escape") {
+      coastHyperbola.visible = false;
+    } else {
+      coastPts = conicPoints(p_h, e_h, 0, nu_max, 160);
+      coastHyperbola.visible = true;
+    }
   } else {
     hyperbolaLine.visible = false;
+    coastHyperbola.visible = false;
   }
 
   // --- 画面の広さと中心 ---
@@ -303,8 +318,16 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   };
   span(orbitPts);
   if (hyperPts) span(hyperPts);
+  if (coastPts) span(coastPts);
 
   const head = extent * 0.04;
+
+  if (coastPts) {
+    // 破線の目の粗さは軌道の規模に合わせる (固定だと大きい軌道でほぼ実線に見える)
+    coastHyperbola.material.dashSize = extent * 0.025;
+    coastHyperbola.material.gapSize = extent * 0.018;
+    setLinePoints(coastHyperbola, coastPts);
+  }
 
   // --- 近点・遠点 ---
   const peri = new THREE.Vector3(rp_n, 0, 0);
@@ -321,10 +344,14 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   apoapsisMarker.visible = eccentric;
 
   // --- 進行方向 ---
-  // 双曲線の途中に矢じるしを置く。投入(ν<0側)も脱出(ν>0側)も、探査機は真近点角が
-  // 増える向きに進むので、点列の順方向がそのまま進行方向になる。
+  // 探査機は真近点角が増える向きに進むので、点列の順方向がそのまま進行方向。
+  // 近点にはΔVの矢印が出るので、矢じるしは遠い側に寄せて重ならないようにする。
   if (hyperPts && hyperPts.length > 6) {
-    const mid = Math.floor(hyperPts.length / 2);
+    const last = hyperPts.length - 1;
+    // 近点は投入なら配列の末尾、脱出なら先頭。双曲線は近点の手前で大きく曲がる
+    // ため、弧に沿って測るとまだΔVの矢印に近い。十分離れる遠い側に置く。
+    const raw = kind === "escape" ? last * 0.92 : last * 0.08;
+    const mid = Math.max(2, Math.min(last - 2, Math.round(raw)));
     const tangent = new THREE.Vector3().subVectors(hyperPts[mid + 2], hyperPts[mid - 2]).normalize();
     travelArrowhead.position.copy(hyperPts[mid]);
     travelArrowhead.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
@@ -335,15 +362,15 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   }
 
   // --- 近点ΔV ---
-  // 近点では速度は動径に垂直 (+Y)。投入は逆向きに噴いて減速、脱出は順向きに加速。
-  // 長さは「双曲線の近点速度に対する割合」に比例させ、短すぎない下限を設ける。
+  // 近点では速度は動径に垂直で、この置き方だと -Z が進行方向になる。
+  // 投入は逆向きに噴いて減速 (+Z)、脱出は順向きに加速 (-Z)。
   // 長さは画面の広さに対する割合で決める。遠点を広げると軌道は桁で大きくなるので、
   // 天体の大きさを基準にすると矢印が見えなくなってしまう。
   const v_hyp = vinf > 0 ? Math.sqrt(vinf * vinf + (2 * mu) / rp) : undefined;
   const frac = v_hyp && dv > 0 ? Math.min(dv / v_hyp, 1) : 0;
   const dv_len = extent * (0.08 + 0.25 * frac);
-  const dv_dir = kind === "escape" ? 1 : -1;
-  setArrow(dvArrow, peri, peri.clone().add(new THREE.Vector3(0, dv_dir * dv_len, 0)), head * 1.2, 0.3, 0.5);
+  const dv_dir = kind === "escape" ? -1 : 1;
+  setArrow(dvArrow, peri, peri.clone().add(new THREE.Vector3(0, 0, dv_dir * dv_len)), head * 1.2, 0.3, 0.5);
   dvArrow.visible = frac > 0;
 
   // --- 軌道面 ---
@@ -353,10 +380,9 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   geom = { rp_n, ra_n, R, extent, center_x };
   updateHandles();
 
-  // 画角の取り直しは、表示対象が変わったときと、規模が桁で変わったときだけ。
-  // 遠点を少し動かすたびにカメラが動くと大きさの感覚が崩れる。
-  const scaled = lastFitExtent > 0 ? extent / lastFitExtent : Infinity;
-  if (key !== lastViewKey || scaled > REFIT_RATIO || scaled < 1 / REFIT_RATIO) {
+  // 画角を取り直すのは表示するノードが変わったときだけ (B面ビューと同じ)。
+  // rpやraを変えるたびにカメラが動くと、見ている大きさの感覚が崩れて操作しづらい。
+  if (key !== lastViewKey) {
     lastViewKey = key;
     fitCamera(extent);
   }
@@ -413,11 +439,11 @@ function applyDrag(key, raycaster) {
 
 // 全体が画角に収まる距離にカメラを置き直す
 function fitCamera(extent) {
-  lastFitExtent = extent;
   const fitDist = (extent * 1.3) / Math.tan((camera.fov * Math.PI) / 180 / 2);
   camera.position.setLength(fitDist);
+  // 画角は以後取り直さないので、ズームで自力で追えるよう範囲を広く取る
   controls.minDistance = fitDist * 0.02;
-  controls.maxDistance = fitDist * 8;
+  controls.maxDistance = fitDist * 50;
   // 軌道の規模は天体半径の数倍から数百倍まで変わる。near/far を固定にすると
   // 大きい軌道で深度の分解能が足りなくなり、天体の陰影がちらつく。
   camera.near = fitDist * 1e-3;
@@ -434,6 +460,7 @@ function setVisible(visible) {
   if (!visible) {
     keepOutSphere.visible = false;
     hyperbolaLine.visible = false;
+    coastHyperbola.visible = false;
     raLine.visible = false;
     apoapsisMarker.visible = false;
     dvArrow.visible = false;
