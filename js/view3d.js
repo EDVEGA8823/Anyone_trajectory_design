@@ -183,9 +183,13 @@ export function setRayFromEvent(event, camera, renderer, raycaster) {
   return true;
 }
 
-/** 原点を通る軸 d と、レイとの最接近点の軸上パラメータ */
-export function closestOnAxis(raycaster, d) {
-  const o = raycaster.ray.origin;
+/**
+ * 軸 d と、レイとの最接近点の軸上パラメータ。
+ * 軸は既定では原点を通る。中身をずらして描いているビュー(周回軌道ビュー)では、
+ * 軸が通る点を origin で渡す。
+ */
+export function closestOnAxis(raycaster, d, origin) {
+  const o = origin ? raycaster.ray.origin.clone().sub(origin) : raycaster.ray.origin;
   const r = raycaster.ray.direction;
   const b = d.dot(r);
   const den = 1 - b * b;

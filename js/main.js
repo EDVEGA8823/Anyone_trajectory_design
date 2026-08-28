@@ -36,6 +36,13 @@ import {
   setLaunchActiveHandle,
   invalidateLaunchView,
 } from './launch_view.js';
+import {
+  initOrbitView,
+  updateOrbitView,
+  setOrbitViewHandlers,
+  setOrbitActiveHandle,
+  invalidateOrbitView,
+} from './orbit_view.js';
 
 export function add_sequence(id) {
   let sequence_elem = document.createElement("div");
@@ -723,11 +730,13 @@ export function updateControlPanelDisplay() {
   // オンデマンド描画なので、現れた側に描き直しを頼んでおく。
   invalidateBPlane();
   invalidateLaunchView();
+  invalidateOrbitView();
 
   if (is_swingby) updateBPlaneView();
   if (is_maneuver) renderManeuverControls();
   if (is_end) renderEndControls();
   if (is_orbit) renderOrbitControls();
+  else if (State.orbit_handle) setOrbitHandle(null);
   if (is_launch) renderLaunchControls();
   // 打上げ以外に移ったらハンドルの選択は解除しておく
   else if (State.launch_handle) setLaunchHandle(null);
@@ -1098,6 +1107,9 @@ export function renderOrbitControls() {
   const info = mission.get_orbit_info(i);
   const lim = mission.orbit_limits(i);
 
+  // 別のノードに移ったらマウスハンドルは引っ込める
+  if (State.orbit_handle && orbit_handle_seq !== i) setOrbitHandle(null);
+
   title.textContent = is_insert ? "周回軌道投入 (捕獲)" : "軌道脱出 (再出発)";
   badge.textContent = is_insert ? "減速" : "加速";
   badge.className = "orbit-badge " + (is_insert ? "brake" : "boost");
@@ -1109,13 +1121,15 @@ export function renderOrbitControls() {
     note.textContent = is_insert
       ? "天体を選ぶと計算されます"
       : "軌道脱出は、直前の「周回軌道投入」と同じ天体からのみ行えます";
+    updateOrbitView({ planetNum: -1 });
     return;
   }
 
   const rp = mission.orbit_rp(i);
   const ra = mission.orbit_ra(i);
 
-  const addField = (label_text, value, step, min, max, apply) => {
+  // 欄を選ぶと、その欄に対応するハンドルが3Dビューに出てマウスで動かせる
+  const addField = (key, label_text, value, step, min, max, apply) => {
     const label = document.createElement("label");
     label.textContent = label_text;
     const input = document.createElement("input");
@@ -1129,13 +1143,7 @@ export function renderOrbitControls() {
       // 上下限でクランプされた場合は入力欄も実際の値に合わせる
       refresh_after_orbit_change();
     };
-    const field = document.createElement("div");
-    // 3Dビューを持たないので、クリックでハンドルを出す欄ではない
-    // (スイングバイの欄と違い、押せそうな見た目にはしない)
-    field.className = "column param-field param-field--static";
-    field.appendChild(label);
-    field.appendChild(input);
-    inputs.appendChild(field);
+    inputs.appendChild(makeParamField(key, label, input, ORBIT_HANDLE));
   };
 
   // 入力は半径ではなく天体表面からの高度で受け取る (手動スイングバイと同じ)。
@@ -1143,12 +1151,24 @@ export function renderOrbitControls() {
   const R = lim.radius;
   // 刻みは天体の大きさに合わせる (地球で10km、木星で1000km程度)
   const step = Math.max(10, Math.round(R / 500) * 10);
-  addField("近点高度 [km]", rp - R, step, lim.rp_min - R, lim.ra_max - R, (v) =>
+  addField("orbit_rp", "近点高度 [km]", rp - R, step, lim.rp_min - R, lim.ra_max - R, (v) =>
     mission.set_orbit_rp(i, v + R)
   );
-  addField("遠点高度 [km]", ra - R, step * 10, rp - R, lim.ra_max - R, (v) =>
+  addField("orbit_ra", "遠点高度 [km]", ra - R, step * 10, rp - R, lim.ra_max - R, (v) =>
     mission.set_orbit_ra(i, v + R)
   );
+
+  // 3Dビュー。V∞が未確定でも周回軌道そのものは描けるので、常に更新する。
+  updateOrbitView({
+    planetNum: lim.planet_num,
+    // 表示対象が変わったときだけ画角を取り直させる
+    key: i + ":" + lim.planet_num + ":" + type,
+    kind: is_insert ? "insert" : "escape",
+    rp,
+    ra,
+    vinf: info ? info.v_inf : undefined,
+    dv: info ? info.dv : undefined,
+  });
 
   if (info == null) {
     note.textContent = is_insert
@@ -1371,6 +1391,7 @@ export function renderSwingbyControls() {
 // マウスハンドルを出しているシーケンス番号 (別のノードに移ったら消すため)
 let handle_seq = -1;
 let launch_handle_seq = -1;
+let orbit_handle_seq = -1;
 
 // B面ビューのハンドルの出し分け。keyは "rp" | "beta" | null
 export function setSwingbyHandle(key) {
@@ -1386,9 +1407,19 @@ export function setLaunchHandle(key) {
   setLaunchActiveHandle(key);
 }
 
+// 周回軌道ビューのハンドルの出し分け。
+// 欄のキーはスイングバイの "rp" と衝突しないよう接頭辞を付けてあるので、
+// ビュー側の名前 ("rp" | "ra") に直してから渡す。
+export function setOrbitHandle(key) {
+  State.orbit_handle = key;
+  orbit_handle_seq = key ? State.selected_sequence : -1;
+  setOrbitActiveHandle(key === "orbit_rp" ? "rp" : key === "orbit_ra" ? "ra" : null);
+}
+
 // makeParamField に渡す、どのビューのハンドルを操作する欄なのかの指定
 const SWINGBY_HANDLE = { get: () => State.swingby_handle, set: setSwingbyHandle };
 const LAUNCH_HANDLE = { get: () => State.launch_handle, set: setLaunchHandle };
+const ORBIT_HANDLE = { get: () => State.orbit_handle, set: setOrbitHandle };
 
 // ラベルと入力欄を、クリックでハンドルを出せる1つの欄にまとめる。
 // 選択中の欄のラベルをもう一度押すとハンドルを消す (カメラ操作に戻れるように)。
@@ -1437,6 +1468,17 @@ function apply_beta_from_drag(beta) {
   if (i == -1 || !State.mission_sequence) return;
   State.mission_sequence.set_beta(i, beta);
   refresh_after_swingby_change();
+}
+
+// 周回軌道ビューのハンドルをドラッグしている間の反映。
+// 入力欄に打ち込んだときと同じ経路を通す (上下限のクランプもMission側で効く)。
+function apply_orbit_from_drag(set) {
+  return (value) => {
+    const i = State.selected_sequence;
+    if (i == -1 || !State.mission_sequence) return;
+    set(State.mission_sequence, i, value);
+    refresh_after_orbit_change();
+  };
 }
 
 // 打上げビューのハンドルをドラッグしている間の反映。
@@ -1489,6 +1531,11 @@ function boot() {
     onAlpha: apply_launch_from_drag((m, v) => m.set_launch_alpha(v)),
     onDelta: apply_launch_from_drag((m, v) => m.set_launch_delta(v)),
   });
+  initOrbitView();
+  setOrbitViewHandlers({
+    onRp: apply_orbit_from_drag((m, i, v) => m.set_orbit_rp(i, v)),
+    onRa: apply_orbit_from_drag((m, i, v) => m.set_orbit_ra(i, v)),
+  });
 
   // Update time for the initial load
   Update_time();
@@ -1506,6 +1553,7 @@ function install_redraw_safety_net() {
     invalidate();
     invalidateBPlane();
     invalidateLaunchView();
+    invalidateOrbitView();
   };
   for (const type of ["pointerup", "pointerdown", "wheel", "input", "change", "keyup"]) {
     document.addEventListener(type, redraw, { passive: true, capture: true });

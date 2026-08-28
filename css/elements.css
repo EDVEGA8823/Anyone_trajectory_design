@@ -905,6 +905,13 @@ input:focus {
 .view-legend .sw-delta {
   background: #e0a03b;
 }
+.view-legend .sw-ra {
+  background: #e0a03b;
+}
+/* 周回軌道ビューの双曲線 (黒い破線) */
+.view-legend .sw-hyp {
+  background: repeating-linear-gradient(to right, #1a1c20 0 3px, transparent 3px 5px);
+}
 
 /* プレビューを広く取るため、右側の数値・入力欄は細い1カラムにする */
 .swingby-controls,
@@ -988,25 +995,18 @@ input:focus {
 }
 
 /* --- 周回軌道投入 / 軌道脱出 --- */
-/* 3Dプレビューを持たないので、入力欄と結果を左右に並べて横幅を使い切る */
-.orbit-row {
-  align-items: flex-start;
-  gap: 14px;
-  flex-wrap: nowrap;
+/* プレビューの横に、入力欄と結果を縦に積む (他のビューと同じ細い1カラム) */
+.orbit-controls {
+  flex: 0 0 118px;
+  width: 118px;
+  min-width: 0;
+  gap: 8px;
 }
 .orbit-inputs {
-  flex: 1 1 0;
   min-width: 0;
 }
 .orbit-readout {
-  flex: 1 1 0;
   min-width: 0;
-}
-/* 結果は項目が多いので2列に折り返す */
-.orbit-readout .swingby-readout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 10px;
 }
 
 /* 投入(減速)か脱出(加速)かをひと目で分かるようにする印 */
@@ -1041,12 +1041,6 @@ input:focus {
 .param-field:hover {
   background: var(--surface-muted);
 }
-/* B面ビューのハンドルに対応しない欄 (周回軌道) は押せそうに見せない */
-.param-field--static,
-.param-field--static:hover {
-  cursor: default;
-  background: transparent;
-}
 .param-field.active {
   border-color: var(--accent);
   background: var(--accent-soft);
@@ -1071,6 +1065,10 @@ input:focus {
 .param-field--alpha.active label::after,
 .param-field--delta.active label::after {
   content: "\21BB"; /* 回転矢印 = 向きを回す */
+}
+.param-field--orbit_rp.active label::after,
+.param-field--orbit_ra.active label::after {
+  content: "\2195"; /* 上下矢印 = 近点/遠点の向きに伸び縮み */
 }
 /* rp や β を大文字化すると別の記号に見えてしまうのでそのまま出す */
 .swingby-inputs label {

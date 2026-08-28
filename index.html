@@ -119,9 +119,22 @@
               <label id="orbit_title">周回軌道</label>
               <span class="orbit-badge" id="orbit_badge"></span>
             </div>
-            <div class="row orbit-row">
-              <div class="column swingby-inputs orbit-inputs" id="orbit_inputs"></div>
-              <div class="orbit-readout" id="orbit_readout"></div>
+            <div class="row view-row">
+              <div class="view-3d">
+                <canvas id="orbit_canvas"></canvas>
+              </div>
+              <div class="column orbit-controls">
+                <div class="column swingby-inputs orbit-inputs" id="orbit_inputs"></div>
+                <div class="orbit-readout" id="orbit_readout"></div>
+              </div>
+            </div>
+            <div class="view-legend">
+              <span><i class="sw-b"></i>周回軌道</span>
+              <span><i class="sw-hyp"></i>双曲線 (V<sub>∞</sub>側)</span>
+              <span><i class="sw-rp"></i>近点 r<sub>p</sub></span>
+              <span><i class="sw-ra"></i>遠点 r<sub>a</sub></span>
+              <span><i class="sw-dv"></i>近点ΔV</span>
+              <span>向きは費用に影響しないため代表的な姿</span>
             </div>
             <div class="swingby-hint" id="orbit_note"></div>
           </div>
