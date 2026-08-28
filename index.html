@@ -32,7 +32,20 @@
 </script>
 
 <body>
-  <h1>だれでも軌道設計</h1>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <svg class="topbar-mark" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+        stroke-width="1.5" aria-hidden="true">
+        <ellipse cx="12" cy="12" rx="9.2" ry="4.6" transform="rotate(-20 12 12)" />
+        <circle cx="12" cy="12" r="2.3" fill="currentColor" stroke="none" />
+        <circle cx="19.4" cy="8.2" r="1.5" fill="currentColor" stroke="none" />
+      </svg>
+      <h1 class="topbar-title">だれでも軌道設計</h1>
+    </div>
+    <input class="topbar-name" id="mission_name" value="無題のミッション" spellcheck="false" aria-label="ミッション名"
+      title="ミッションの名前。保存や共有のときの見出しになる" />
+    <div class="topbar-actions" id="topbar_actions"></div>
+  </header>
   <div id="main_area">
     <div id="graph-panel">
       <canvas id="plot"></canvas>

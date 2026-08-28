@@ -63,6 +63,7 @@ import {
   setPorkchopHandlers,
   porkchopNote,
 } from './porkchop.js';
+import { initTopbar } from './topbar.js';
 import {
   initEntryView,
   updateEntryView,
@@ -2036,6 +2037,8 @@ function boot() {
   });
 
   setPorkchopHandlers({ onPick: apply_porkchop_pick });
+  // 上部バーは並びだけ作ってある。中身は setTopbarHandlers で後から差し込む
+  initTopbar();
 
   const z_btn = document.getElementById("z_zoom");
   if (z_btn) z_btn.addEventListener("click", toggle_z_zoom);
