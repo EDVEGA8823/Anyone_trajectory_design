@@ -48,7 +48,7 @@ const COLOR_STOPS = [
 ];
 
 const PAD = { left: 78, right: 68, top: 20, bottom: 46 };
-const HOVER_HINT = "図の上にマウスを置くと値が出ます (ドラッグで移動 / ホイールで拡大縮小)";
+const HOVER_HINT = "クリックでその時刻に設定 / ドラッグで移動 / ホイールで拡大縮小";
 
 let win = null; // ウィンドウのルート要素
 let canvas = null;
@@ -240,6 +240,35 @@ async function compute_grid(spec, on_progress, generation) {
   }
 
   return { ...spec, dep_t, arr_t, c3, vdep, varr, solved };
+}
+
+/**
+ * 指定した日付ぴったりの遷移をひとつ解く。
+ *
+ * 格子は表示のためのもので点が粗いので、マウスが指している値とクリックで決まる時刻は
+ * こちらで解き直す。1回 20μs 程度なのでマウスを動かすたびに解いても問題にならないし、
+ * 「読めた値」と「設定される時刻」が食い違わない。
+ */
+function solve_point(dep_num, arr_num, t1, t2) {
+  const tof = (t2 - t1) * DAY;
+  if (!(tof >= MIN_TOF_DAYS * DAY)) return null;
+
+  const p1 = get_planets_pos(get_planet_elements(t1, dep_num));
+  const p2 = get_planets_pos(get_planet_elements(t2, arr_num));
+  let v;
+  try {
+    v = lambert_probrem(MU_SUN, p1.r, p2.r, tof);
+  } catch (e) {
+    return null;
+  }
+  if (!v || !v[0] || !v[1]) return null;
+
+  const ax = v[0][0] - p1.v[0], ay = v[0][1] - p1.v[1], az = v[0][2] - p1.v[2];
+  const bx = v[1][0] - p2.v[0], by = v[1][1] - p2.v[1], bz = v[1][2] - p2.v[2];
+  const a2 = ax * ax + ay * ay + az * az;
+  const b2 = bx * bx + by * by + bz * bz;
+  if (!isFinite(a2) || !isFinite(b2)) return null;
+  return { c3: a2, vdep: Math.sqrt(a2), varr: Math.sqrt(b2) };
 }
 
 // 格子の (j,k) の指標値。無効なセルは NaN
@@ -988,31 +1017,16 @@ function canvas_pos(e) {
   };
 }
 
+// マウスが指している一点。格子の目に吸い付かせず、その場で解き直す
 function hovered(e) {
-  if (!view) return null;
+  if (!view || !target) return null;
   const rect = plot_rect();
   const p = canvas_pos(e);
   if (p.x < rect.x || p.x > rect.x + rect.w || p.y < rect.y || p.y > rect.y + rect.h) return null;
 
   const d = to_date(rect, p.x, p.y);
-  if (!grid) return { dep: d.dep, arr: d.arr, c3: NaN, outside: true };
-
-  // 一番近い格子点に吸い付かせる (値はその点のもの)
-  const j = Math.round(((d.dep - grid.dep0) / (grid.dep1 - grid.dep0)) * (grid.cols - 1));
-  const k = Math.round(((d.arr - grid.arr0) / (grid.arr1 - grid.arr0)) * (grid.rows - 1));
-  // 動かした直後は、まだ計算していない範囲が映っていることがある
-  if (j < 0 || j > grid.cols - 1 || k < 0 || k > grid.rows - 1) {
-    return { dep: d.dep, arr: d.arr, c3: NaN, outside: true };
-  }
-  const idx = k * grid.cols + j;
-  return {
-    dep: grid.dep_t[j],
-    arr: grid.arr_t[k],
-    idx,
-    c3: grid.c3[idx],
-    vdep: grid.vdep[idx],
-    varr: grid.varr[idx],
-  };
+  const s = solve_point(target.dep_num, target.arr_num, d.dep, d.arr);
+  return { dep: d.dep, arr: d.arr, c3: s ? s.c3 : NaN, vdep: s ? s.vdep : NaN, varr: s ? s.varr : NaN };
 }
 
 function on_move(e) {
@@ -1020,8 +1034,6 @@ function on_move(e) {
   hover_cell = c;
   if (!c) {
     hover_el.textContent = HOVER_HINT;
-  } else if (c.outside) {
-    hover_el.textContent = fmt_date(c.dep) + " → " + fmt_date(c.arr) + " : 計算範囲の外";
   } else if (!(c.c3 === c.c3)) {
     hover_el.textContent = fmt_date(c.dep) + " → " + fmt_date(c.arr) + " : 解なし";
   } else {
@@ -1036,15 +1048,16 @@ function on_move(e) {
       c.c3.toFixed(1) +
       " km²/s² ・ 到着V∞ " +
       c.varr.toFixed(2) +
-      " km/s";
+      " km/s" +
+      (on_pick ? " ・ クリックでこの時刻にする" : "");
   }
   draw();
 }
 
-// 図の上で選んだ点を時刻に反映するためのフック。
-// 使う側 (main.js) が setPorkchopHandlers で登録する。
+// 図の上で選んだ点を、そのレグの出発日・到着日にする。
+// 実際に日付を動かすのは使う側 (main.js が setPorkchopHandlers で登録する)。
 function on_click(e) {
-  if (dragged) return; // 範囲を動かしただけのときは選択にしない
+  if (dragged) return; // 範囲を動かしただけのときは時刻を変えない
   const c = hovered(e);
   if (!c || !on_pick || !(c.c3 === c.c3)) return;
   on_pick({ index: target.index, dep_date: c.dep, arr_date: c.arr });
@@ -1406,6 +1419,18 @@ export function porkchopView() {
 
 export function porkchopColorRange() {
   return color_range;
+}
+
+export function porkchopTargetDates() {
+  return target ? { dep: target.dep_date, arr: target.arr_date } : null;
+}
+
+/**
+ * 図の下の行に一言表示する (次にマウスを動かすと消える)。
+ * クリックした時刻がそのまま入らなかったときの断りに使う。
+ */
+export function porkchopNote(text) {
+  if (hover_el) hover_el.textContent = text;
 }
 
 /** 図の上をクリックしたときに呼ぶコールバックを登録する (時刻セット用) */

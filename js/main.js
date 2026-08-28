@@ -55,7 +55,14 @@ import {
   invalidateDsmView,
   dsmViewScale,
 } from './dsm_view.js';
-import { openPorkchop, updatePorkchopTarget, isPorkchopOpen, porkchopIndex } from './porkchop.js';
+import {
+  openPorkchop,
+  updatePorkchopTarget,
+  isPorkchopOpen,
+  porkchopIndex,
+  setPorkchopHandlers,
+  porkchopNote,
+} from './porkchop.js';
 import {
   initEntryView,
   updateEntryView,
@@ -852,6 +859,50 @@ function porkchop_target(i) {
     dep_name: State.planet_list[dep_num],
     arr_name: State.planet_list[arr_num],
   };
+}
+
+/**
+ * ポークチョップ図で選んだ点を、そのレグの出発日と到着日にする。
+ *
+ * 2つのノードを続けて動かすので順番が肝心。後ろへ動かすときは到着から、
+ * 前へ動かすときは出発から動かす。逆にすると、まだ動いていない相手との
+ * 最小間隔で切り詰められてしまう (チェックしたノードをまとめて動かすのと同じ理屈)。
+ */
+function apply_porkchop_pick({ index, dep_date, arr_date }) {
+  const mission = State.mission_sequence;
+  if (!mission || index < 0 || index + 1 >= mission.count) return;
+
+  if (dep_date >= mission.date(index)) {
+    mission.set_date(index + 1, arr_date);
+    mission.set_date(index, dep_date);
+  } else {
+    mission.set_date(index, dep_date);
+    mission.set_date(index + 1, arr_date);
+  }
+
+  // 時刻欄が見ている日付を、実際に入った値に合わせ直す
+  // (前後のノードに阻まれて切り詰められることがある)
+  const editing = State.editing_sequence;
+  if (editing != -1 && editing < mission.count) State.tmp_date = mission.date(editing);
+
+  change_sequence();
+  toggle_planet();
+  Update_time(); // 時刻欄・節目一覧・操作パネル・軌道の描画をまとめて更新
+
+  // 後ろのノードに阻まれて希望どおりに入らなかったときは、黙って別の時刻に
+  // なっていると混乱するので断っておく (印は実際に入った位置に出ている)
+  const off_dep = mission.date(index) - dep_date;
+  const off_arr = mission.date(index + 1) - arr_date;
+  const shifted = [];
+  const say = (name, off) => {
+    if (Math.abs(off) <= 0.5) return;
+    shifted.push(name + "を " + Math.abs(Math.round(off)) + " 日" + (off > 0 ? "遅らせ" : "早め"));
+  };
+  say("出発", off_dep);
+  say("到着", off_arr);
+  if (shifted.length > 0) {
+    porkchopNote("前後のノードとの最小間隔に阻まれ、" + shifted.join("、") + "ました");
+  }
 }
 
 // 開いているポークチョップ図に、いまの日付や天体割当を反映する。
@@ -1983,6 +2034,8 @@ function boot() {
     onAlpha: apply_dsm_from_drag((m, i, v) => m.set_dsm_alpha(i, v)),
     onDelta: apply_dsm_from_drag((m, i, v) => m.set_dsm_delta(i, v)),
   });
+
+  setPorkchopHandlers({ onPick: apply_porkchop_pick });
 
   const z_btn = document.getElementById("z_zoom");
   if (z_btn) z_btn.addEventListener("click", toggle_z_zoom);
