@@ -1041,6 +1041,12 @@ input:focus {
 .param-field:hover {
   background: var(--surface-muted);
 }
+/* B面ビューのハンドルに対応しない欄 (周回軌道) は押せそうに見せない */
+.param-field--static,
+.param-field--static:hover {
+  cursor: default;
+  background: transparent;
+}
 .param-field.active {
   border-color: var(--accent);
   background: var(--accent-soft);

@@ -1,5 +1,13 @@
 import { State, Sequence_Type, PlotState } from './state.js';
-import { get_planet_elements, get_orbit, get_planets_pos, JulianToDate, Mission, AU } from './trajectory.js';
+import {
+  get_planet_elements,
+  get_orbit,
+  get_planets_pos,
+  JulianToDate,
+  Mission,
+  AU,
+  planet_radius,
+} from './trajectory.js';
 import {
   initPlot,
   update_planets,
@@ -1122,16 +1130,25 @@ export function renderOrbitControls() {
       refresh_after_orbit_change();
     };
     const field = document.createElement("div");
-    field.className = "column param-field";
+    // 3Dビューを持たないので、クリックでハンドルを出す欄ではない
+    // (スイングバイの欄と違い、押せそうな見た目にはしない)
+    field.className = "column param-field param-field--static";
     field.appendChild(label);
     field.appendChild(input);
     inputs.appendChild(field);
   };
 
+  // 入力は半径ではなく天体表面からの高度で受け取る (手動スイングバイと同じ)。
+  // 内部は一貫して半径で扱い、ここで足し引きするだけにする。
+  const R = lim.radius;
   // 刻みは天体の大きさに合わせる (地球で10km、木星で1000km程度)
-  const step = Math.max(10, Math.round(lim.radius / 500) * 10);
-  addField("近点半径 rp [km]", rp, step, lim.rp_min, lim.ra_max, (v) => mission.set_orbit_rp(i, v));
-  addField("遠点半径 ra [km]", ra, step * 10, rp, lim.ra_max, (v) => mission.set_orbit_ra(i, v));
+  const step = Math.max(10, Math.round(R / 500) * 10);
+  addField("近点高度 [km]", rp - R, step, lim.rp_min - R, lim.ra_max - R, (v) =>
+    mission.set_orbit_rp(i, v + R)
+  );
+  addField("遠点高度 [km]", ra - R, step * 10, rp - R, lim.ra_max - R, (v) =>
+    mission.set_orbit_ra(i, v + R)
+  );
 
   if (info == null) {
     note.textContent = is_insert
@@ -1140,22 +1157,24 @@ export function renderOrbitControls() {
     return;
   }
 
+  // 高度は入力欄に出ているので、こちらには元の半径を出しておく
+  // (双曲線や軌道の式に現れるのは半径の方なので、両方見えるようにする)
   const rows = [
     [is_insert ? "侵入速度 V∞" : "脱出速度 V∞", info.v_inf.toFixed(3) + " km/s"],
-    ["投入ΔV", (info.dv * 1000).toFixed(1) + " m/s"],
-    ["近点高度", format_radius(info.altitude_p)],
-    ["遠点高度", format_radius(info.altitude_a)],
+    [is_insert ? "投入ΔV" : "脱出ΔV", (info.dv * 1000).toFixed(1) + " m/s"],
+    ["近点半径 rp", format_radius(info.rp)],
+    ["遠点半径 ra", format_radius(info.ra)],
     ["離心率", info.e.toFixed(4)],
     ["周期", format_period(info.period)],
   ];
-  rows[1][0] = is_insert ? "投入ΔV" : "脱出ΔV";
   readout.appendChild(makeReadout(rows));
 
   // 遠点を広げるほど投入は安くなるが、ヒル半径の半分より外は太陽の摂動で
   // 軌道を保てない。下限(=放物線捕獲)がいくらなのかも併せて示す。
   const parts = [];
   if (info.ra_clamped) {
-    parts.push(`遠点は上限 ${format_radius(info.ra_max)} (ヒル半径の半分)`);
+    // 入力欄が高度なので、上限も高度で言う
+    parts.push(`遠点高度は上限 ${format_radius(info.ra_max - R)} (ヒル半径の半分)`);
   } else if (info.dv_min != undefined) {
     parts.push(`遠点を上限まで広げると ${(info.dv_min * 1000).toFixed(0)} m/s`);
   }
@@ -1259,15 +1278,16 @@ export function renderSwingbyControls() {
     if (info) {
       // rpは下限でクランプ済みなので、必要な曲げ角に届かない場合は
       // その不足分が近点ΔVに乗る。クランプされた事実は値の脇に添えるだけにする。
+      const R = planet_radius[State.mission_sequence.planet_num(i)] ?? 0;
       const rpText =
         info.rp != undefined
-          ? info.rp.toFixed(0) + " km" + (info.rp_clamped ? " (下限)" : "")
+          ? (info.rp - R).toFixed(0) + " km" + (info.rp_clamped ? " (下限)" : "")
           : "-";
       const rows = [
         ["侵入速度", info.v_inf_in.toFixed(3) + " km/s"],
         ["脱出速度", info.v_inf_out.toFixed(3) + " km/s"],
         ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°"],
-        ["近点半径", rpText],
+        ["近点高度", rpText],
         ["近点ΔV", (info.dv_periapsis * 1000).toFixed(1) + " m/s"],
       ];
       if (info.turn_deficit > 1e-9) {
@@ -1287,19 +1307,23 @@ export function renderSwingbyControls() {
     const beta = State.mission_sequence.beta(i);
 
     const min_rp = State.mission_sequence.min_rp(i);
+    // 入力は半径ではなく天体表面からの高度で受け取る (「火星の3596km」より
+    // 「高度200km」の方が直感的に分かるため)。内部は一貫して半径で扱う。
+    const R = planet_radius[State.mission_sequence.planet_num(i)] ?? 0;
+    const min_alt = min_rp != undefined ? min_rp - R : undefined;
 
     const rpLabel = document.createElement("label");
-    rpLabel.textContent = "近点半径 rp [km]";
+    rpLabel.textContent = "近点高度 [km]";
     const rpInput = document.createElement("input");
     rpInput.type = "number";
     rpInput.step = "10";
-    if (min_rp != undefined) rpInput.min = String(Math.ceil(min_rp));
-    rpInput.value = rp != undefined ? rp.toFixed(0) : "";
+    if (min_alt != undefined) rpInput.min = String(Math.ceil(min_alt));
+    rpInput.value = rp != undefined ? (rp - R).toFixed(0) : "";
     rpInput.onchange = () => {
-      State.mission_sequence.set_rp(i, Number(rpInput.value));
+      State.mission_sequence.set_rp(i, Number(rpInput.value) + R);
       // 下限でクランプされた場合は入力欄の表示も実際の値に合わせる
       const applied = State.mission_sequence.rp(i);
-      if (applied != undefined) rpInput.value = applied.toFixed(0);
+      if (applied != undefined) rpInput.value = (applied - R).toFixed(0);
       refresh_after_swingby_change();
     };
 
@@ -1317,10 +1341,10 @@ export function renderSwingbyControls() {
     // 欄を選ぶと、その欄に対応するハンドルがB面ビューに出てマウスで動かせる。
     // 常に掴めるものを出しておくとカメラ操作の邪魔になるので、選択制にしている。
     const rpField = makeParamField("rp", rpLabel, rpInput);
-    if (min_rp != undefined) {
+    if (min_alt != undefined) {
       const note = document.createElement("div");
       note.className = "swingby-hint";
-      note.textContent = `下限 ${min_rp.toFixed(0)} km (大気・放射線帯)`;
+      note.textContent = `下限 ${min_alt.toFixed(0)} km (大気・放射線帯)`;
       rpField.appendChild(note);
     }
     form.appendChild(rpField);
@@ -1334,6 +1358,8 @@ export function renderSwingbyControls() {
       const rows = [
         ["侵入/脱出速度", info.v_inf_in.toFixed(3) + " km/s"],
         ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°"],
+        // B面ビューの赤い線は天体中心からの半径なので、その値も添えておく
+        ["近点半径", info.rp != undefined ? info.rp.toFixed(0) + " km" : "-"],
       ];
       const dsm = State.mission_sequence.get_dsm_info(i + 1);
       if (dsm) rows.push(["DSMのΔV", (dsm.dv * 1000).toFixed(1) + " m/s"]);

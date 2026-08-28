@@ -1204,8 +1204,6 @@ export class Mission {
       a,
       e: (ra - rp) / (ra + rp),
       period: get_peariod(a, mu), // 周回周期 [s]
-      altitude_p: lim != undefined ? rp - lim.radius : undefined,
-      altitude_a: lim != undefined ? ra - lim.radius : undefined,
       v_periapsis_hyp: Math.sqrt(v_inf * v_inf + (2 * mu) / rp),
       v_periapsis_orbit: periapsis_speed(mu, rp, ra),
       // 遠点を無限遠に取った場合(=放物線捕獲)の下限。これ以上は安くならない
@@ -1676,6 +1674,14 @@ export class Mission {
     this.#m_types.splice(idx, 0, Sequence_Type.None);
     this.#m_types[0] = Sequence_Type.Launch;
     this.#m_count++;
+
+    // 周回軌道投入の直後に節を足したら、既定でその軌道からの脱出にする。
+    // 捕獲されたまま次の目的地へ飛べはしないので、続きがあるならまず脱出しか
+    // ありえない。天体も投入側に揃える (#normalize_escape が維持する)。
+    if (idx > 0 && this.#m_types[idx - 1] === Sequence_Type.Orbit) {
+      this.#m_types[idx] = Sequence_Type.Escape;
+      this.#m_planet_nums[idx] = this.#m_planet_nums[idx - 1];
+    }
 
     // 手動モードのノードの後ろに新しい目的地が来たら、そこへ届かせるための
     // DSMを補う (最終軌道を消したあとに行き先を足した場合など)。
