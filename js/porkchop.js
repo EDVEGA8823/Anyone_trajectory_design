@@ -30,7 +30,7 @@ const METRICS = {
     digits: 2,
   },
   total: {
-    label: "合計 (V∞出発+到着)",
+    label: "合計 V∞",
     unit: "km/s",
     pick: (cell) => cell.vdep + cell.varr,
     digits: 2,
@@ -64,6 +64,7 @@ let res_sel = null;
 let target = null; // {index, dep_num, arr_num, dep_date, arr_date}
 let view = null; // いま映している日付の範囲 {dep0, dep1, arr0, arr1}
 let grid = null; // compute_grid の結果 (自分が計算されたときの範囲を持つ)
+let color_range = null; // 色と等高線の段階 {lo, hi, max, metric}。拡大しても変えない
 let metric = "c3";
 let job = 0; // 計算の世代番号。閉じたり作り直したりすると進めて古い計算を捨てる
 let spinner_timer = 0;
@@ -188,6 +189,7 @@ async function compute_grid(spec, on_progress, generation) {
   const r1 = [0, 0, 0];
   const r2 = [0, 0, 0];
   let mark = performance.now();
+  let solved = 0;
 
   for (let k = 0; k < rows; k++) {
     r2[0] = arr_r[k * 3];
@@ -224,6 +226,7 @@ async function compute_grid(spec, on_progress, generation) {
       c3[idx] = a2; // C3 = |V∞|^2 がそのまま打上げエネルギー
       vdep[idx] = Math.sqrt(a2);
       varr[idx] = Math.sqrt(b2);
+      solved++;
     }
 
     // 数ミリ秒使ったら一度実行を手放す。ぐるぐると進捗が動き、操作も効くようになる
@@ -236,7 +239,7 @@ async function compute_grid(spec, on_progress, generation) {
     }
   }
 
-  return { ...spec, dep_t, arr_t, c3, vdep, varr };
+  return { ...spec, dep_t, arr_t, c3, vdep, varr, solved };
 }
 
 // 格子の (j,k) の指標値。無効なセルは NaN
@@ -271,11 +274,11 @@ function color_at(t) {
 
 // 色の上限。「ここまでが検討に値する」範囲に切る。
 // C3は窓から外れると桁で跳ね上がるので、全範囲を色に割り当てると、絶望的に高い隅の
-// せいで肝心の谷が潰れて一面赤になってしまう。安い方の1/4だけに色を使い、
+// せいで肝心の谷が潰れて一面赤になってしまう。安い方の1/3だけに色を使い、
 // それより高いところは灰色にして図から退かせる (ポークチョップ図の通例)。
 const COLOR_QUANTILE = 0.35;
 
-function value_range(g) {
+function measure_range(g) {
   const vals = [];
   for (let i = 0; i < g.c3.length; i++) {
     const v = cell_value(g, i);
@@ -286,9 +289,28 @@ function value_range(g) {
   const lo = vals[0];
   let hi = vals[Math.min(vals.length - 1, Math.floor(vals.length * COLOR_QUANTILE))];
   if (!(hi > lo)) hi = lo + Math.max(1, Math.abs(lo) * 0.2);
-  let over = 0;
-  for (const v of vals) if (v > hi) over++;
-  return { lo, hi, count: vals.length, over };
+  return { lo, hi, max: vals[vals.length - 1], metric };
+}
+
+/**
+ * 色と等高線の段階を決める。
+ *
+ * 一度決めたら拡大縮小しても変えない。表示範囲ごとに測り直すと、同じ場所を見ていても
+ * 等高線の値が変わってしまい、拡大するたびに図の形が変わったように見えるため。
+ * ただし映している範囲の値がすべて段階の外に出てしまったら (一面灰色 / 一面同色)
+ * 読めないので、そのときだけ測り直す。
+ *
+ * @param {boolean} force 指標を変えたときなど、明示的に測り直す
+ */
+function ensure_color_range(force) {
+  if (!grid) return;
+  if (force || !color_range || color_range.metric !== metric) {
+    color_range = measure_range(grid);
+    return;
+  }
+  const r = measure_range(grid);
+  if (!r) return;
+  if (r.lo > color_range.hi || r.max < color_range.lo) color_range = r;
 }
 
 // 1/2/5 刻みで、だいたい n 本になる等高線の値を選ぶ
@@ -369,7 +391,7 @@ function draw() {
   // 計算済みの格子は、いま映している範囲に合わせて置き直して描く。
   // マウスで動かした直後はまだ計算が追いついていないので、この場合だけ
   // 図がずれた位置・大きさで出る (計算が終われば view と一致する)。
-  const range = grid ? value_range(grid) : null;
+  const range = grid ? color_range : null;
   if (range) {
     draw_field(ctx, rect, range);
     draw_contours(ctx, rect, range);
@@ -781,9 +803,14 @@ function build_window() {
     metric_sel.appendChild(o);
   }
   metric_sel.value = metric;
-  metric_sel.title = "色で塗る量";
+  metric_sel.title =
+    "色で塗る量\n" +
+    "打上げ C3: 出発のエネルギー (V∞の2乗)\n" +
+    "到着 V∞: 目標天体に対する到着速度\n" +
+    "合計 V∞: 出発のV∞と到着のV∞の和 (行きと着きの両方を見るとき)";
   metric_sel.onchange = () => {
     metric = metric_sel.value;
+    ensure_color_range(true); // 量が変われば桁も変わるので測り直す
     draw();
     update_status();
   };
@@ -825,12 +852,26 @@ function build_window() {
   res_sel.onchange = () => recompute();
   bar.appendChild(res_sel);
 
+  const fit = el("button", "pc-sub", "色合わせ");
+  fit.type = "button";
+  fit.title =
+    "色と等高線の段階を、いま映っている範囲に合わせ直す。\n" +
+    "段階は拡大縮小しても変わらないようにしてあるので (変えると図の形が変わって見える)、\n" +
+    "拡大して色の差が乏しくなったときに押す。";
+  fit.onclick = () => {
+    ensure_color_range(true);
+    draw();
+    update_status();
+  };
+  bar.appendChild(fit);
+
   const reset = el("button", "pc-run", "初期範囲");
   reset.type = "button";
   reset.title = "ホーマン遷移から見積もった打上げ窓のまわりに戻す";
   reset.onclick = () => {
     if (!target) return;
     view = auto_view(target);
+    color_range = null; // 範囲を戻すので色の段階も取り直す
     sync_inputs();
     recompute();
   };
@@ -1229,7 +1270,6 @@ function update_status(extra) {
     return;
   }
   const m = METRICS[metric];
-  const range = value_range(grid);
   status_el.textContent =
     "色: " +
     m.label +
@@ -1240,7 +1280,7 @@ function update_status(extra) {
     "×" +
     grid.rows +
     " 点中 " +
-    (range ? range.count : 0) +
+    (grid.solved ?? 0) +
     " 点で解あり ・ ◇最小 / 破線が現在 / 灰色は高すぎる領域";
 }
 
@@ -1279,6 +1319,7 @@ async function recompute() {
 
   show_spinner(false);
   grid = result;
+  ensure_color_range(false); // 拡大縮小では段階を変えない (読めなくなったときだけ測り直す)
   draw();
   update_status();
   if (status_el) {
@@ -1308,6 +1349,7 @@ export function openPorkchop(info) {
   if (!same || !grid || !view) {
     // 対象が変わったら、ホーマン遷移から見積もった窓のまわりを映す
     view = auto_view(info);
+    color_range = null; // 天体が変われば値の桁も変わる
     sync_inputs();
     recompute();
   } else {
@@ -1360,6 +1402,10 @@ export function porkchopGrid() {
 
 export function porkchopView() {
   return view;
+}
+
+export function porkchopColorRange() {
+  return color_range;
 }
 
 /** 図の上をクリックしたときに呼ぶコールバックを登録する (時刻セット用) */

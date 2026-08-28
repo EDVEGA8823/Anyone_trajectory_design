@@ -1321,8 +1321,8 @@ button {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 7px 10px;
+  gap: 5px;
+  padding: 7px 8px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
   flex: 0 0 auto;
@@ -1339,7 +1339,8 @@ button {
   color: var(--text);
 }
 .pc-bar input {
-  width: 52px;
+  width: 46px;
+  padding: 3px 3px;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -1368,6 +1369,22 @@ button {
 }
 .pc-run:hover {
   background: #dfe9fc;
+}
+
+/* 補助的な操作 (色の測り直しなど) */
+.pc-sub {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.pc-sub:hover {
+  border-color: var(--gray-300);
+  color: var(--text);
 }
 
 .pc-body {
