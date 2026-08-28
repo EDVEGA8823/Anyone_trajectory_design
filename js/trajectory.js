@@ -824,9 +824,10 @@ export class Mission {
     if (i <= 0 || i !== this.#m_count - 1) return false;
     if (this.#m_types[i] === Sequence_Type.End) return true;
     if (this.#is_manual_node(i - 1)) return true;
-    // 手動モードに付いてくるDSMは、最終軌道にする際に取り除かれる
-    if (this.#m_types[i - 1] === Sequence_Type.Maneuver && this.#is_manual_node(i - 2)) return true;
-    return false;
+    // 手動モードに付いてくるDSMの並びは、最終軌道にする際に取り除かれる
+    let k = i - 1;
+    while (k >= 0 && this.#m_types[k] === Sequence_Type.Maneuver) k--;
+    return k >= 0 && k < i - 1 && this.#is_manual_node(k);
   }
 
   // 自動モードに戻せるか。最終軌道が続いている間は目的地が無いので手動のみ。
@@ -1061,6 +1062,21 @@ export class Mission {
     const arrived = propagate(r_prev, v_prev, dt1, MU_SUN);
     if (arrived == undefined) return;
     this.#m_s_c_pos[i] = arrived.r;
+
+    // 手動マヌーバ: ΔVの指定はこれから実装する。いまは無推力で通り過ぎるだけに
+    // して、軌道が途切れないようにしておく (総ΔVにも入らない)。
+    if (!this.#m_is_auto_mode[i]) {
+      this.#m_s_c_vel[i] = [arrived.v, undefined];
+      this.#m_dsm_info[i] = {
+        r: arrived.r,
+        v_before: arrived.v,
+        v_after: arrived.v,
+        dv_vec: [0, 0, 0],
+        dv: 0,
+        mode: "manual",
+      };
+      return;
+    }
 
     // 2) DSM地点から次の天体までをランベールで解く
     const r_target = this.#m_planet_pos[i + 1];
@@ -1477,6 +1493,7 @@ export class Mission {
 
   #recompute_all() {
     this.#normalize_types();
+    this.#normalize_maneuvers();
 
     // set_s_c は i+1 の天体位置(ランベール用)を必要とするため、天体の位置・速度は
     // 先に全ノード分計算しておく。
@@ -1647,15 +1664,15 @@ export class Mission {
     this.#m_types[i] = type;
 
     // スイングバイ(手動)を別の種別に変えたら、付随していたDSMのマヌーバノードも外す
-    if (was_manual_swingby && type !== Sequence_Type.Swingby && this.#has_maneuver_after(i)) {
-      this.#remove_node(i + 1);
+    if (was_manual_swingby && type !== Sequence_Type.Swingby) {
+      this.#remove_maneuvers_after(i);
     }
 
     if (type === Sequence_Type.End) {
       // 天体を持たない節になるので、割り当てられていた天体は外す
       this.#m_planet_nums[i] = -1;
       // 直前のDSMは「次の天体へ届かせる」ためのものなので、目的地が無くなれば不要
-      if (i > 0 && this.#m_types[i - 1] === Sequence_Type.Maneuver) this.#remove_node(i - 1);
+      this.#remove_maneuvers_before(i);
     } else if (was_end && i > 0 && this.#is_manual_node(i - 1) && !this.#has_maneuver_after(i - 1)) {
       // 最終軌道をやめて目的地を持つ節に戻したら、届かせるためのDSMを入れ直す
       this.#insert_maneuver_after(i - 1);
@@ -1685,7 +1702,7 @@ export class Mission {
       if (!is_auto) {
         if (!this.#has_maneuver_after(i)) this.#insert_maneuver_after(i);
       } else {
-        if (this.#has_maneuver_after(i)) this.#remove_node(i + 1);
+        this.#remove_maneuvers_after(i);
       }
     }
 
@@ -1719,6 +1736,68 @@ export class Mission {
 
   #has_maneuver_after(i) {
     return i + 1 < this.#m_count && this.#m_types[i + 1] === Sequence_Type.Maneuver;
+  }
+
+  /**
+   * ノードiの直後に並んでいるマヌーバをまとめて取り除く。
+   * 手動レグには複数のDSMが並びうるので、1つだけ消すと取り残される。
+   */
+  #remove_maneuvers_after(i) {
+    let n = 0;
+    while (this.#has_maneuver_after(i)) {
+      this.#remove_node(i + 1);
+      n++;
+    }
+    return n;
+  }
+
+  /** ノードiの直前に並んでいるマヌーバをまとめて取り除き、取り除いた数を返す */
+  #remove_maneuvers_before(i) {
+    let n = 0;
+    while (i - 1 - n >= 0 && this.#m_types[i - 1 - n] === Sequence_Type.Maneuver) n++;
+    for (let k = 0; k < n; k++) this.#remove_node(i - 1 - k);
+    return n;
+  }
+
+  /**
+   * 挿入位置idxが「手動ノードとその行き先の間」= DSMを並べる区間の中か。
+   * ここに節を足せるのはマヌーバだけで、他の種別は置きようがない
+   * (手動ノードは次の天体に直接は届かず、途中はDSMで繋ぐため)。
+   */
+  #in_manual_leg(idx) {
+    if (idx <= 0 || idx > this.#m_count) return false;
+    // 直前からマヌーバを遡り、その先が「DSMを持っている手動ノード」なら区間の中
+    let k = idx - 1;
+    while (k >= 0 && this.#m_types[k] === Sequence_Type.Maneuver) k--;
+    return k >= 0 && this.#is_manual_node(k) && this.#has_maneuver_after(k);
+  }
+
+  /**
+   * 手動レグに並ぶマヌーバの自動/手動を整える。
+   *
+   * 並びの最後の1つだけが自動マヌーバで、これがランベールで次の目的地へ繋ぐ
+   * 役目を負う。それより手前は手動マヌーバ (ユーザーがΔVを指定するDSM) になる。
+   * マルチインパルス遷移を組むときは、この並びを増やしていくことになる。
+   */
+  #normalize_maneuvers() {
+    for (let i = 0; i < this.#m_count; i++) {
+      if (this.#m_types[i] !== Sequence_Type.Maneuver) continue;
+      let e = i;
+      while (e + 1 < this.#m_count && this.#m_types[e + 1] === Sequence_Type.Maneuver) e++;
+      for (let k = i; k <= e; k++) this.#m_is_auto_mode[k] = k === e;
+      i = e;
+    }
+  }
+
+  /**
+   * その節を個別に削除できるか。
+   * 自動マヌーバは手動モードに付随する構造なので個別には消せない
+   * (自動/手動の切り替えで出入りする)。手で足した手動マヌーバは消せる。
+   */
+  can_remove(i) {
+    if (i < 0 || i >= this.#m_count) return false;
+    if (this.#m_types[i] === Sequence_Type.Maneuver) return !this.#m_is_auto_mode[i];
+    return true;
   }
 
   // ノードiの直後にマヌーバ(DSM)ノードを挿入する。
@@ -1795,6 +1874,10 @@ export class Mission {
   }
 
   add(idx, date) {
+    // 挿入位置が手動ノードとその行き先の間なら、そこに置けるのはマヌーバだけ。
+    // 判定は配列をずらす前に済ませておく。
+    const in_manual_leg = this.#in_manual_leg(idx);
+
     this.#m_types[0] = Sequence_Type.None;
     this.#m_is_auto_mode.splice(idx, 0, true);
     this.#m_dates.splice(idx, 0, date);
@@ -1830,6 +1913,14 @@ export class Mission {
     this.#m_types[0] = Sequence_Type.Launch;
     this.#m_count++;
 
+    // 手動レグの中に足したものは手動マヌーバ (ユーザーがΔVを指定するDSM)。
+    // 並びの最後だけが自動マヌーバになるよう #normalize_maneuvers が整える。
+    if (in_manual_leg) {
+      this.#m_types[idx] = Sequence_Type.Maneuver;
+      this.#m_planet_nums[idx] = -1;
+      this.#m_is_auto_mode[idx] = false;
+    }
+
     // 周回軌道投入の直後に節を足したら、既定でその軌道からの脱出にする。
     // 捕獲されたまま次の目的地へ飛べはしないので、続きがあるならまず脱出しか
     // ありえない。天体も投入側に揃える (#normalize_escape が維持する)。
@@ -1842,7 +1933,7 @@ export class Mission {
     // DSMを補う (最終軌道を消したあとに行き先を足した場合など)。
     // このとき新しいノードは1つ後ろにずれる。
     let added = idx;
-    if (idx > 0 && this.#is_manual_node(idx - 1) && !this.#has_maneuver_after(idx - 1)) {
+    if (!in_manual_leg && idx > 0 && this.#is_manual_node(idx - 1) && !this.#has_maneuver_after(idx - 1)) {
       this.#insert_maneuver_after(idx - 1);
       added = idx + 1;
     }
@@ -1861,10 +1952,10 @@ export class Mission {
    * @returns {boolean} 削除したか
    */
   remove(i) {
-    if (i < 0 || i >= this.#m_count) return false;
-    if (this.#m_types[i] === Sequence_Type.Maneuver) return false;
+    if (!this.can_remove(i)) return false;
 
-    if (this.#has_maneuver_after(i)) this.#remove_node(i + 1);
+    // 手動ノードを消すときは、付いていたDSMの並びも一緒に片付ける
+    if (this.#is_manual_node(i)) this.#remove_maneuvers_after(i);
     this.#remove_node(i);
 
     // 行き先が無くなってDSMだけが末尾に残ったら、その持ち主を自動に戻す

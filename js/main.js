@@ -62,9 +62,15 @@ export function add_sequence(id) {
 
   const span1 = document.createElement("span");
   if (State.mission_sequence.type(id) === Sequence_Type.Maneuver) {
-    // マヌーバ(DSM)は天体ではなく深宇宙の一点なので、天体名の代わりにΔVを出す
+    // マヌーバ(DSM)は天体ではなく深宇宙の一点なので、天体名の代わりにΔVを出す。
+    // 並びの最後の自動マヌーバだけが次の目的地へ繋ぐ役目を持つので、
+    // 手で足した手動マヌーバとは見分けが付くようにする。
     const dsm = State.mission_sequence.get_dsm_info(id);
-    span1.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+    if (!State.mission_sequence.is_auto_mode(id)) {
+      span1.textContent = "深宇宙 (手動)";
+    } else {
+      span1.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+    }
   } else if (State.mission_sequence.type(id) === Sequence_Type.End) {
     // 最終軌道も天体を持たないので、到達した軌道の種類を出す
     span1.textContent = end_orbit_label(State.mission_sequence.get_end_info(id));
@@ -83,9 +89,9 @@ export function add_sequence(id) {
   sequence_elem.appendChild(span2);
   sequence_elem.id = id;
 
-  // マヌーバ(DSM)は手動モードに付随して自動で出し入れするノードなので、
-  // 個別には消せない (前のノードを自動に戻すと消える)。
-  if (State.mission_sequence.type(id) !== Sequence_Type.Maneuver) {
+  // 自動マヌーバ(DSM)は手動モードに付随して出し入れするノードなので個別には
+  // 消せない (前のノードを自動に戻すと消える)。手で足した手動マヌーバは消せる。
+  if (State.mission_sequence.can_remove(id)) {
     sequence_elem.appendChild(make_delete_button(id));
   }
 
@@ -452,6 +458,10 @@ export function change_sequence_propaty() {
           if (can_escape) sequence_propaty.add(option);
         } else if (value == Sequence_Type.Entry) {
           if (can_entry) sequence_propaty.add(option);
+        } else if (value == Sequence_Type.Maneuver) {
+          // マヌーバは手動レグ (手動の打上げ/スイングバイと次の目的地の間) に
+          // だけ置ける節なので、種別の変更では選ばせない。その区間で
+          // 「+ シーケンスを追加」を押すと手動マヌーバとして入る。
         } else if (State.mission_sequence.planet_num(State.selected_sequence) < 10) {
           if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
             sequence_propaty.add(option);
@@ -1050,6 +1060,15 @@ export function renderManeuverControls() {
 
   const dsm = State.mission_sequence.get_dsm_info(i);
   container.innerHTML = "";
+
+  // 手動マヌーバはΔVの指定がまだ実装されていない。無推力で通過するだけなので、
+  // 何も起きないのが不具合に見えないよう明示しておく。
+  if (!State.mission_sequence.is_auto_mode(i)) {
+    const note = document.createElement("div");
+    note.className = "swingby-hint";
+    note.textContent = "手動マヌーバ (ΔVの指定は未実装。いまは無推力で通過)";
+    container.appendChild(note);
+  }
 
   if (dsm == null) {
     const note = document.createElement("div");
