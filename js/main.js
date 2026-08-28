@@ -1241,15 +1241,17 @@ export function renderOrbitControls() {
 // 地球への試料回収カプセルを基準にした目安 [km/s]。小さいほど楽。
 //   11.2 : 月・低エネルギー帰還級 (アポロ)。地球脱出速度とほぼ同じで、これが下限
 //   12.9 : スターダストの再突入速度 = 人類が実際に経験した最速
-//   15   : ISASが研究している高速突入カプセルが想定する上限
+//   16   : ISASが研究している15km/s級カプセル (土星圏からの帰還を想定) が
+//          収まる範囲。設計点そのものが15km/sなので、境目は少し上に取る。
 // 他天体では大気の濃さが違うので、あくまで地球基準の目安として使う。
-const ENTRY_V_LEVELS = [11.2, 12.9, 15];
+const ENTRY_V_LEVELS = [11.2, 12.9, 16];
 const ENTRY_V_HINT =
   "突入速度の目安 (地球の試料回収カプセル基準)\n" +
-  "11.2未満: 月・低エネルギー帰還級 (アポロ)\n" +
-  "12.9未満: スターダスト (実績最速) まで\n" +
-  "15未満: ISASが研究中の高速突入カプセルの範囲\n" +
-  "15以上: 現状の研究でも想定外";
+  "11.2未満: 月・低エネルギー帰還級 (アポロ)。すでに実績のある領域\n" +
+  "12.9未満: スターダスト (人類が経験した最速) まで\n" +
+  "16未満: ISASが研究中の15km/s級カプセル (土星圏からの帰還) の想定範囲。\n" +
+  "        機体はまだ無く、新たに開発が要る\n" +
+  "16以上: 現状の研究でも想定されていない";
 
 // 突入経路角の目安。浅すぎると大気で跳ね返されて宇宙へ戻り、深すぎると
 // 減速度と加熱率が跳ね上がる。カプセルによるが、この幅が実用的な回廊。
@@ -1321,9 +1323,9 @@ export function renderEntryControls() {
   // 突入速度がどのあたりの水準なのかを一言で添える (色は ENTRY_V_LEVELS と同じ段階)
   const v_level = level_low(info.v_entry, ENTRY_V_LEVELS);
   const BADGE = {
-    good: ["余裕", "safe"],
+    good: ["実績あり", "safe"],
     ok: ["実績内", ""],
-    warn: ["研究段階", "caution"],
+    warn: ["要開発", "caution"],
     bad: ["想定外", "risk"],
   };
   const [badge_text, badge_class] = BADGE[v_level] ?? ["", ""];
@@ -1346,9 +1348,17 @@ export function renderEntryControls() {
     planetNum,
     key: i + ":" + planetNum,
     gamma: info.gamma,
+    vinf: info.v_inf,
+    vEntry: info.v_entry,
     e: info.e,
     p: info.p,
     nuEntry: info.nu_entry,
+    // 実際の向き (公転方向・北・太陽) に合わせて描くための基準
+    planetVel: info.planet_vel,
+    planetPos: info.planet_pos,
+    iHat: info.i_hat,
+    jHat: info.j_hat,
+    kHat: info.k_hat,
   });
 }
 

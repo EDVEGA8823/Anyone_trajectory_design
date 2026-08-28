@@ -1170,14 +1170,25 @@ export class Mission {
     const r_e = entry_interface_radius(n);
     if (mu == undefined || r_e == undefined) return;
 
-    const v_inf = math.norm(math.subtract(v_in, v_pla));
+    const v_inf_vec = math.subtract(v_in, v_pla);
+    const v_inf = math.norm(v_inf_vec);
     const gamma = this.entry_gamma(i);
     const conic = entry_conic(mu, v_inf, r_e, gamma);
     if (conic == undefined) return;
 
+    // 3Dビューを実際の向き (天体の公転方向・天の北極) に合わせるための基準系。
+    // スイングバイと同じ取り方にして、2つのビューで向きの意味が揃うようにする。
+    const frame = v_inf > 1e-9 ? this.#frame(v_inf_vec, v_inf, v_pla) : undefined;
+
     this.#m_entry_info[i] = {
       planet_num: n,
       v_inf,
+      v_inf_vec,
+      planet_vel: v_pla,
+      planet_pos: this.#m_planet_pos[i],
+      i_hat: frame ? frame.i_hat : undefined,
+      j_hat: frame ? frame.j_hat : undefined,
+      k_hat: frame ? frame.k_hat : undefined,
       gamma,
       r_entry: r_e,
       altitude: ENTRY_ALTITUDE[n],
