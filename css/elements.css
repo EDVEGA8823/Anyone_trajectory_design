@@ -1380,6 +1380,9 @@ button {
   display: block;
   width: 100%;
   height: 100%;
+  /* ドラッグで範囲を動かせる。スマホでは既定のスクロールと取り合いになるので切る */
+  cursor: crosshair;
+  touch-action: none;
 }
 
 .pc-hover {
