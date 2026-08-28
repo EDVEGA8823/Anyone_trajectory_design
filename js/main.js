@@ -55,6 +55,7 @@ import {
   invalidateDsmView,
   dsmViewScale,
 } from './dsm_view.js';
+import { openPorkchop, updatePorkchopTarget, isPorkchopOpen, porkchopIndex } from './porkchop.js';
 import {
   initEntryView,
   updateEntryView,
@@ -799,6 +800,10 @@ export function updateControlPanelDisplay() {
   if (is_launch) renderLaunchControls();
   // 打上げ以外に移ったらハンドルの選択は解除しておく
   else if (State.launch_handle) setLaunchHandle(null);
+
+  // ポークチョップ図は太陽系ビューの上に独立して浮いているので、
+  // どのノードを選んでいるかに関わらず、対象レグの現状に追従させる
+  sync_porkchop();
 }
 
 // 打上げビュー(操作パネルの3Dプレビュー)に、いまの出発条件を反映する。
@@ -821,6 +826,39 @@ export function updateLaunchViewFromMission() {
     planetPos: mission.planet_pos(i),
     planetVel: mission.planet_vel(i),
   });
+}
+
+// ノードiがポークチョップ図を描けるレグ (自動打上げ + 次に天体がある) かを調べ、
+// 描けるなら図に渡す情報を返す。描けなければ null。
+function porkchop_target(i) {
+  const mission = State.mission_sequence;
+  if (!mission || i < 0 || i + 1 >= mission.count) return null;
+  if (mission.type(i) !== Sequence_Type.Launch || !mission.is_auto_mode(i)) return null;
+
+  const dep_num = mission.planet_num(i);
+  const arr_num = mission.planet_num(i + 1);
+  if (dep_num == undefined || dep_num == -1 || arr_num == undefined || arr_num == -1) return null;
+
+  const dep_date = mission.date(i);
+  const arr_date = mission.date(i + 1);
+  if (dep_date == undefined || arr_date == undefined) return null;
+
+  return {
+    index: i,
+    dep_num,
+    arr_num,
+    dep_date,
+    arr_date,
+    dep_name: State.planet_list[dep_num],
+    arr_name: State.planet_list[arr_num],
+  };
+}
+
+// 開いているポークチョップ図に、いまの日付や天体割当を反映する。
+// 対象のレグが自動打上げでなくなったら (手動に変えた・種別を変えた) 図を閉じる。
+function sync_porkchop() {
+  if (!isPorkchopOpen()) return;
+  updatePorkchopTarget(porkchop_target(porkchopIndex()));
 }
 
 // 打上げの自動/手動切り替えと、手動モードのパラメータ入力を描画する。
@@ -879,6 +917,22 @@ export function renderLaunchControls() {
       rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°"]);
     }
     container.appendChild(makeReadout(rows));
+
+    // 自動モードは「出発日と到着日を決めればV∞が決まる」ので、その2つを総当たりした
+    // 地図 (ポークチョップ図) を出せる。手動モードでは日付から一意に決まらないので出さない。
+    const pc = porkchop_target(i);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pc-open";
+    btn.textContent = "ポークチョップ図を開く";
+    if (pc) {
+      btn.title = "出発日と到着日を総当たりで解いて、打上げエネルギーの地図を出す";
+      btn.onclick = () => openPorkchop(pc);
+    } else {
+      btn.disabled = true;
+      btn.title = "次のノードに天体が決まると開けます";
+    }
+    container.appendChild(btn);
     return;
   }
 
@@ -1817,7 +1871,7 @@ function apply_launch_from_drag(set) {
 // 太陽系は極端に平たく、等倍では軌道傾斜がほとんど読み取れない。押すと、
 // いま見えている軌道のうち最も黄道面から外れている量を基準に上下だけ引き伸ばす。
 // 拡大後の起伏が「面内の広がり」のこの割合になるようにする。
-const Z_ZOOM_TARGET = 0.2;
+const Z_ZOOM_TARGET = 0.8;
 const Z_ZOOM_MAX = 200;
 
 /**
