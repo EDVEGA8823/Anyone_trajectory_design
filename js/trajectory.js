@@ -73,6 +73,64 @@ export function min_flyby_rp(n) {
   return planet_radius[n] + MIN_FLYBY_ALTITUDE[n];
 }
 
+// --- 天体周回軌道 (周回軌道投入 / 軌道脱出) ---
+//
+// 【ΔVが位相に依らないこと】
+// 近点で軌道接線方向に噴射する場合、必要なΔVは (V∞, rp, ra, mu) だけで決まり、
+// 軌道面の向きにも近点の方向にも、天体のどの位相で到着するかにも依らない。
+//   ・入射双曲線は「エネルギー(V∞)」と「近点半径(rp)」だけで形が決まる
+//   ・目標の楕円も rp と ra だけで決まる
+//   ・両者は近点を共有し、近点では速度がどちらも動径に垂直 = 同じ向き
+// なので単純な速さの差になる。B面のどこを狙うか(=できあがる軌道の向き)は
+// 費用に影響しない。したがって「厳密な位相」を決めなくてもΔVは厳密に出せる。
+//
+// 逆に位相が効くのは軌道脱出の側で、周回軌道の近点方向は投入時に決まってしまう
+// のに対し、出発に必要なV∞の向きは日々変わる。ここでは「投入時に、後の出発に
+// 都合の良い向きを選んでおいた」= 軌道の向きは自由に取れる、という前提を置く。
+// 初期検討では標準的な仮定で、面変更や近点移動の費用はここには含まれない。
+
+/**
+ * 天体を回る軌道の近点速度 [km/s]。
+ * ra == rp なら円軌道、ra → ∞ なら放物線(脱出)速度に一致する。
+ */
+export function periapsis_speed(mu, rp, ra) {
+  if (!(mu > 0) || !(rp > 0)) return undefined;
+  if (!isFinite(ra)) return Math.sqrt((2 * mu) / rp);
+  const r_a = Math.max(ra, rp);
+  return Math.sqrt((2 * mu * r_a) / (rp * (rp + r_a)));
+}
+
+/**
+ * 双曲線軌道と、近点を共有する周回軌道との速度差 [km/s]。
+ * 周回軌道投入(捕獲)でも軌道脱出でも同じ式になる。
+ * @param {number} v_inf 双曲線側のV∞ [km/s]
+ */
+export function parking_orbit_dv(mu, v_inf, rp, ra) {
+  const v_orb = periapsis_speed(mu, rp, ra);
+  if (v_orb == undefined) return undefined;
+  return Math.sqrt(v_inf * v_inf + (2 * mu) / rp) - v_orb;
+}
+
+/**
+ * 天体のヒル半径 [km]。太陽の重力に対して天体が衛星を保持できる範囲の目安。
+ * @param {number} mu_pla  天体の重力定数 [km^3/s^2]
+ * @param {number} r_helio そのときの太陽からの距離 [km]
+ */
+export function hill_radius(mu_pla, r_helio) {
+  if (!(mu_pla > 0) || !(r_helio > 0)) return undefined;
+  return r_helio * Math.cbrt(mu_pla / (3 * MU_SUN));
+}
+
+// 周回軌道として認める遠点半径の上限 (ヒル半径に対する割合)。
+// ヒル半径ぎりぎりの軌道は太陽の摂動で剥がされてしまうため、順行衛星の
+// 安定限界としてよく使われる 1/2 を採る。上限を設けないと「遠点を無限に
+// 遠くすれば投入ΔVはいくらでも小さくできる」という非現実的な答えが出てしまう。
+export const MAX_PARKING_RA_HILL = 0.5;
+
+// 既定の周回軌道。近点は通過可能な下限(=オーベルト効果が最大)、
+// 遠点は天体半径の20倍程度の、実際の捕獲軌道によくある大きさにする。
+export const DEFAULT_PARKING_RA_FACTOR = 20;
+
 export const i_hat = [1, 0, 0];
 export const j_hat = [0, 1, 0];
 export const k_hat = [0, 0, 1];
@@ -515,6 +573,12 @@ export class Mission {
 
   #m_rp = []; // スイングバイの近点半径 [km] (Swingbyノードのみ意味を持つ)
   #m_beta = []; // スイングバイのb面内回転角 [rad] (Swingbyノードのみ意味を持つ)
+  // 周回軌道の近点/遠点半径 [km]。周回軌道投入(Orbit)ノードだけが持ち、
+  // 続く軌道脱出(Escape)ノードは同じ軌道から出るので投入側の値を共有する。
+  #m_orbit_rp = [];
+  #m_orbit_ra = [];
+  #m_orbit_info = []; // 直近に計算された投入/脱出の結果 (get_orbit_info用)
+
   #m_swingby_info = []; // 直近に計算されたスイングバイ結果 (get_swingby_info用)
   #m_dsm_info = []; // 直近に計算されたDSM(マヌーバ)結果 (get_dsm_info用)
   #m_end_info = []; // 最終軌道ノードで到達した軌道 (get_end_info用)
@@ -565,8 +629,8 @@ export class Mission {
   }
 
   // ミッション全体のΔVの合計 [km/s]。
-  // 自動スイングバイの近点ΔV(パワード・フライバイ)と、
-  // マヌーバノードのDSM ΔV(MGA-1DSM)を足し合わせる。
+  // 自動スイングバイの近点ΔV(パワード・フライバイ)、マヌーバノードのDSM ΔV
+  // (MGA-1DSM)、周回軌道への投入/からの脱出ΔVを足し合わせる。
   get_total_dv() {
     let total = 0;
     for (let i = 0; i < this.#m_count; i++) {
@@ -574,6 +638,8 @@ export class Mission {
       if (sb && sb.dv_periapsis) total += sb.dv_periapsis;
       const dsm = this.#m_dsm_info[i];
       if (dsm && dsm.dv) total += dsm.dv;
+      const orb = this.#m_orbit_info[i];
+      if (orb && orb.dv > 0) total += orb.dv;
     }
     return total;
   }
@@ -995,6 +1061,161 @@ export class Mission {
     };
   }
 
+  // --- 周回軌道投入 / 軌道脱出 ---
+
+  // その節が使う周回軌道を持っているノードの番号。
+  // 投入ノードは自分自身。軌道脱出ノードは「直前の投入ノードと同じ軌道から出る」
+  // ので投入側を指す (同じ軌道を2箇所で別々に持つと食い違うため共有する)。
+  #parking_source(i) {
+    if (this.#m_types[i] === Sequence_Type.Orbit) return i;
+    if (this.#m_types[i] === Sequence_Type.Escape) {
+      if (i > 0 && this.#m_types[i - 1] === Sequence_Type.Orbit) return i - 1;
+    }
+    return undefined;
+  }
+
+  /**
+   * ノードiで許される周回軌道の範囲 [km]。
+   *   近点: 大気・放射線帯を避ける下限 (スイングバイと同じ)
+   *   遠点: ヒル半径の半分 (それより外は太陽の摂動で軌道を保てない)
+   */
+  orbit_limits(i) {
+    const src = this.#parking_source(i);
+    if (src == undefined) return undefined;
+    const n = this.#m_planet_nums[src];
+    if (n == undefined || n < 0) return undefined;
+    const mu = planet_mu[n];
+    const rp_min = min_flyby_rp(n);
+    if (mu == undefined || rp_min == undefined) return undefined;
+
+    const r_pla = this.#m_planet_pos[src];
+    const hill = r_pla != undefined ? hill_radius(mu, math.norm(r_pla)) : undefined;
+    return {
+      planet_num: n,
+      mu,
+      radius: planet_radius[n],
+      rp_min,
+      ra_max: hill != undefined ? hill * MAX_PARKING_RA_HILL : undefined,
+      hill,
+    };
+  }
+
+  // 未設定なら既定の周回軌道を返す
+  orbit_rp(i) {
+    const src = this.#parking_source(i);
+    if (src == undefined) return undefined;
+    const lim = this.orbit_limits(i);
+    if (lim == undefined) return this.#m_orbit_rp[src];
+    return Math.max(this.#m_orbit_rp[src] ?? lim.rp_min, lim.rp_min);
+  }
+
+  orbit_ra(i) {
+    const src = this.#parking_source(i);
+    if (src == undefined) return undefined;
+    const lim = this.orbit_limits(i);
+    const rp = this.orbit_rp(i);
+    if (lim == undefined) return this.#m_orbit_ra[src];
+    let ra = this.#m_orbit_ra[src] ?? lim.radius * DEFAULT_PARKING_RA_FACTOR;
+    if (lim.ra_max != undefined) ra = Math.min(ra, lim.ra_max);
+    return Math.max(ra, rp);
+  }
+
+  set_orbit_rp(i, rp) {
+    const src = this.#parking_source(i);
+    if (src == undefined) return;
+    const lim = this.orbit_limits(i);
+    let v = lim != undefined ? Math.max(rp, lim.rp_min) : rp;
+    // 近点が遠点を追い越したら、遠点も一緒に押し上げて円軌道で止める
+    if (lim != undefined && lim.ra_max != undefined) v = Math.min(v, lim.ra_max);
+    this.#m_orbit_rp[src] = v;
+    if (this.#m_orbit_ra[src] != undefined && this.#m_orbit_ra[src] < v) this.#m_orbit_ra[src] = v;
+    this.#recompute_all();
+  }
+
+  set_orbit_ra(i, ra) {
+    const src = this.#parking_source(i);
+    if (src == undefined) return;
+    const lim = this.orbit_limits(i);
+    const rp = this.orbit_rp(i);
+    let v = Math.max(ra, rp); // 遠点は近点より内側にはできない
+    if (lim != undefined && lim.ra_max != undefined) v = Math.min(v, lim.ra_max);
+    this.#m_orbit_ra[src] = v;
+    this.#recompute_all();
+  }
+
+  get_orbit_info(i) {
+    return this.#m_orbit_info[i];
+  }
+
+  // 軌道脱出は「直前が同じ天体の周回軌道投入」のときにだけ意味を持つ
+  can_escape(i) {
+    return i > 0 && this.#m_types[i - 1] === Sequence_Type.Orbit;
+  }
+
+  /**
+   * 周回軌道投入 / 軌道脱出のΔVを求める。
+   *
+   * 投入: 直前のレグの到着速度からV∞を取り、近点で減速して楕円に入る。
+   *       捕獲後は天体に束縛されるので、太陽中心では天体と一緒に動く
+   *       (=次のレグは天体の公転軌道をなぞる「滞在」になる)。
+   * 脱出: 次のレグ(ランベール解)の出発速度からV∞を取り、近点で加速して出る。
+   *
+   * どちらも近点接線噴射なので、ΔVは向きや位相に依らない(定義部の説明を参照)。
+   */
+  #calc_orbit(i) {
+    this.#m_orbit_info[i] = undefined;
+    const type = this.#m_types[i];
+    const is_insert = type === Sequence_Type.Orbit;
+    const v_pla = this.#m_planet_vel[i];
+    const n = this.#m_planet_nums[i];
+    const mu = n != undefined && n >= 0 ? planet_mu[n] : undefined;
+
+    // 投入したら天体と一緒に公転する。速度を確定させるのはΔVが出せない
+    // ときも同じ (でないと軌道が繋がらなくなる)。
+    if (is_insert && v_pla != undefined) this.#m_s_c_vel[i] = [v_pla];
+
+    if (mu == undefined || v_pla == undefined) return;
+
+    // 投入は「入ってくる速度」、脱出は「出ていく速度」を見る
+    const v_sc = is_insert
+      ? this.#m_s_c_vel[i - 1] != undefined
+        ? this.#m_s_c_vel[i - 1][1]
+        : undefined
+      : this.#m_s_c_vel[i] != undefined
+      ? this.#m_s_c_vel[i][0]
+      : undefined;
+    if (v_sc == undefined) return;
+
+    const v_inf = math.norm(math.subtract(v_sc, v_pla));
+    const rp = this.orbit_rp(i);
+    const ra = this.orbit_ra(i);
+    const lim = this.orbit_limits(i);
+    if (rp == undefined || ra == undefined) return;
+
+    const dv = parking_orbit_dv(mu, v_inf, rp, ra);
+    const a = (rp + ra) / 2;
+
+    this.#m_orbit_info[i] = {
+      kind: is_insert ? "insert" : "escape",
+      planet_num: n,
+      v_inf,
+      rp,
+      ra,
+      a,
+      e: (ra - rp) / (ra + rp),
+      period: get_peariod(a, mu), // 周回周期 [s]
+      altitude_p: lim != undefined ? rp - lim.radius : undefined,
+      altitude_a: lim != undefined ? ra - lim.radius : undefined,
+      v_periapsis_hyp: Math.sqrt(v_inf * v_inf + (2 * mu) / rp),
+      v_periapsis_orbit: periapsis_speed(mu, rp, ra),
+      // 遠点を無限遠に取った場合(=放物線捕獲)の下限。これ以上は安くならない
+      dv_min: parking_orbit_dv(mu, v_inf, rp, Infinity),
+      ra_max: lim != undefined ? lim.ra_max : undefined,
+      ra_clamped: lim != undefined && lim.ra_max != undefined && ra >= lim.ra_max * (1 - 1e-9),
+      dv,
+    };
+  }
+
   #set_s_c(i) {
     if (i < 0 || i >= this.#m_count) return;
     if (this.#m_dates[i] == undefined) return;
@@ -1014,6 +1235,14 @@ export class Mission {
 
     if (this.#m_planet_pos[i] == undefined) return;
     this.#m_s_c_pos[i] = this.#m_planet_pos[i];
+
+    // 周回軌道投入: 捕獲されるとその先は天体と一緒に公転するので、
+    // ランベールで次の目的地へ向かわせてはいけない。#calc_orbit が
+    // 出発速度を天体の公転速度に固定する (= 次のレグが「滞在」になる)。
+    if (this.#m_types[i] === Sequence_Type.Orbit) {
+      this.#calc_orbit(i);
+      return;
+    }
 
     const is_swingby = this.#m_types[i] === Sequence_Type.Swingby;
 
@@ -1042,6 +1271,9 @@ export class Mission {
         // 自動スイングバイ: 軌道はランベール解のまま、rp/beta/近点ΔVを診断情報として計算する
         this.#calc_swingby_auto(i);
       }
+      // 軌道脱出: 軌道はランベール解のまま (出発の向き・大きさは次の目的地が決める)。
+      // 周回軌道からその出発速度に乗るための近点ΔVを計算する。
+      if (this.#m_types[i] === Sequence_Type.Escape) this.#calc_orbit(i);
     }
   }
 
@@ -1082,7 +1314,23 @@ export class Mission {
   // シーケンス全体を先頭から再計算する。スイングバイは前レグの到着速度に
   // 依存するため、隣接ノードだけでなく後続ノードまで影響が連鎖しうる。
   // ノード数はたかが知れているので、都度全体を計算し直しても軽い。
+  // 軌道脱出は「直前の周回軌道投入と同じ天体の、同じ軌道から出る」節なので、
+  // 並べ替えや削除でその前提が崩れたら普通の節に戻す。天体も投入側に揃える。
+  // (先頭を必ず打上げにしているのと同じ、状態の正規化)
+  #normalize_escape() {
+    for (let i = 0; i < this.#m_count; i++) {
+      if (this.#m_types[i] !== Sequence_Type.Escape) continue;
+      if (!this.can_escape(i)) {
+        this.#m_types[i] = Sequence_Type.None;
+        continue;
+      }
+      this.#m_planet_nums[i] = this.#m_planet_nums[i - 1];
+    }
+  }
+
   #recompute_all() {
+    this.#normalize_escape();
+
     // set_s_c は i+1 の天体位置(ランベール用)を必要とするため、天体の位置・速度は
     // 先に全ノード分計算しておく。
     for (let i = 0; i < this.#m_count; i++) this.#calc_planet(i);
@@ -1345,6 +1593,9 @@ export class Mission {
     this.#m_is_auto_mode.splice(idx, 0, true);
     this.#m_rp.splice(idx, 0, undefined);
     this.#m_beta.splice(idx, 0, 0);
+    this.#m_orbit_rp.splice(idx, 0, undefined);
+    this.#m_orbit_ra.splice(idx, 0, undefined);
+    this.#m_orbit_info.splice(idx, 0, undefined);
     this.#m_planet_pos.splice(idx, 0, undefined);
     this.#m_planet_vel.splice(idx, 0, undefined);
     this.#m_s_c_pos.splice(idx, 0, undefined);
@@ -1365,6 +1616,9 @@ export class Mission {
     this.#m_is_auto_mode.splice(idx, 1);
     this.#m_rp.splice(idx, 1);
     this.#m_beta.splice(idx, 1);
+    this.#m_orbit_rp.splice(idx, 1);
+    this.#m_orbit_ra.splice(idx, 1);
+    this.#m_orbit_info.splice(idx, 1);
     this.#m_planet_pos.splice(idx, 1);
     this.#m_planet_vel.splice(idx, 1);
     this.#m_s_c_pos.splice(idx, 1);
@@ -1395,6 +1649,9 @@ export class Mission {
     this.#m_dates.splice(idx, 0, date);
     this.#m_rp.splice(idx, 0, undefined);
     this.#m_beta.splice(idx, 0, 0);
+    this.#m_orbit_rp.splice(idx, 0, undefined);
+    this.#m_orbit_ra.splice(idx, 0, undefined);
+    this.#m_orbit_info.splice(idx, 0, undefined);
     // 平行配列はすべて同じ位置にずらす。ここを漏らすと途中挿入のときに
     // 添字がずれて別ノードの計算結果を参照してしまう。
     this.#m_planet_pos.splice(idx, 0, undefined);

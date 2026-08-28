@@ -384,7 +384,12 @@ export function change_sequence_propaty() {
   select.selectedIndex = State.mission_sequence.planet_num(State.selected_sequence) + 1;
   // 天体を持たない節(マヌーバ・最終軌道)では天体の選択自体を伏せる
   const sel_type = State.selected_sequence != -1 ? State.mission_sequence.type(State.selected_sequence) : null;
-  select.disabled = sel_type === Sequence_Type.Maneuver || sel_type === Sequence_Type.End;
+  // 天体を持たない節(マヌーバ・最終軌道)と、天体が直前の投入ノードに
+  // 自動で揃う軌道脱出では、天体の選択自体を伏せる
+  select.disabled =
+    sel_type === Sequence_Type.Maneuver ||
+    sel_type === Sequence_Type.End ||
+    sel_type === Sequence_Type.Escape;
   select.onchange = async function () {
     await State.mission_sequence.set_planet_num(State.selected_sequence, select.selectedIndex - 1);
     change_sequence();
@@ -408,6 +413,8 @@ export function change_sequence_propaty() {
     // 最終軌道は「手動モードのノードの後の最後の節」でしか意味を持たないので、
     // その条件を満たすときだけ選択肢に出す
     const can_end = State.mission_sequence.can_end(State.selected_sequence);
+    // 軌道脱出は「直前が周回軌道投入」のときだけ。天体は投入側に自動で揃う
+    const can_escape = State.mission_sequence.can_escape(State.selected_sequence);
 
     Object.values(Sequence_Type).forEach((value, i) => {
       let option = document.createElement("option");
@@ -416,6 +423,8 @@ export function change_sequence_propaty() {
       if (i > 1) {
         if (value == Sequence_Type.End) {
           if (can_end) sequence_propaty.add(option);
+        } else if (value == Sequence_Type.Escape) {
+          if (can_escape) sequence_propaty.add(option);
         } else if (State.mission_sequence.planet_num(State.selected_sequence) < 10) {
           if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
             sequence_propaty.add(option);
@@ -438,8 +447,9 @@ export function change_sequence_propaty() {
     change_sequence();
     update_plot();
     updateControlPanelDisplay();
-    sequence_propaty.selectedIndex = 0;
-    sequence_type.textContent = State.mission_sequence.type(State.selected_sequence);
+    // 軌道脱出にすると天体が直前の投入ノードに揃うので、天体の欄も作り直す。
+    // (併せて選択肢の顔ぶれと「変更」への戻しも行われる)
+    change_sequence_propaty();
   };
 
   sequence_type.textContent = State.mission_sequence.type(State.selected_sequence);
@@ -690,6 +700,17 @@ export function updateControlPanelDisplay() {
     end_only[i].style.display = is_end ? "flex" : "none";
   }
 
+  // 周回軌道投入と軌道脱出は同じ周回軌道を編集するので、同じパネルを使う
+  const sel_type =
+    State.selected_sequence != -1 && State.mission_sequence
+      ? State.mission_sequence.type(State.selected_sequence)
+      : null;
+  const is_orbit = sel_type === Sequence_Type.Orbit || sel_type === Sequence_Type.Escape;
+  const orbit_only = document.getElementsByClassName("orbit-only");
+  for (let i = 0; i < orbit_only.length; i++) {
+    orbit_only[i].style.display = is_orbit ? "flex" : "none";
+  }
+
   // パネルの表示/非表示が切り替わると、隠れていたビューが現れることがある。
   // オンデマンド描画なので、現れた側に描き直しを頼んでおく。
   invalidateBPlane();
@@ -698,6 +719,7 @@ export function updateControlPanelDisplay() {
   if (is_swingby) updateBPlaneView();
   if (is_maneuver) renderManeuverControls();
   if (is_end) renderEndControls();
+  if (is_orbit) renderOrbitControls();
   if (is_launch) renderLaunchControls();
   // 打上げ以外に移ったらハンドルの選択は解除しておく
   else if (State.launch_handle) setLaunchHandle(null);
@@ -1023,6 +1045,129 @@ export function renderManeuverControls() {
     box.appendChild(u);
     container.appendChild(box);
   });
+}
+
+const SEC_PER_DAY = 86400;
+const SEC_PER_HOUR = 3600;
+
+// 周期を桁に応じた単位で読みやすく出す
+function format_period(sec) {
+  if (!(sec > 0) || !isFinite(sec)) return "-";
+  if (sec < 2 * SEC_PER_DAY) return (sec / SEC_PER_HOUR).toFixed(1) + " 時間";
+  if (sec < 2 * SEC_PER_YEAR) return (sec / SEC_PER_DAY).toFixed(1) + " 日";
+  return (sec / SEC_PER_YEAR).toFixed(2) + " 年";
+}
+
+// 半径を桁に応じて出す (地球周回の数千kmから木星周回の数百万kmまで扱うため)
+function format_radius(km) {
+  if (km == undefined || !isFinite(km)) return "-";
+  if (Math.abs(km) >= 1e6) return (km / 1e6).toFixed(3) + "e6 km";
+  return km.toFixed(0) + " km";
+}
+
+/**
+ * 周回軌道投入 / 軌道脱出の操作パネル。
+ *
+ * どちらも同じ周回軌道 (近点半径 rp と遠点半径 ra) が設計変数で、ΔVは
+ *   ΔV = √(V∞² + 2μ/rp) − √(2μ・ra/(rp(rp+ra)))
+ * になる。近点で接線方向に噴射する前提なので、軌道面の向きや到着位相には
+ * 依らない (trajectory.js の該当箇所に導出を書いてある)。
+ * 投入ノードと脱出ノードは同じ軌道を共有するので、どちらの欄から編集しても
+ * 同じ値が動く。
+ */
+export function renderOrbitControls() {
+  const i = State.selected_sequence;
+  const inputs = document.getElementById("orbit_inputs");
+  const readout = document.getElementById("orbit_readout");
+  const title = document.getElementById("orbit_title");
+  const badge = document.getElementById("orbit_badge");
+  const note = document.getElementById("orbit_note");
+  if (!inputs || !readout || i == -1 || !State.mission_sequence) return;
+
+  const mission = State.mission_sequence;
+  const type = mission.type(i);
+  const is_insert = type === Sequence_Type.Orbit;
+  const info = mission.get_orbit_info(i);
+  const lim = mission.orbit_limits(i);
+
+  title.textContent = is_insert ? "周回軌道投入 (捕獲)" : "軌道脱出 (再出発)";
+  badge.textContent = is_insert ? "減速" : "加速";
+  badge.className = "orbit-badge " + (is_insert ? "brake" : "boost");
+
+  inputs.innerHTML = "";
+  readout.innerHTML = "";
+
+  if (lim == undefined) {
+    note.textContent = is_insert
+      ? "天体を選ぶと計算されます"
+      : "軌道脱出は、直前の「周回軌道投入」と同じ天体からのみ行えます";
+    return;
+  }
+
+  const rp = mission.orbit_rp(i);
+  const ra = mission.orbit_ra(i);
+
+  const addField = (label_text, value, step, min, max, apply) => {
+    const label = document.createElement("label");
+    label.textContent = label_text;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = String(step);
+    if (min != undefined) input.min = String(Math.ceil(min));
+    if (max != undefined) input.max = String(Math.floor(max));
+    input.value = value.toFixed(0);
+    input.onchange = () => {
+      apply(Number(input.value));
+      // 上下限でクランプされた場合は入力欄も実際の値に合わせる
+      refresh_after_orbit_change();
+    };
+    const field = document.createElement("div");
+    field.className = "column param-field";
+    field.appendChild(label);
+    field.appendChild(input);
+    inputs.appendChild(field);
+  };
+
+  // 刻みは天体の大きさに合わせる (地球で10km、木星で1000km程度)
+  const step = Math.max(10, Math.round(lim.radius / 500) * 10);
+  addField("近点半径 rp [km]", rp, step, lim.rp_min, lim.ra_max, (v) => mission.set_orbit_rp(i, v));
+  addField("遠点半径 ra [km]", ra, step * 10, rp, lim.ra_max, (v) => mission.set_orbit_ra(i, v));
+
+  if (info == null) {
+    note.textContent = is_insert
+      ? "前のレグが決まるとΔVが計算されます"
+      : "次の目的地が決まるとΔVが計算されます";
+    return;
+  }
+
+  const rows = [
+    [is_insert ? "侵入速度 V∞" : "脱出速度 V∞", info.v_inf.toFixed(3) + " km/s"],
+    ["投入ΔV", (info.dv * 1000).toFixed(1) + " m/s"],
+    ["近点高度", format_radius(info.altitude_p)],
+    ["遠点高度", format_radius(info.altitude_a)],
+    ["離心率", info.e.toFixed(4)],
+    ["周期", format_period(info.period)],
+  ];
+  rows[1][0] = is_insert ? "投入ΔV" : "脱出ΔV";
+  readout.appendChild(makeReadout(rows));
+
+  // 遠点を広げるほど投入は安くなるが、ヒル半径の半分より外は太陽の摂動で
+  // 軌道を保てない。下限(=放物線捕獲)がいくらなのかも併せて示す。
+  const parts = [];
+  if (info.ra_clamped) {
+    parts.push(`遠点は上限 ${format_radius(info.ra_max)} (ヒル半径の半分)`);
+  } else if (info.dv_min != undefined) {
+    parts.push(`遠点を上限まで広げると ${(info.dv_min * 1000).toFixed(0)} m/s`);
+  }
+  parts.push("近点接線噴射。軌道の向きは自由に選べるものとしている");
+  note.textContent = parts.join(" / ");
+}
+
+function refresh_after_orbit_change() {
+  update_plot();
+  update_stat_bar();
+  change_sequence();
+  updateControlPanelDisplay();
 }
 
 // 現在選択中のシーケンスのスイングバイパラメータをB面ビューと右側UIに反映する
