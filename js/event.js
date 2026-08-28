@@ -256,29 +256,36 @@ export function Update_time() {
 function handleTouchStart(event) {
   if (event.touches.length != 1) return;
   State.old_time = State.tmp_date;
-  const element = event.currentTarget;
-  const x = event.touches[0].clientX - element.offsetLeft;
-  const y = event.touches[0].clientY - element.offsetTop;
-  const w = element.offsetWidth;
-  const h = element.offsetHeight;
-
-  State.mouse.x = (x / w) * 2 - 1;
-  State.mouse.y = -(y / h) * 2 + 1 - 0.04;
-
+  if (!setMouseFromEvent(event.touches[0].clientX, event.touches[0].clientY)) return;
   Select_planet();
+}
+
+
+/**
+ * マウス/指の位置を、太陽系ビューのキャンバス基準の正規化座標に直す。
+ *
+ * 以前は listener を張っている #graph-panel の offsetLeft/offsetTop と、
+ * padding込みの offsetWidth/offsetHeight を混ぜて使っていた。パネルは
+ * canvas より一回り大きく、canvas はその中で中央に置かれるので、原点も
+ * 縮尺もずれる。さらに -0.04 のずらしが入っていたため、レイは狙った点より
+ * 下へ飛んでいた (丸を掴むには少し上をクリックする必要があった)。
+ * 他のビュー(view3d.js の setRayFromEvent)と同じく、canvas の実際の矩形で測る。
+ *
+ * @returns {boolean} 測れたか (非表示のときは false)
+ */
+function setMouseFromEvent(clientX, clientY) {
+  const canvas = document.getElementById("plot");
+  if (!canvas) return false;
+  const rect = canvas.getBoundingClientRect();
+  if (!(rect.width > 0) || !(rect.height > 0)) return false;
+  State.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  State.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  return true;
 }
 
 function handleTouchMove(event) {
   if (!State.is_change_time) return;
-  const element = event.currentTarget;
-  const x = event.touches[0].clientX - element.offsetLeft;
-  const y = event.touches[0].clientY - element.offsetTop;
-  const w = element.offsetWidth;
-  const h = element.offsetHeight;
-
-  State.mouse.x = (x / w) * 2 - 1;
-  State.mouse.y = -(y / h) * 2 + 1 - 0.04;
-
+  if (!setMouseFromEvent(event.touches[0].clientX, event.touches[0].clientY)) return;
   Dlag_planet();
 }
 
@@ -303,29 +310,13 @@ function endDrag() {
 function handleMouseDown(event) {
   if (event.button != 0) return;
   State.old_time = State.tmp_date;
-  const element = event.currentTarget;
-  const x = event.clientX - element.offsetLeft;
-  const y = event.clientY - element.offsetTop;
-  const w = element.offsetWidth;
-  const h = element.offsetHeight;
-
-  State.mouse.x = (x / w) * 2 - 1;
-  State.mouse.y = -(y / h) * 2 + 1 - 0.04;
-
+  if (!setMouseFromEvent(event.clientX, event.clientY)) return;
   Select_planet();
 }
 
 function handleMouseMove(event) {
   if (!State.is_change_time) return;
-  const element = event.currentTarget;
-  const x = event.clientX - element.offsetLeft;
-  const y = event.clientY - element.offsetTop;
-  const w = element.offsetWidth;
-  const h = element.offsetHeight;
-
-  State.mouse.x = (x / w) * 2 - 1;
-  State.mouse.y = -(y / h) * 2 + 1 - 0.04;
-
+  if (!setMouseFromEvent(event.clientX, event.clientY)) return;
   Dlag_planet();
 }
 

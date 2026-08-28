@@ -116,6 +116,45 @@ h1 {
   padding: var(--canvas-padding);
 }
 
+/* 太陽系ビューの上に浮かせる小さな道具ボタン。CSS2DRendererの層(ラベル)が
+   canvasの上に重なるので、それより手前に出す */
+.view-tool {
+  position: absolute;
+  top: calc(var(--canvas-padding) + 10px);
+  right: calc(var(--canvas-padding) + 10px);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.view-tool:hover {
+  border-color: var(--gray-300);
+  color: var(--text);
+}
+.view-tool.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.view-tool svg {
+  display: block;
+  flex: 0 0 auto;
+}
+.view-tool-label {
+  font-variant-numeric: tabular-nums;
+}
+
 #plot {
   display: block;
   border-radius: var(--radius-lg);

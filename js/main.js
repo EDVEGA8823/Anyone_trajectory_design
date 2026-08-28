@@ -25,6 +25,10 @@ import {
   COLOR_COAST,
   COLOR_ACHIEVED,
   invalidate,
+  drawingPos,
+  updateNodeMarkers,
+  getZScale,
+  setZScale,
 } from './plot.js';
 import { initEvents, Update_time, delete_sequence, delete_checked } from './event.js';
 import { launcher_list, launcher_mass, launch_declination } from './launchers.js';
@@ -620,9 +624,11 @@ export function toggle_planet() {
       let pos = State.mission_sequence.get_s_c_pos(n);
       if (pos != undefined) {
         PlotState.marker_spheres[i].visible = true;
-        PlotState.marker_spheres[i].position.set(pos[0] / AU, pos[2] / AU, -pos[1] / AU);
+        PlotState.marker_spheres[i].position.copy(drawingPos(pos));
       } else PlotState.marker_spheres[i].visible = false;
     }
+    // 選択中は前後3つの丸だけを出すので、一覧の薄い丸は引っ込める
+    updateNodeMarkers([]);
   } else {
     for (let i = 0; i < PlotState.orbit_lines.length; i++) {
       toggle_visibility(i, true);
@@ -630,6 +636,13 @@ export function toggle_planet() {
     for (let i = 0; i < 3; i++) {
       PlotState.marker_spheres[i].visible = false;
     }
+    // 何も選んでいないときは、どこに節があるのかが分かるよう全ノードを薄く出す
+    // (軌道とマヌーバの矢印を薄く出しているのと同じ考え方)
+    const all = [];
+    for (let i = 0; i < State.mission_sequence.count; i++) {
+      all.push(State.mission_sequence.get_s_c_pos(i));
+    }
+    updateNodeMarkers(all);
   }
 
   if (State.mission_sequence.planet_num(State.selected_sequence - 1) != -1) {
@@ -1800,6 +1813,70 @@ function apply_launch_from_drag(set) {
   };
 }
 
+// --- Z軸(黄道面からの高さ)の拡大 ---
+// 太陽系は極端に平たく、等倍では軌道傾斜がほとんど読み取れない。押すと、
+// いま見えている軌道のうち最も黄道面から外れている量を基準に上下だけ引き伸ばす。
+// 拡大後の起伏が「面内の広がり」のこの割合になるようにする。
+const Z_ZOOM_TARGET = 0.2;
+const Z_ZOOM_MAX = 200;
+
+/**
+ * 拡大の基準を測る。選択中ならそのノードに関わる軌道、無選択ならミッション全体。
+ * 描画用の点(拡大前)から直に測るので、いまの拡大率には影響されない。
+ */
+function measure_z_extent() {
+  const mission = State.mission_sequence;
+  const sel = State.selected_sequence;
+  let z_max = 0;
+  let r_max = 0;
+  const scan = (pts) => {
+    for (const p of pts) {
+      z_max = Math.max(z_max, Math.abs(p.y));
+      r_max = Math.max(r_max, Math.hypot(p.x, p.z));
+    }
+  };
+
+  // 探査機の軌道 (選択中はその前後のレグだけ)
+  for (let i = 0; i < mission.count; i++) {
+    if (sel != -1 && i !== sel && i !== sel - 1) continue;
+    scan(mission.get_trajectory(i));
+  }
+
+  // 関わる天体の公転軌道
+  const [, planet_orbits] = calc();
+  for (let i = 0; i < mission.count; i++) {
+    if (sel != -1 && Math.abs(i - sel) > 1) continue;
+    const n = mission.planet_num(i);
+    if (n >= 0 && planet_orbits[n]) scan(planet_orbits[n]);
+  }
+  return { z_max, r_max };
+}
+
+export function toggle_z_zoom() {
+  if (getZScale() > 1) {
+    setZScale(1);
+  } else {
+    const { z_max, r_max } = measure_z_extent();
+    const target = Z_ZOOM_TARGET * r_max;
+    const s = z_max > 1e-9 && target > 0 ? Math.min(Math.max(target / z_max, 1), Z_ZOOM_MAX) : 1;
+    setZScale(s);
+  }
+  // 位置を持つものはすべて描き直す (拡大は描画データに掛けているため)
+  update_plot();
+  toggle_planet();
+  update_z_zoom_button();
+}
+
+export function update_z_zoom_button() {
+  const btn = document.getElementById("z_zoom");
+  const label = document.getElementById("z_zoom_factor");
+  if (!btn || !label) return;
+  const s = getZScale();
+  const on = s > 1;
+  btn.classList.toggle("active", on);
+  label.textContent = on ? "Z ×" + (s < 10 ? s.toFixed(1) : s.toFixed(0)) : "Z拡大";
+}
+
 function refresh_after_swingby_change() {
   clear_checks(); // DSMが出入りして添字がずれるため
   update_plot();
@@ -1852,6 +1929,10 @@ function boot() {
     onAlpha: apply_dsm_from_drag((m, i, v) => m.set_dsm_alpha(i, v)),
     onDelta: apply_dsm_from_drag((m, i, v) => m.set_dsm_delta(i, v)),
   });
+
+  const z_btn = document.getElementById("z_zoom");
+  if (z_btn) z_btn.addEventListener("click", toggle_z_zoom);
+  update_z_zoom_button();
 
   // Update time for the initial load
   Update_time();

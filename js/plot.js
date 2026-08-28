@@ -20,6 +20,36 @@ const LEG_IDLE_OPACITY = 0.4;
 const HEADER_HEIGHT = 64;
 const CANVAS_PADDING = 24;
 
+// --- Z軸(黄道面からの高さ)の拡大 ---
+// 太陽系は極端に平たいので、等倍だと軌道傾斜がほとんど読み取れない。
+// 描画座標のY(=物理のz)だけを一様に引き伸ばして、上下の起伏を見えるようにする。
+// 目盛りと軸ラベルも同じだけ伸ばすので、伸ばした状態でも高さは正しく読める。
+let z_scale = 1;
+
+/** 太陽中心の位置 [km] を描画座標に直す (Z軸の拡大込み) */
+export function drawingPos(pos) {
+  return new THREE.Vector3((pos[0] / AU), (pos[2] / AU) * z_scale, -(pos[1] / AU));
+}
+
+/** いまのZ軸拡大率 */
+export function getZScale() {
+  return z_scale;
+}
+
+/**
+ * Z軸の拡大率を変える。目盛り・軸ラベルも一緒に伸ばす。
+ * 軌道や天体の位置は次の描き直しで反映されるので、呼び出し側で
+ * update_plot() / toggle_planet() を呼ぶこと。
+ */
+export function setZScale(s) {
+  z_scale = Math.max(1, s);
+  // Y軸の線と、そこにぶら下がっている「◯AU」ラベル。X/Z軸のラベルは y=0 なので
+  // このスケールの影響を受けない (Y軸のラベルだけが一緒に伸びる)。
+  if (axis.length >= 2) axis[1].line.scale.y = z_scale;
+  for (const g of tick_groups) g.y.scale.y = z_scale;
+  invalidate();
+}
+
 const axis = [];
 
 // 目盛りは本数が多い (0.1AU刻みだけで100本 × 3軸)。1本ずつ THREE.Line にすると
@@ -215,9 +245,10 @@ function vectorState(pos, vec) {
   const mag = Math.hypot(vec[0], vec[1], vec[2]);
   if (!(mag > 1e-9)) return null;
   return {
-    pos: new THREE.Vector3(pos[0] / AU, pos[2] / AU, -pos[1] / AU),
-    // 方向だけなのでAUへの換算は不要
-    dir: new THREE.Vector3(vec[0], vec[2], -vec[1]).normalize(),
+    pos: drawingPos(pos),
+    // 向きも空間と同じだけ引き伸ばす。そうしないとZ拡大したとき、矢印だけが
+    // 軌道の傾きと違う方を向いてしまう (方向だけなのでAUへの換算は不要)。
+    dir: new THREE.Vector3(vec[0], vec[2] * z_scale, -vec[1]).normalize(),
     mag,
   };
 }
@@ -311,7 +342,7 @@ export function createPlanets(planet_pos) {
     sphere.add(planetLabel);
     planetLabel.layers.set(0);
 
-    sphere.position.set(pos[0] / AU, pos[2] / AU, -pos[1] / AU);
+    sphere.position.copy(drawingPos(pos));
     scene.add(sphere);
     PlotState.planet_speres.push(sphere);
     sphere.name = String(i);
@@ -321,8 +352,43 @@ export function createPlanets(planet_pos) {
 
 export function update_planets(planet_pos) {
   planet_pos.forEach((pos, i) => {
-    PlotState.planet_speres[i].position.set(pos[0] / AU, pos[2] / AU, -pos[1] / AU);
+    PlotState.planet_speres[i].position.copy(drawingPos(pos));
   });
+  invalidate();
+}
+
+// --- 何も選んでいないときに出す、全ノードの薄い丸 ---
+// 選択中の前後3つ(marker_spheres)とは別に、ミッションのどこに節があるのかを
+// 一覧として示すためのもの。天体を持つ節では天体そのものと同じ位置に来るので、
+// 天体の丸(半径0.02)より一回り大きくして、囲む輪のように見せる。
+const NODE_MARKER_SCALE = 1.15;
+const node_markers = [];
+
+/** @param {number[][]} list 各ノードの太陽中心位置 [km] */
+export function updateNodeMarkers(list) {
+  if (!scene) return;
+  for (let i = 0; i < Math.max(list.length, node_markers.length); i++) {
+    if (i >= list.length) {
+      if (node_markers[i]) node_markers[i].visible = false;
+      continue;
+    }
+    if (node_markers[i] == undefined) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03, 16, 16),
+        new THREE.MeshStandardMaterial({ color: COLOR_NODE_NEIGHBOR, transparent: true, opacity: 0.45 })
+      );
+      mesh.name = "node_marker_" + i;
+      node_markers.push(mesh);
+      scene.add(mesh);
+    }
+    if (list[i] == undefined) {
+      node_markers[i].visible = false;
+      continue;
+    }
+    node_markers[i].position.copy(drawingPos(list[i]));
+    node_markers[i].visible = true;
+    node_markers[i].scale.setScalar((PlotState.camera_dist / 7) * NODE_MARKER_SCALE);
+  }
   invalidate();
 }
 
@@ -333,7 +399,7 @@ export function createLine(initialPoints, c = 0x0000ff, width = 2) {
 
   initialPoints.forEach((point, i) => {
     positions[i * 3] = point.x;
-    positions[i * 3 + 1] = point.y;
+    positions[i * 3 + 1] = point.y * z_scale;
     positions[i * 3 + 2] = point.z;
   });
 
@@ -386,7 +452,7 @@ export function updateLine(lineData, newPoints) {
   }
   newPoints.forEach((point, i) => {
     positions[i * 3] = point.x;
-    positions[i * 3 + 1] = point.y;
+    positions[i * 3 + 1] = point.y * z_scale;
     positions[i * 3 + 2] = point.z;
   });
   for (let i = newPoints.length * 3; i < positions.length; i++) {
@@ -478,6 +544,7 @@ export function update_camera() {
   for (let i = 0; i < PlotState.marker_spheres.length; i++) {
     PlotState.marker_spheres[i].scale.setScalar((PlotState.camera_dist / 7) * (i == 1 ? 1.4 : 0.85));
   }
+  for (const mk of node_markers) mk.scale.setScalar((PlotState.camera_dist / 7) * NODE_MARKER_SCALE);
 
   applyAllVectorScales();
   invalidate();

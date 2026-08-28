@@ -36,6 +36,18 @@
   <div id="main_area">
     <div id="graph-panel">
       <canvas id="plot"></canvas>
+      <button type="button" id="z_zoom" class="view-tool"
+        title="Z軸(黄道面からの高さ)を拡大する&#10;太陽系は平たいので、等倍だと軌道の傾きがほとんど読み取れない。&#10;いま見えている軌道のうち最も黄道面から外れている量を基準に、上下だけを引き伸ばす。&#10;目盛りと軸ラベルも一緒に伸びるので、伸ばした状態でも高さは正しく読める。">
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+          <ellipse cx="12" cy="12" rx="9" ry="3.2" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5" />
+          <path d="M12 4.5 L12 19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M9 7.5 L12 4.5 L15 7.5" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M9 16.5 L12 19.5 L15 16.5" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span class="view-tool-label" id="z_zoom_factor">Z拡大</span>
+      </button>
     </div>
     <div id="UI-panel">
       <div class="sequence-panel-wrapper">
