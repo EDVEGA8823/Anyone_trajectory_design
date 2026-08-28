@@ -131,6 +131,65 @@ export const MAX_PARKING_RA_HILL = 0.5;
 // 遠点は天体半径の20倍程度の、実際の捕獲軌道によくある大きさにする。
 export const DEFAULT_PARKING_RA_FACTOR = 20;
 
+// --- 大気圏突入 ---
+//
+// 突入インターフェース高度 [km]。「ここから先は大気の影響を無視できない」と
+// 決めた高さで、突入速度や経路角はこの高さでの値として定義される慣習になっている。
+// 地球の120kmが最も広く使われる値で、他天体もそれぞれの探査機の慣習に合わせた。
+export const ENTRY_ALTITUDE = [
+  100, // 水星: 大気が無いので便宜的な値 (実質は衝突)
+  150, // 金星: 濃密な大気 (ベネラ/パイオニアの慣習)
+  120, // 地球: 標準的な突入インターフェース
+  120, // 火星: MSL等で使われる値
+  450, // 木星: ガリレオ探査機が1barの450km上を基準にした
+  450, // 土星
+  450, // 天王星
+  450, // 海王星
+  50, // 冥王星: 大気は希薄
+];
+
+/** 天体nの突入インターフェース半径 [km] */
+export function entry_interface_radius(n) {
+  if (planet_radius[n] == undefined) return undefined;
+  return planet_radius[n] + ENTRY_ALTITUDE[n];
+}
+
+/**
+ * 突入インターフェースでの速度 [km/s]。
+ * 無限遠から突入高度まで落ちてくる間のエネルギー保存そのもの。
+ *   v_entry = √(V∞² + 2μ/r_e)
+ * V∞ = 0 でもその高さの脱出速度は残るので、地球なら 11.1 km/s が下限になる。
+ */
+export function entry_velocity(mu, v_inf, r_e) {
+  if (!(mu > 0) || !(r_e > 0)) return undefined;
+  return Math.sqrt(v_inf * v_inf + (2 * mu) / r_e);
+}
+
+/**
+ * 突入インターフェースでの経路角γ (水平から測り、降下方向が負) を与えたときの、
+ * 大気に入るまでの双曲線軌道。
+ *
+ *   h = r_e・v_e・cos γ          (角運動量)
+ *   p = h²/μ,  e = √(1 + h²V∞²/μ²)
+ *   cos ν_e = (p/r_e − 1)/e     (突入点の真近点角。降下中なので ν_e < 0)
+ *   r_p = p/(1+e)                (近点半径。放物線側でも安定な形で計算する)
+ *
+ * @returns {{v_e, h, p, e, nu_e, rp}|undefined}
+ */
+export function entry_conic(mu, v_inf, r_e, gamma) {
+  const v_e = entry_velocity(mu, v_inf, r_e);
+  if (v_e == undefined) return undefined;
+  const h = r_e * v_e * Math.cos(gamma);
+  const p = (h * h) / mu;
+  const e = Math.sqrt(Math.max(0, 1 + ((h * h) / (mu * mu)) * v_inf * v_inf));
+  // 真上から落ちる極限 (h→0) では真近点角が定まらないので、そこは弾く
+  if (!(e > 1e-9) || !(p > 0)) return undefined;
+  const cos_nu = Math.max(-1, Math.min(1, (p / r_e - 1) / e));
+  // 降下中 = 近点へ向かっている = 真近点角は負
+  const nu_e = -Math.acos(cos_nu);
+  return { v_e, h, p, e, nu_e, rp: p / (1 + e) };
+}
+
 export const i_hat = [1, 0, 0];
 export const j_hat = [0, 1, 0];
 export const k_hat = [0, 0, 1];
@@ -578,6 +637,10 @@ export class Mission {
   #m_orbit_rp = [];
   #m_orbit_ra = [];
   #m_orbit_info = []; // 直近に計算された投入/脱出の結果 (get_orbit_info用)
+
+  // 大気圏突入ノードの突入経路角 [rad] (水平から測り、降下方向が負) と計算結果
+  #m_entry_gamma = [];
+  #m_entry_info = [];
 
   #m_swingby_info = []; // 直近に計算されたスイングバイ結果 (get_swingby_info用)
   #m_dsm_info = []; // 直近に計算されたDSM(マヌーバ)結果 (get_dsm_info用)
@@ -1061,6 +1124,72 @@ export class Mission {
     };
   }
 
+  // --- 大気圏突入 ---
+
+  // 突入経路角の既定値。試料回収カプセルでよく使われる -8度あたりを採る
+  // (はやぶさ -12度、スターダスト -8.2度、OSIRIS-REx -8.2度)。
+  static #DEFAULT_ENTRY_GAMMA = (-8 * Math.PI) / 180;
+
+  /** 大気圏突入ノードの突入経路角 [rad] (水平から測り、降下方向が負) */
+  entry_gamma(i) {
+    return this.#m_entry_gamma[i] ?? Mission.#DEFAULT_ENTRY_GAMMA;
+  }
+
+  set_entry_gamma(i, gamma) {
+    // 水平飛行(0)は突入にならず、真下(-90度)は物理的に成立しても意味が無い。
+    // どちらの端も避けて挟む。
+    const lim = (89.9 * Math.PI) / 180;
+    const g = Math.max(-lim, Math.min(-1e-4, gamma));
+    this.#m_entry_gamma[i] = g;
+    this.#recompute_all();
+  }
+
+  get_entry_info(i) {
+    return this.#m_entry_info[i];
+  }
+
+  // 大気に入って終わりなので、後ろに節が続けられない = 最後の節でだけ選べる
+  can_entry(i) {
+    return i > 0 && i === this.#m_count - 1;
+  }
+
+  /**
+   * 大気圏突入ノード: 入ってくるレグの到着速度から天体に対するV∞を取り、
+   * 突入インターフェースでの速度と、そこへ至る双曲線軌道を求める。
+   * 推進を使わないのでΔVは発生しない (総ΔVにも入らない)。
+   */
+  #calc_entry(i) {
+    this.#m_entry_info[i] = undefined;
+    if (i <= 0 || i >= this.#m_count) return;
+
+    const v_in = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][1] : undefined;
+    const v_pla = this.#m_planet_vel[i];
+    const n = this.#m_planet_nums[i];
+    if (v_in == undefined || v_pla == undefined || n == undefined || n < 0) return;
+    const mu = planet_mu[n];
+    const r_e = entry_interface_radius(n);
+    if (mu == undefined || r_e == undefined) return;
+
+    const v_inf = math.norm(math.subtract(v_in, v_pla));
+    const gamma = this.entry_gamma(i);
+    const conic = entry_conic(mu, v_inf, r_e, gamma);
+    if (conic == undefined) return;
+
+    this.#m_entry_info[i] = {
+      planet_num: n,
+      v_inf,
+      gamma,
+      r_entry: r_e,
+      altitude: ENTRY_ALTITUDE[n],
+      radius: planet_radius[n],
+      v_entry: conic.v_e,
+      e: conic.e,
+      p: conic.p,
+      nu_entry: conic.nu_e,
+      rp: conic.rp,
+    };
+  }
+
   // --- 周回軌道投入 / 軌道脱出 ---
 
   // その節が使う周回軌道を持っているノードの番号。
@@ -1234,6 +1363,12 @@ export class Mission {
     if (this.#m_planet_pos[i] == undefined) return;
     this.#m_s_c_pos[i] = this.#m_planet_pos[i];
 
+    // 大気圏突入: 大気に入って終わりなので出発速度は無い。突入条件だけ計算する。
+    if (this.#m_types[i] === Sequence_Type.Entry) {
+      this.#calc_entry(i);
+      return;
+    }
+
     // 周回軌道投入: 捕獲されるとその先は天体と一緒に公転するので、
     // ランベールで次の目的地へ向かわせてはいけない。#calc_orbit が
     // 出発速度を天体の公転速度に固定する (= 次のレグが「滞在」になる)。
@@ -1312,22 +1447,25 @@ export class Mission {
   // シーケンス全体を先頭から再計算する。スイングバイは前レグの到着速度に
   // 依存するため、隣接ノードだけでなく後続ノードまで影響が連鎖しうる。
   // ノード数はたかが知れているので、都度全体を計算し直しても軽い。
-  // 軌道脱出は「直前の周回軌道投入と同じ天体の、同じ軌道から出る」節なので、
-  // 並べ替えや削除でその前提が崩れたら普通の節に戻す。天体も投入側に揃える。
-  // (先頭を必ず打上げにしているのと同じ、状態の正規化)
-  #normalize_escape() {
+  // 前提が崩れた節を普通の節に戻す状態の正規化 (先頭を必ず打上げにするのと同じ)。
+  //   軌道脱出: 直前の周回軌道投入と同じ天体の、同じ軌道から出る節。天体も揃える
+  //   大気圏突入: 大気に入って終わりなので、後ろに節が続いていたら成立しない
+  #normalize_types() {
     for (let i = 0; i < this.#m_count; i++) {
-      if (this.#m_types[i] !== Sequence_Type.Escape) continue;
-      if (!this.can_escape(i)) {
+      if (this.#m_types[i] === Sequence_Type.Escape) {
+        if (!this.can_escape(i)) {
+          this.#m_types[i] = Sequence_Type.None;
+          continue;
+        }
+        this.#m_planet_nums[i] = this.#m_planet_nums[i - 1];
+      } else if (this.#m_types[i] === Sequence_Type.Entry && !this.can_entry(i)) {
         this.#m_types[i] = Sequence_Type.None;
-        continue;
       }
-      this.#m_planet_nums[i] = this.#m_planet_nums[i - 1];
     }
   }
 
   #recompute_all() {
-    this.#normalize_escape();
+    this.#normalize_types();
 
     // set_s_c は i+1 の天体位置(ランベール用)を必要とするため、天体の位置・速度は
     // 先に全ノード分計算しておく。
@@ -1594,6 +1732,8 @@ export class Mission {
     this.#m_orbit_rp.splice(idx, 0, undefined);
     this.#m_orbit_ra.splice(idx, 0, undefined);
     this.#m_orbit_info.splice(idx, 0, undefined);
+    this.#m_entry_gamma.splice(idx, 0, undefined);
+    this.#m_entry_info.splice(idx, 0, undefined);
     this.#m_planet_pos.splice(idx, 0, undefined);
     this.#m_planet_vel.splice(idx, 0, undefined);
     this.#m_s_c_pos.splice(idx, 0, undefined);
@@ -1617,6 +1757,8 @@ export class Mission {
     this.#m_orbit_rp.splice(idx, 1);
     this.#m_orbit_ra.splice(idx, 1);
     this.#m_orbit_info.splice(idx, 1);
+    this.#m_entry_gamma.splice(idx, 1);
+    this.#m_entry_info.splice(idx, 1);
     this.#m_planet_pos.splice(idx, 1);
     this.#m_planet_vel.splice(idx, 1);
     this.#m_s_c_pos.splice(idx, 1);
@@ -1650,6 +1792,8 @@ export class Mission {
     this.#m_orbit_rp.splice(idx, 0, undefined);
     this.#m_orbit_ra.splice(idx, 0, undefined);
     this.#m_orbit_info.splice(idx, 0, undefined);
+    this.#m_entry_gamma.splice(idx, 0, undefined);
+    this.#m_entry_info.splice(idx, 0, undefined);
     // 平行配列はすべて同じ位置にずらす。ここを漏らすと途中挿入のときに
     // 添字がずれて別ノードの計算結果を参照してしまう。
     this.#m_planet_pos.splice(idx, 0, undefined);

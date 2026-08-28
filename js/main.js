@@ -43,6 +43,13 @@ import {
   setOrbitActiveHandle,
   invalidateOrbitView,
 } from './orbit_view.js';
+import {
+  initEntryView,
+  updateEntryView,
+  setEntryViewHandlers,
+  setEntryActiveHandle,
+  invalidateEntryView,
+} from './entry_view.js';
 
 export function add_sequence(id) {
   let sequence_elem = document.createElement("div");
@@ -85,8 +92,9 @@ export function add_sequence(id) {
   const sequence = document.getElementById("sequence");
   sequence.appendChild(sequence_elem);
 
-  // 最終軌道の後ろには何も続かないので、追加ボタンも出さない
-  if (State.mission_sequence.type(id) === Sequence_Type.End) return;
+  // 最終軌道と大気圏突入の後ろには何も続かないので、追加ボタンも出さない
+  const tail_type = State.mission_sequence.type(id);
+  if (tail_type === Sequence_Type.End || tail_type === Sequence_Type.Entry) return;
 
   let add_sequence_elem = document.createElement("div");
   add_sequence_elem.className = "add_sequence";
@@ -430,6 +438,8 @@ export function change_sequence_propaty() {
     const can_end = State.mission_sequence.can_end(State.selected_sequence);
     // 軌道脱出は「直前が周回軌道投入」のときだけ。天体は投入側に自動で揃う
     const can_escape = State.mission_sequence.can_escape(State.selected_sequence);
+    // 大気圏突入は大気に入って終わりなので、最後の節でだけ選べる
+    const can_entry = State.mission_sequence.can_entry(State.selected_sequence);
 
     Object.values(Sequence_Type).forEach((value, i) => {
       let option = document.createElement("option");
@@ -440,6 +450,8 @@ export function change_sequence_propaty() {
           if (can_end) sequence_propaty.add(option);
         } else if (value == Sequence_Type.Escape) {
           if (can_escape) sequence_propaty.add(option);
+        } else if (value == Sequence_Type.Entry) {
+          if (can_entry) sequence_propaty.add(option);
         } else if (State.mission_sequence.planet_num(State.selected_sequence) < 10) {
           if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
             sequence_propaty.add(option);
@@ -726,17 +738,26 @@ export function updateControlPanelDisplay() {
     orbit_only[i].style.display = is_orbit ? "flex" : "none";
   }
 
+  const is_entry = sel_type === Sequence_Type.Entry;
+  const entry_only = document.getElementsByClassName("entry-only");
+  for (let i = 0; i < entry_only.length; i++) {
+    entry_only[i].style.display = is_entry ? "flex" : "none";
+  }
+
   // パネルの表示/非表示が切り替わると、隠れていたビューが現れることがある。
   // オンデマンド描画なので、現れた側に描き直しを頼んでおく。
   invalidateBPlane();
   invalidateLaunchView();
   invalidateOrbitView();
+  invalidateEntryView();
 
   if (is_swingby) updateBPlaneView();
   if (is_maneuver) renderManeuverControls();
   if (is_end) renderEndControls();
   if (is_orbit) renderOrbitControls();
   else if (State.orbit_handle) setOrbitHandle(null);
+  if (is_entry) renderEntryControls();
+  else if (State.entry_handle) setEntryHandle(null);
   if (is_launch) renderLaunchControls();
   // 打上げ以外に移ったらハンドルの選択は解除しておく
   else if (State.launch_handle) setLaunchHandle(null);
@@ -1216,6 +1237,128 @@ export function renderOrbitControls() {
   readout.appendChild(makeReadout(rows));
 }
 
+// --- 突入速度の色分け ---
+// 地球への試料回収カプセルを基準にした目安 [km/s]。小さいほど楽。
+//   11.2 : 月・低エネルギー帰還級 (アポロ)。地球脱出速度とほぼ同じで、これが下限
+//   12.9 : スターダストの再突入速度 = 人類が実際に経験した最速
+//   15   : ISASが研究している高速突入カプセルが想定する上限
+// 他天体では大気の濃さが違うので、あくまで地球基準の目安として使う。
+const ENTRY_V_LEVELS = [11.2, 12.9, 15];
+const ENTRY_V_HINT =
+  "突入速度の目安 (地球の試料回収カプセル基準)\n" +
+  "11.2未満: 月・低エネルギー帰還級 (アポロ)\n" +
+  "12.9未満: スターダスト (実績最速) まで\n" +
+  "15未満: ISASが研究中の高速突入カプセルの範囲\n" +
+  "15以上: 現状の研究でも想定外";
+
+// 突入経路角の目安。浅すぎると大気で跳ね返されて宇宙へ戻り、深すぎると
+// 減速度と加熱率が跳ね上がる。カプセルによるが、この幅が実用的な回廊。
+const ENTRY_GAMMA_MIN = -14; // [deg] これより深いと厳しい
+const ENTRY_GAMMA_MAX = -5.5; // [deg] これより浅いと跳ね返される恐れ
+
+/**
+ * 大気圏突入の操作パネル。
+ *
+ * 突入速度は無限遠から突入高度まで落ちる間のエネルギー保存だけで決まり、
+ *   v = √(V∞² + 2μ/r)
+ * 設計変数は突入経路角γ (水平から測り降下が負) のみ。γは突入速度を変えず、
+ * 軌道の形 (どれくらい浅く入るか) と回廊の成否を決める。
+ */
+export function renderEntryControls() {
+  const i = State.selected_sequence;
+  const inputs = document.getElementById("entry_inputs");
+  const readout = document.getElementById("entry_readout");
+  const badge = document.getElementById("entry_badge");
+  if (!inputs || !readout || i == -1 || !State.mission_sequence) return;
+
+  const mission = State.mission_sequence;
+  const info = mission.get_entry_info(i);
+
+  // 別のノードに移ったらマウスハンドルは引っ込める
+  if (State.entry_handle && entry_handle_seq !== i) setEntryHandle(null);
+
+  inputs.innerHTML = "";
+  readout.innerHTML = "";
+
+  const planetNum = mission.planet_num(i);
+  if (planetNum == -1) {
+    readout.appendChild(makeReadout([["", "天体を選ぶと計算されます"]]));
+    updateEntryView({ planetNum: -1 });
+    badge.textContent = "";
+    badge.className = "orbit-badge";
+    return;
+  }
+
+  // 突入経路角の入力 (欄を選ぶと3Dビューにハンドルが出る)
+  const gamma_deg = mission.entry_gamma(i) * RAD2DEG;
+  const label = document.createElement("label");
+  label.textContent = "突入経路角 γ [deg]";
+  label.title =
+    "水平から測った突入時の降下角 (下向きが負)。\n" +
+    `実用的な回廊はおおむね ${ENTRY_GAMMA_MIN} 〜 ${ENTRY_GAMMA_MAX} 度。\n` +
+    "浅すぎると大気で跳ね返されて宇宙へ戻り、深すぎると減速度と加熱率が跳ね上がる。\n" +
+    "γは突入速度そのものは変えない (エネルギーで決まるため)。";
+  const input = document.createElement("input");
+  input.type = "number";
+  input.step = "0.1";
+  input.min = "-89";
+  input.max = "-0.1";
+  input.value = gamma_deg.toFixed(1);
+  input.onchange = () => {
+    mission.set_entry_gamma(i, Number(input.value) * DEG2RAD);
+    refresh_after_entry_change();
+  };
+  inputs.appendChild(makeParamField("gamma", label, input, ENTRY_HANDLE));
+
+  if (info == null) {
+    readout.appendChild(makeReadout([["", "前のレグが決まると計算されます"]]));
+    updateEntryView({ planetNum: -1 });
+    badge.textContent = "";
+    badge.className = "orbit-badge";
+    return;
+  }
+
+  // 突入速度がどのあたりの水準なのかを一言で添える (色は ENTRY_V_LEVELS と同じ段階)
+  const v_level = level_low(info.v_entry, ENTRY_V_LEVELS);
+  const BADGE = {
+    good: ["余裕", "safe"],
+    ok: ["実績内", ""],
+    warn: ["研究段階", "caution"],
+    bad: ["想定外", "risk"],
+  };
+  const [badge_text, badge_class] = BADGE[v_level] ?? ["", ""];
+  badge.textContent = badge_text;
+  badge.className = "orbit-badge " + badge_class;
+
+  const g_deg = info.gamma * RAD2DEG;
+  const g_level = g_deg < ENTRY_GAMMA_MIN || g_deg > ENTRY_GAMMA_MAX ? "warn" : null;
+
+  readout.appendChild(
+    makeReadout([
+      ["侵入速度 V∞", info.v_inf.toFixed(3) + " km/s"],
+      ["突入速度", info.v_entry.toFixed(3) + " km/s", v_level, ENTRY_V_HINT],
+      ["突入高度", info.altitude.toFixed(0) + " km"],
+      ["経路角 γ", g_deg.toFixed(1) + "°", g_level],
+    ])
+  );
+
+  updateEntryView({
+    planetNum,
+    key: i + ":" + planetNum,
+    gamma: info.gamma,
+    e: info.e,
+    p: info.p,
+    nuEntry: info.nu_entry,
+  });
+}
+
+function refresh_after_entry_change() {
+  update_plot();
+  update_stat_bar();
+  change_sequence();
+  updateControlPanelDisplay();
+}
+
 function refresh_after_orbit_change() {
   update_plot();
   update_stat_bar();
@@ -1406,6 +1549,7 @@ export function renderSwingbyControls() {
 let handle_seq = -1;
 let launch_handle_seq = -1;
 let orbit_handle_seq = -1;
+let entry_handle_seq = -1;
 
 // B面ビューのハンドルの出し分け。keyは "rp" | "beta" | null
 export function setSwingbyHandle(key) {
@@ -1430,10 +1574,18 @@ export function setOrbitHandle(key) {
   setOrbitActiveHandle(key === "orbit_rp" ? "rp" : key === "orbit_ra" ? "ra" : null);
 }
 
+// 大気圏突入ビューのハンドルの出し分け。keyは "gamma" | null
+export function setEntryHandle(key) {
+  State.entry_handle = key;
+  entry_handle_seq = key ? State.selected_sequence : -1;
+  setEntryActiveHandle(key);
+}
+
 // makeParamField に渡す、どのビューのハンドルを操作する欄なのかの指定
 const SWINGBY_HANDLE = { get: () => State.swingby_handle, set: setSwingbyHandle };
 const LAUNCH_HANDLE = { get: () => State.launch_handle, set: setLaunchHandle };
 const ORBIT_HANDLE = { get: () => State.orbit_handle, set: setOrbitHandle };
+const ENTRY_HANDLE = { get: () => State.entry_handle, set: setEntryHandle };
 
 // ラベルと入力欄を、クリックでハンドルを出せる1つの欄にまとめる。
 // 選択中の欄のラベルをもう一度押すとハンドルを消す (カメラ操作に戻れるように)。
@@ -1455,14 +1607,16 @@ function makeParamField(key, label, input, handle = SWINGBY_HANDLE) {
   return field;
 }
 
-// [項目名, 値] の並びを、幅の狭い1カラムに積んで表示する
+// [項目名, 値, 段階?] の並びを、幅の狭い1カラムに積んで表示する。
+// 段階 ("good"|"ok"|"warn"|"bad") を渡すと、統計バーと同じ色で値を塗る。
 function makeReadout(rows) {
   const readout = document.createElement("div");
   readout.className = "swingby-readout";
-  rows.forEach(([label, value]) => {
+  rows.forEach(([label, value, level, hint]) => {
     const row = document.createElement("div");
     row.className = "row swingby-readout-row";
-    row.innerHTML = `<span>${label}</span><span>${value}</span>`;
+    if (hint) row.title = hint;
+    row.innerHTML = `<span>${label}</span><span${level ? ` class="lvl-${level}"` : ""}>${value}</span>`;
     readout.appendChild(row);
   });
   return readout;
@@ -1482,6 +1636,14 @@ function apply_beta_from_drag(beta) {
   if (i == -1 || !State.mission_sequence) return;
   State.mission_sequence.set_beta(i, beta);
   refresh_after_swingby_change();
+}
+
+// 大気圏突入ビューのハンドルをドラッグしている間の反映。
+function apply_entry_gamma_from_drag(gamma) {
+  const i = State.selected_sequence;
+  if (i == -1 || !State.mission_sequence) return;
+  State.mission_sequence.set_entry_gamma(i, gamma);
+  refresh_after_entry_change();
 }
 
 // 周回軌道ビューのハンドルをドラッグしている間の反映。
@@ -1550,6 +1712,8 @@ function boot() {
     onRp: apply_orbit_from_drag((m, i, v) => m.set_orbit_rp(i, v)),
     onRa: apply_orbit_from_drag((m, i, v) => m.set_orbit_ra(i, v)),
   });
+  initEntryView();
+  setEntryViewHandlers({ onGamma: apply_entry_gamma_from_drag });
 
   // Update time for the initial load
   Update_time();
@@ -1568,6 +1732,7 @@ function install_redraw_safety_net() {
     invalidateBPlane();
     invalidateLaunchView();
     invalidateOrbitView();
+    invalidateEntryView();
   };
   for (const type of ["pointerup", "pointerdown", "wheel", "input", "change", "keyup"]) {
     document.addEventListener(type, redraw, { passive: true, capture: true });

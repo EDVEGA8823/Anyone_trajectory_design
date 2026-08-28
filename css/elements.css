@@ -908,6 +908,9 @@ input:focus {
 .view-legend .sw-ra {
   background: #e0a03b;
 }
+.view-legend .sw-horizon {
+  background: #8a8f99;
+}
 
 /* プレビューを広く取るため、右側の数値・入力欄は細い1カラムにする */
 .swingby-controls,
@@ -985,6 +988,16 @@ input:focus {
   font-size: 12px;
   line-height: 1.25;
 }
+/* 統計バーと同じ4段階で、読み値そのものにも色を付ける */
+.swingby-readout-row span.lvl-good {
+  color: var(--good);
+}
+.swingby-readout-row span.lvl-warn {
+  color: var(--warn);
+}
+.swingby-readout-row span.lvl-bad {
+  color: var(--danger);
+}
 
 .swingby-inputs {
   gap: 4px;
@@ -992,6 +1005,12 @@ input:focus {
 
 /* --- 周回軌道投入 / 軌道脱出 --- */
 /* プレビューの横に、入力欄と結果を縦に積む (他のビューと同じ細い1カラム) */
+/* 大気圏突入は入力が1つ・読み値も4行と短いので、枠の高さがプレビューの
+   大きさを決めてしまう。マウスで触る図なので下限を与えて小さくしすぎない */
+.entry-only .view-3d {
+  min-height: 260px;
+}
+
 .orbit-controls {
   flex: 0 0 118px;
   width: 118px;
@@ -1019,10 +1038,22 @@ input:focus {
   border-color: var(--danger);
   background: var(--danger-soft);
 }
-.orbit-badge.boost {
+.orbit-badge.boost,
+.orbit-badge.safe {
   color: var(--good);
   border-color: var(--good);
   background: var(--good-soft);
+}
+/* 大気圏突入の警告バッジ。突入速度が実績や研究の範囲をどれだけ超えているか */
+.orbit-badge.caution {
+  color: var(--warn);
+  border-color: var(--warn-border);
+  background: var(--warn-soft);
+}
+.orbit-badge.risk {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
 }
 
 /* rp / β の欄。クリックするとB面ビューにマウス用のハンドルが出る */
@@ -1065,6 +1096,9 @@ input:focus {
 .param-field--orbit_rp.active label::after,
 .param-field--orbit_ra.active label::after {
   content: "\2195"; /* 上下矢印 = 近点/遠点の向きに伸び縮み */
+}
+.param-field--gamma.active label::after {
+  content: "\21BB"; /* 回転矢印 = 突入点まわりに入射方向を回す */
 }
 /* rp や β を大文字化すると別の記号に見えてしまうのでそのまま出す */
 .swingby-inputs label {
