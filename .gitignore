@@ -1,0 +1,3 @@
+# MPCから落としてきた配布ファイルの置き場 (mpcorb_extended は180MBある)。
+# ここから data/bodies/*.json を作って、そちらだけを追跡する。
+.cache/

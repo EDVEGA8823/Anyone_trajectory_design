@@ -1,0 +1,108 @@
+{
+ "format": "atd-bodies-index",
+ "version": 1,
+ "generated_at": "2026-08-29T11:33:21Z",
+ "source": {
+  "name": "IAU Minor Planet Center",
+  "site": "https://www.minorplanetcenter.net",
+  "retrieved": "2026-08-29T11:33:21Z",
+  "files": [
+   {
+    "set": "neo",
+    "url": "https://www.minorplanetcenter.net/Extended_Files/nea_extended.json.gz",
+    "note": "地球接近天体 (NEA)"
+   },
+   {
+    "set": "distant",
+    "url": "https://www.minorplanetcenter.net/Extended_Files/distant_extended.json.gz",
+    "note": "遠方天体 (ケンタウルス・太陽系外縁天体)"
+   },
+   {
+    "set": "comet",
+    "url": "https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt",
+    "note": "彗星"
+   },
+   {
+    "set": "named",
+    "url": "https://www.minorplanetcenter.net/Extended_Files/mpcorb_extended.json.gz",
+    "note": "全小惑星 (172MB。名前付きを拾うためだけに使う)"
+   }
+  ]
+ },
+ "id_rule": "番号があれば a:番号 / c:番号、無ければ a:仮符号 / c:符号",
+ "units": {
+  "epoch": "ユリウス日 (TT)",
+  "a": "AU",
+  "q": "AU",
+  "i": "度",
+  "node": "度",
+  "peri": "度",
+  "M": "度",
+  "tp": "近日点通過のユリウス日 (TT)",
+  "H": "絶対等級"
+ },
+ "sets": [
+  {
+   "id": "popular",
+   "label": "よく使う天体",
+   "note": "探査機が訪れた天体や、名前の通った大きな天体",
+   "file": "popular.json",
+   "kinds": [
+    "asteroid",
+    "comet"
+   ],
+   "count": 61,
+   "bytes": 7898,
+   "preload": true
+  },
+  {
+   "id": "neo",
+   "label": "地球接近天体",
+   "note": "地球の軌道に近づく小惑星。到達しやすい目標が多い",
+   "file": "neo.json",
+   "kinds": [
+    "asteroid"
+   ],
+   "count": 42237,
+   "bytes": 4190569,
+   "preload": false
+  },
+  {
+   "id": "comet",
+   "label": "彗星",
+   "note": "周期彗星と非周期彗星",
+   "file": "comet.json",
+   "kinds": [
+    "comet"
+   ],
+   "count": 934,
+   "bytes": 105187,
+   "preload": false
+  },
+  {
+   "id": "distant",
+   "label": "遠方天体",
+   "note": "木星以遠のケンタウルス・太陽系外縁天体・準惑星",
+   "file": "distant.json",
+   "kinds": [
+    "asteroid"
+   ],
+   "count": 8242,
+   "bytes": 905810,
+   "preload": false
+  },
+  {
+   "id": "named",
+   "label": "名前付き小惑星",
+   "note": "上のどれにも入らない、名前の付いた小惑星と大きな小惑星",
+   "file": "named.json",
+   "kinds": [
+    "asteroid"
+   ],
+   "count": 26244,
+   "bytes": 2890149,
+   "preload": false
+  }
+ ],
+ "total": 77718
+}

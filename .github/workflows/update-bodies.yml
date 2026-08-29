@@ -1,0 +1,67 @@
+name: 小天体データの更新
+
+# GitHub Pages は静的配信なので、実行時に Minor Planet Center を叩けない。
+# ここで定期的に配布ファイルを取り、data/bodies/*.json を作り直して置いておく。
+#
+# 既定は毎月1日。MPCの元期 (Epoch) は半年ごとにしか動かないので、これで足りる。
+# 新しく見つかった小惑星をすぐ入れたいときは、Actionsの画面から手で走らせる。
+
+on:
+  schedule:
+    - cron: "0 3 1 * *" # 毎月1日 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "名前付き小惑星も更新する (172MBの配布ファイルを取る)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-bodies
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: データベースを作る
+        run: |
+          python tools/build_bodies.py \
+            ${{ (github.event_name == 'schedule' || inputs.full) && '--full' || '' }} \
+            | tee build.log
+
+      - name: 中身を確かめる
+        run: python tools/check_bodies.py data/bodies
+
+      - name: 変わっていれば commit する
+        run: |
+          if [ -z "$(git status --porcelain data/bodies)" ]; then
+            echo "変更なし。commitしない" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/bodies
+          git commit \
+            -m "小天体データを更新 ($(date -u +%Y-%m-%d))" \
+            -m "出典: IAU Minor Planet Center / tools/build_bodies.py が自動生成"
+          git push
+
+      - name: まとめ
+        if: always()
+        run: |
+          echo '## 小天体データ' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 12 build.log 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo '(ログなし)' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
