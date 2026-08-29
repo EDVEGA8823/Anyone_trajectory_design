@@ -873,6 +873,9 @@ export class Mission {
   #m_entry_gamma = [];
   #m_entry_info = [];
 
+  // 小天体との出会い (フライバイ・ランデブー) の計算結果
+  #m_encounter_info = [];
+
   #m_swingby_info = []; // 直近に計算されたスイングバイ結果 (get_swingby_info用)
   #m_dsm_info = []; // 直近に計算されたDSM(マヌーバ)結果 (get_dsm_info用)
   #m_end_info = []; // 最終軌道ノードで到達した軌道 (get_end_info用)
@@ -934,8 +937,18 @@ export class Mission {
       if (dsm && dsm.dv) total += dsm.dv;
       const orb = this.#m_orbit_info[i];
       if (orb && orb.dv > 0) total += orb.dv;
+      const enc = this.#m_encounter_info[i];
+      if (enc && enc.dv > 0) total += enc.dv;
     }
     return total;
+  }
+
+  /**
+   * フライバイ・ランデブーの計算結果。
+   * {kind, planet_num, v_rel_in, v_rel_out, dv_arrive, dv_depart, dv, terminal}
+   */
+  get_encounter_info(i) {
+    return this.#m_encounter_info[i] ?? null;
   }
 
   // マヌーバ(DSM)ノードiに入ってくる軌道(前ノードの出発状態が描く円錐曲線)の
@@ -1569,6 +1582,60 @@ export class Mission {
    *
    * どちらも近点接線噴射なので、ΔVは向きや位相に依らない(定義部の説明を参照)。
    */
+  /**
+   * フライバイ・ランデブーの費用を計算する (小天体との出会い)。
+   *
+   * 小惑星や彗星の重力は、スイングバイに使えるほどではない (ケレスでさえ
+   * 曲げ角は1度に満たない)。だから速度を変えるぶんは全部自前のΔVになる。
+   *
+   *   フライバイ   通り過ぎるだけ。入ってきた速度と出ていく速度の差を払う
+   *   ランデブー   天体に速度を合わせる。着くときに |v_in - v_天体|、
+   *                その先へ向かうならさらに |v_out - v_天体| が要る
+   *                (小天体には「軌道脱出」に当たる節が無いので、到着と出発を
+   *                 この1つの節でまとめて持つ)
+   */
+  #calc_encounter(i) {
+    this.#m_encounter_info[i] = undefined;
+    const is_rendezvous = this.#m_types[i] === Sequence_Type.Rendezvous;
+    const n = this.#m_planet_nums[i];
+    const v_pla = this.#m_planet_vel[i];
+    if (n == undefined || n === -1 || v_pla == undefined) return;
+
+    // ランデブーで先が無いなら、天体と一緒に漂う (速度を確定させておかないと
+    // 軌道が繋がらない)。周回軌道投入と同じ扱い。
+    if (is_rendezvous && this.#m_s_c_vel[i] == undefined) this.#m_s_c_vel[i] = [v_pla];
+
+    const v_in = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][1] : undefined;
+    const v_out = this.#m_s_c_vel[i] != undefined ? this.#m_s_c_vel[i][0] : undefined;
+    const rel = (v) => (v == undefined ? undefined : math.norm(math.subtract(v, v_pla)));
+
+    const v_rel_in = rel(v_in);
+    const v_rel_out = rel(v_out);
+
+    let dv_arrive = 0;
+    let dv_depart = 0;
+    let dv = 0;
+    if (is_rendezvous) {
+      dv_arrive = v_rel_in ?? 0;
+      dv_depart = v_rel_out ?? 0;
+      dv = dv_arrive + dv_depart;
+    } else if (v_in != undefined && v_out != undefined) {
+      dv = math.norm(math.subtract(v_out, v_in));
+    }
+
+    this.#m_encounter_info[i] = {
+      kind: is_rendezvous ? "rendezvous" : "flyby",
+      planet_num: n,
+      v_rel_in, // 天体に対する接近速度 (フライバイの見かけの速さ)
+      v_rel_out,
+      dv_arrive,
+      dv_depart,
+      dv,
+      // 到着だけで終わる節か (この先が無い)
+      terminal: i + 1 >= this.#m_count,
+    };
+  }
+
   #calc_orbit(i) {
     this.#m_orbit_info[i] = undefined;
     const type = this.#m_types[i];
@@ -1623,6 +1690,17 @@ export class Mission {
 
   #set_s_c(i) {
     if (i < 0 || i >= this.#m_count) return;
+
+    // 種別ごとの計算結果は、その種別のときにしか作り直されない。消さずにおくと
+    // 種別を変えたあとも前の結果が残り、総ΔVに二重に乗ってしまう
+    // (スイングバイをやめたのに近点ΔVが計上され続ける、など)。
+    this.#m_swingby_info[i] = undefined;
+    this.#m_orbit_info[i] = undefined;
+    this.#m_entry_info[i] = undefined;
+    this.#m_encounter_info[i] = undefined;
+    this.#m_dsm_info[i] = undefined;
+    this.#m_end_info[i] = undefined;
+
     if (this.#m_dates[i] == undefined) return;
 
     // マヌーバ(DSM)ノードは天体上ではなく深宇宙の一点。位置も伝播で求めるので
@@ -1681,6 +1759,11 @@ export class Mission {
       if (is_swingby) {
         // 自動スイングバイ: 軌道はランベール解のまま、rp/beta/近点ΔVを診断情報として計算する
         this.#calc_swingby_auto(i);
+      }
+      // フライバイ・ランデブー: 小天体には頼れる重力が無いので、速度の変化は
+      // すべて自前のΔVになる。軌道はランベール解のまま、その費用を計算する
+      if (this.#m_types[i] === Sequence_Type.Flyby || this.#m_types[i] === Sequence_Type.Rendezvous) {
+        this.#calc_encounter(i);
       }
       // 軌道脱出: 軌道はランベール解のまま (出発の向き・大きさは次の目的地が決める)。
       // 周回軌道からその出発速度に乗るための近点ΔVを計算する。
@@ -2108,6 +2191,7 @@ export class Mission {
     this.#m_s_c_pos.splice(idx, 0, undefined);
     this.#m_s_c_vel.splice(idx, 0, undefined);
     this.#m_swingby_info.splice(idx, 0, undefined);
+    this.#m_encounter_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
     this.#m_end_info.splice(idx, 0, undefined);
     this.#m_pinned_event.splice(idx, 0, undefined);
@@ -2136,6 +2220,7 @@ export class Mission {
     this.#m_s_c_pos.splice(idx, 1);
     this.#m_s_c_vel.splice(idx, 1);
     this.#m_swingby_info.splice(idx, 1);
+    this.#m_encounter_info.splice(idx, 1);
     this.#m_dsm_info.splice(idx, 1);
     this.#m_end_info.splice(idx, 1);
     this.#m_pinned_event.splice(idx, 1);
@@ -2180,6 +2265,7 @@ export class Mission {
     this.#m_s_c_pos.splice(idx, 0, undefined);
     this.#m_s_c_vel.splice(idx, 0, undefined);
     this.#m_swingby_info.splice(idx, 0, undefined);
+    this.#m_encounter_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
     this.#m_end_info.splice(idx, 0, undefined);
     this.#m_pinned_event.splice(idx, 0, undefined);
@@ -2322,6 +2408,7 @@ export class Mission {
     this.#m_orbit_info = blank();
     this.#m_entry_info = blank();
     this.#m_swingby_info = blank();
+    this.#m_encounter_info = blank();
     this.#m_dsm_info = blank();
     this.#m_end_info = blank();
     this.#m_trajectory_arcs = blank();

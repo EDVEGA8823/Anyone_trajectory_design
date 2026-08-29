@@ -20,6 +20,35 @@ const COMET_DIAMETER_KM = 2; // 彗星のHは全光度 (コマ込み) なので�
 const UNKNOWN_DIAMETER_KM = 1;
 const G = 6.674e-20; // [km^3 kg^-1 s^-2]
 
+// 「惑星のように扱う」小天体の下限 [km^3/s^2]。
+// mu = 1 は密度2000kg/m^3で直径240km程度。ケレス・ベスタ・パラス・ヒギエアや
+// 大きめの太陽系外縁天体がここに入る。この大きさなら探査機を周回させられるし
+// (ドーンはベスタとケレスを周回した)、近点を選べば軌道もいくらか曲がる。
+// これより小さいと、重力はあってないようなもの (リュウグウの脱出速度は
+// 秒速数十センチ) なので、通過するか速度を合わせるかの2択になる。
+export const MAJOR_BODY_MU = 1;
+
+// 大きさと重さがよく分かっている天体は、Hからの見積もりではなく公表値を使う。
+// 見積もりはアルベドの仮定しだいで倍半分ずれるので、探査機が実際に訪れた
+// 天体や、周回できる大きさの天体だけでも実測値に寄せておく。
+// [mu km^3/s^2, 平均半径 km]
+const KNOWN = {
+  "a:1": [62.63, 469.7], // Ceres
+  "a:2": [13.6, 256], // Pallas
+  "a:4": [17.29, 262.7], // Vesta
+  "a:10": [5.8, 217], // Hygiea
+  "a:16": [1.53, 111], // Psyche
+  "a:433": [4.46e-4, 8.4], // Eros
+  "a:25143": [2.1e-9, 0.16], // Itokawa
+  "a:101955": [4.9e-9, 0.245], // Bennu
+  "a:162173": [3.0e-8, 0.45], // Ryugu
+  "a:65803": [3.5e-8, 0.39], // Didymos
+  "a:136199": [1108, 1163], // Eris
+  "a:136108": [268, 780], // Haumea
+  "a:136472": [207, 715], // Makemake
+  "c:67P": [6.7e-7, 1.65], // Churyumov-Gerasimenko
+};
+
 const registered = []; // 番号 - PLANET_COUNT の順に並ぶ
 
 /** 絶対等級から直径 [km] を見積もる */
@@ -70,8 +99,9 @@ export function addSmallBody(body) {
   if (exist >= 0) return { num: exist, added: false };
 
   const num = PLANET_COUNT + registered.length;
-  const diameter = estimateDiameterKm(body);
-  const radius = diameter / 2;
+  const known = KNOWN[body.id];
+  const radius = known ? known[1] : estimateDiameterKm(body) / 2;
+  const mu = known ? known[0] : estimateMu(radius * 2);
 
   registered.push({
     id: body.id,
@@ -79,20 +109,30 @@ export function addSmallBody(body) {
     label: bodyLabel(body),
     body,
     conic: bodyConic(body), // {q[km], e, i, node, peri, tp}
-    diameter,
-    mu: estimateMu(diameter),
+    radius,
+    mu,
+    measured: !!known, // 公表値か、Hからの見積もりか
   });
 
   State.planet_list[num] = bodyLabel(body);
   State.planet_num = State.planet_list.length;
   setBodyConstants(num, {
-    mu: estimateMu(diameter),
+    mu,
     radius,
     // 表面すれすれは現実的でないので、半径の1割か1kmの大きい方を最低高度にする
     min_altitude: Math.max(radius * 0.1, 1),
     entry_altitude: 0, // 大気は無い
   });
   return { num, added: true };
+}
+
+/**
+ * 惑星のように扱う大きさかどうか。
+ * これが真なら、スイングバイと周回軌道投入も選べるようにする。
+ */
+export function isMajorBody(n) {
+  const b = smallBody(n);
+  return !!b && b.mu >= MAJOR_BODY_MU;
 }
 
 /** すべて取り込み直す (ミッションを読み込んだとき用)。天体番号は並び順で決まる */

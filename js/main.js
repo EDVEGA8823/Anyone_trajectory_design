@@ -68,7 +68,14 @@ import {
 import { initTopbar, setTopbarHandlers } from './topbar.js';
 import { saveMissionFile, openMissionFile, initMissionFileDrop } from './mission_file.js';
 import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
-import { addSmallBody, isSmallBody, smallBody, resetSmallBodies, smallBodyBase } from './small_bodies.js';
+import {
+  addSmallBody,
+  isSmallBody,
+  isMajorBody,
+  smallBody,
+  resetSmallBodies,
+  smallBodyBase,
+} from './small_bodies.js';
 import { bodyLabel } from './bodies.js';
 import { notify } from './topbar.js';
 import {
@@ -503,6 +510,10 @@ export function change_sequence_propaty() {
           if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
             sequence_propaty.add(option);
           }
+        } else if (isMajorBody(State.mission_sequence.planet_num(State.selected_sequence))) {
+          // ケレスやベスタくらい大きければ、周回もできるし多少は曲がる。
+          // 通過するだけ・速度を合わせるだけの選び方も残す
+          sequence_propaty.add(option);
         } else {
           // 小天体: 重力がほとんど無いので曲げられないし、周回軌道に入れる意味も
           // 薄い。代わりにフライバイ (通過) とランデブー (速度を合わせる) を出す
@@ -843,6 +854,13 @@ export function updateControlPanelDisplay() {
     entry_only[i].style.display = is_entry ? "flex" : "none";
   }
 
+  // 小天体との出会い (フライバイ・ランデブー)
+  const is_encounter = sel_type === Sequence_Type.Flyby || sel_type === Sequence_Type.Rendezvous;
+  const encounter_only = document.getElementsByClassName("encounter-only");
+  for (let i = 0; i < encounter_only.length; i++) {
+    encounter_only[i].style.display = is_encounter ? "flex" : "none";
+  }
+
   // パネルの表示/非表示が切り替わると、隠れていたビューが現れることがある。
   // オンデマンド描画なので、現れた側に描き直しを頼んでおく。
   invalidateBPlane();
@@ -859,6 +877,7 @@ export function updateControlPanelDisplay() {
   else if (State.orbit_handle) setOrbitHandle(null);
   if (is_entry) renderEntryControls();
   else if (State.entry_handle) setEntryHandle(null);
+  if (is_encounter) renderEncounterControls();
   if (is_launch) renderLaunchControls();
   // 打上げ以外に移ったらハンドルの選択は解除しておく
   else if (State.launch_handle) setLaunchHandle(null);
@@ -1173,6 +1192,50 @@ function pin_node_to_event(i, type) {
   change_sequence();
   toggle_planet();
   Update_time(); // 時刻欄・節目一覧・操作パネル・軌道の描画をまとめて更新
+}
+
+// 小天体との出会い (フライバイ・ランデブー) の結果を出す。
+//   フライバイ … 通り過ぎるときの相対速度と、軌道を繋ぐために要るΔV
+//   ランデブー … 天体に速度を合わせるΔV (先へ向かうなら出発ぶんも)
+export function renderEncounterControls() {
+  const title = document.getElementById("encounter_title");
+  const badge = document.getElementById("encounter_badge");
+  const box = document.getElementById("encounter_readout");
+  const i = State.selected_sequence;
+  if (!title || !box || i == -1 || !State.mission_sequence) return;
+
+  const mission = State.mission_sequence;
+  const info = mission.get_encounter_info(i);
+  const is_rendezvous = mission.type(i) === Sequence_Type.Rendezvous;
+  title.textContent = is_rendezvous ? "ランデブー" : "フライバイ";
+  box.innerHTML = "";
+
+  if (info == null) {
+    badge.textContent = "";
+    badge.className = "orbit-badge";
+    box.appendChild(makeReadout([["", "前のレグが決まると計算されます"]]));
+    return;
+  }
+
+  const rows = [];
+  const ms = (v) => (v * 1000).toFixed(0) + " m/s";
+  if (is_rendezvous) {
+    rows.push(["到着ΔV", ms(info.dv_arrive)]);
+    if (!info.terminal) rows.push(["出発ΔV", ms(info.dv_depart)]);
+    rows.push(["合計ΔV", ms(info.dv)]);
+    if (info.v_rel_in != undefined) rows.push(["接近速度", info.v_rel_in.toFixed(3) + " km/s"]);
+  } else {
+    if (info.v_rel_in != undefined) rows.push(["通過の相対速度", info.v_rel_in.toFixed(3) + " km/s"]);
+    rows.push(["必要ΔV", ms(info.dv)]);
+    if (info.v_rel_out != undefined) rows.push(["通過後の相対速度", info.v_rel_out.toFixed(3) + " km/s"]);
+  }
+  box.appendChild(makeReadout(rows));
+
+  // 重力がほとんど無いことは繰り返し言うより、費用として見せた方が伝わる
+  const dv_ms = info.dv * 1000;
+  badge.textContent = dv_ms < 1 ? "ΔV不要" : dv_ms < 500 ? "現実的" : dv_ms < 2000 ? "重い" : "かなり重い";
+  badge.className =
+    "orbit-badge " + (dv_ms < 1 ? "safe" : dv_ms < 500 ? "" : dv_ms < 2000 ? "caution" : "risk");
 }
 
 // 到達した軌道の一言まとめ (シーケンス一覧のカードにも使う)
