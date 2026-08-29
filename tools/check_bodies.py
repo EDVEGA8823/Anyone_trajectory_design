@@ -14,7 +14,10 @@ import sys
 
 FORMAT = "atd-bodies"
 # 天体の数がこれを下回ったら、取得か抽出が失敗したとみなす
-MIN_COUNT = {"popular": 40, "neo": 30000, "comet": 500, "distant": 5000, "named": 20000}
+MIN_COUNT = {"popular": 40, "neo": 30000, "comet": 500, "distant": 5000, "named": 20000, "interstellar": 1}
+
+# 近点距離と近点通過で軌道を与えるもの (楕円とは限らないため軌道長半径では書けない)
+PERIHELION_KINDS = ("comet", "interstellar")
 
 
 def fail(msg):
@@ -30,7 +33,7 @@ def check_group(name, group):
     """1つの群 (小惑星か彗星のどちらか) の中身を見る"""
     errors = 0
     kind = group.get("kind")
-    want = COMET_FIELDS if kind == "comet" else ASTEROID_FIELDS
+    want = COMET_FIELDS if kind in PERIHELION_KINDS else ASTEROID_FIELDS
     if group.get("fields") != want:
         errors += fail("%s: %s の fields が仕様と違う" % (name, kind))
 
@@ -39,7 +42,7 @@ def check_group(name, group):
         errors += fail("%s: %s の件数が count と食い違う" % (name, kind))
 
     n = len(want)
-    is_comet = kind == "comet"
+    is_comet = kind in PERIHELION_KINDS
     seen = set()
     bad = 0
     for b in bodies:

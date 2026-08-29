@@ -1,11 +1,11 @@
 {
  "format": "atd-bodies-index",
  "version": 1,
- "generated_at": "2026-08-29T11:53:01Z",
+ "generated_at": "2026-08-29T12:27:50Z",
  "source": {
   "name": "IAU Minor Planet Center",
   "site": "https://www.minorplanetcenter.net",
-  "retrieved": "2026-08-29T11:53:01Z",
+  "retrieved": "2026-08-29T12:27:50Z",
   "files": [
    {
     "set": "neo",
@@ -21,6 +21,11 @@
     "set": "comet",
     "url": "https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt",
     "note": "彗星"
+   },
+   {
+    "set": "interstellar",
+    "url": "https://ssd-api.jpl.nasa.gov/sbdb.api?full-prec=1&sstr=<符号>",
+    "note": "NASA/JPL Small-Body Database (MPCの配布ファイルに恒星間天体が無いため)"
    },
    {
     "set": "named",
@@ -52,7 +57,19 @@
     "comet"
    ],
    "count": 64,
-   "bytes": 9185,
+   "bytes": 9378,
+   "preload": true
+  },
+  {
+   "id": "interstellar",
+   "label": "恒星間天体",
+   "note": "太陽系の外から来た天体。双曲線軌道で二度と戻らない",
+   "file": "interstellar.json",
+   "kinds": [
+    "interstellar"
+   ],
+   "count": 3,
+   "bytes": 1589,
    "preload": true
   },
   {
@@ -64,7 +81,7 @@
     "asteroid"
    ],
    "count": 42237,
-   "bytes": 4190569,
+   "bytes": 4190762,
    "preload": false
   },
   {
@@ -76,7 +93,7 @@
     "comet"
    ],
    "count": 934,
-   "bytes": 105187,
+   "bytes": 105380,
    "preload": false
   },
   {
@@ -88,7 +105,7 @@
     "asteroid"
    ],
    "count": 8242,
-   "bytes": 905810,
+   "bytes": 906003,
    "preload": false
   },
   {
@@ -100,9 +117,9 @@
     "asteroid"
    ],
    "count": 26244,
-   "bytes": 2890149,
+   "bytes": 2890342,
    "preload": false
   }
  ],
- "total": 77721
+ "total": 77724
 }

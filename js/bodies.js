@@ -6,7 +6,10 @@
 //   ・小惑星は (a, M)、彗星は (q, 近日点通過時刻) で軌道が与えられる
 // 読み込んだものはここに溜めておき、画面側は id で引く。
 
+import { AU, MU_SUN, conic_state } from './trajectory.js';
+
 const BASE = "data/bodies/";
+const DEG2RAD = Math.PI / 180;
 
 let index_data = null;
 let index_promise = null;
@@ -15,17 +18,24 @@ const loading = new Map(); // set id -> 読み込み中の Promise
 const by_id = new Map(); // id -> 天体 (よく使う天体と元のまとまりで重なるので最初のものを採る)
 let popular_tree = []; // よく使う天体の分類 (popular.json の tree)
 
-/** 天体を指す文字列。小惑星は a:、彗星は c: (番号の体系が別なので分ける) */
+// 番号の体系は種別ごとに別 (1 は Ceres、1P は Halley、1I は 'Oumuamua) なので、
+// 天体を指すidは接頭辞で分ける
+const ID_PREFIX = { asteroid: "a:", comet: "c:", interstellar: "i:" };
+// 近点距離と近点通過時刻で軌道が与えられるもの (楕円とは限らない)
+const PERIHELION_KINDS = ["comet", "interstellar"];
+
 export function makeBodyId(kind, num, desig) {
-  const head = kind === "comet" ? "c:" : "a:";
-  return head + (num ? String(num) : desig);
+  return (ID_PREFIX[kind] || "a:") + (num ? String(num) : desig);
 }
 
-/** 画面に出す名前。「(162173) Ryugu」「67P/Churyumov-Gerasimenko」など */
+/** 画面に出す名前。「(162173) Ryugu」「67P/Churyumov-Gerasimenko」「1I/'Oumuamua」など */
 export function bodyLabel(b) {
   if (b.kind === "comet") {
     const head = b.num ? b.num + "P" : b.desig;
     return b.name ? head + "/" + b.name : head;
+  }
+  if (b.kind === "interstellar") {
+    return b.name ? b.desig + "/" + b.name : b.desig;
   }
   if (b.num && b.name) return "(" + b.num + ") " + b.name;
   if (b.num) return "(" + b.num + ") " + b.desig;
@@ -45,15 +55,15 @@ function to_object(row, fields, kind, set_id) {
   const b = { kind, set: set_id };
   for (let i = 0; i < fields.length; i++) b[fields[i]] = row[i];
 
-  // 小惑星は (a,e)、彗星は (q,e) で来る。どちらでも使えるよう両方を持たせる
-  if (kind === "comet") {
-    b.a = b.e < 1 ? b.q / (1 - b.e) : null;
+  // 小惑星は (a, 元期の平均近点角)、彗星と恒星間天体は (近点距離, 近点通過時刻)。
+  // どちらでも使えるよう、足りない方を補っておく
+  if (PERIHELION_KINDS.includes(kind)) {
+    b.a = b.e < 1 ? b.q / (1 - b.e) : null; // 放物線・双曲線では意味を持たない
   } else {
     b.q = b.a * (1 - b.e);
   }
   b.id = makeBodyId(kind, b.num, b.desig);
-  // 楕円でないものは、いまの伝播 (楕円専用のケプラー方程式) では扱えない
-  b.supported = b.e < 1 && b.a > 0;
+  b.closed = b.e < 1; // 閉じた軌道か (周期があるか)
   return b;
 }
 
@@ -150,6 +160,91 @@ export function bodiesByIds(ids) {
 
 export function bodiesOfSet(set_id) {
   return loaded.get(set_id) || [];
+}
+
+/* ==================================================================
+   軌道
+   ================================================================== */
+
+/**
+ * 天体の軌道要素を、計算に使う形 (km・ラジアン) に直す。
+ *
+ * 小惑星は元期の平均近点角で与えられているので、そこから近点通過時刻に直す。
+ * こうしておくと楕円・放物線・双曲線を同じ式 (conic_state) で扱える。
+ *
+ * @returns {{q, e, i, node, peri, tp}} tp はユリウス日
+ */
+export function bodyConic(b) {
+  const el = {
+    q: b.q * AU,
+    e: b.e,
+    i: b.i * DEG2RAD,
+    node: b.node * DEG2RAD,
+    peri: b.peri * DEG2RAD,
+    tp: b.tp,
+  };
+  if (el.tp == undefined) {
+    // 平均近点角 M0 [deg] から近点通過時刻を求める。
+    // M = n (t - tp) なので tp = 元期 - M0/n。M0 は ±180度に畳んで直近の通過を採る
+    const a = b.a * AU;
+    const n = Math.sqrt(MU_SUN / (a * a * a)) * 86400; // [rad/日]
+    let m0 = b.M * DEG2RAD;
+    m0 = m0 - 2 * Math.PI * Math.round(m0 / (2 * Math.PI));
+    el.tp = b.epoch - m0 / n;
+  }
+  return el;
+}
+
+/** 天体のある時刻 (ユリウス日) での太陽中心の位置・速度 [km, km/s] */
+export function bodyStateAt(b, jd) {
+  const el = bodyConic(b);
+  return conic_state(el, (jd - el.tp) * 86400);
+}
+
+/**
+ * 軌道を描くための点列 (太陽中心, km)。
+ * 閉じた軌道は1周、開いた軌道は近点をはさんだ一区間を描く。
+ */
+export function bodyOrbitPoints(b, count = 181) {
+  const el = bodyConic(b);
+  const n = count % 2 === 0 ? count + 1 : count; // 近点をちょうど1点に置くため奇数にする
+  const points = [];
+
+  if (b.e < 1) {
+    const a = el.q / (1 - el.e);
+    const period = 2 * Math.PI * Math.sqrt((a * a * a) / MU_SUN); // [s]
+    for (let k = 0; k < n; k++) {
+      points.push(conic_state(el, (k / (n - 1) - 0.5) * period).r);
+    }
+    return points;
+  }
+
+  // 開いた軌道。太陽から離れすぎない範囲 (近点距離の30倍あたりまで) を描く
+  const far = Math.max(el.q * 30, 5 * AU);
+  const p = el.q * (1 + el.e);
+  const cos_nu = (p / far - 1) / el.e; // r = p/(1+e cos nu) が far になる向き
+  const nu_max = Math.acos(Math.max(-1, Math.min(1, cos_nu)));
+  const t_max = time_from_true_anomaly(el, nu_max);
+  for (let k = 0; k < n; k++) {
+    // 時間で等間隔に取ると近点の周りが粗くなる (一番速く曲がるところ)。
+    // 中央ほど詰まるように取り直す
+    const u = (2 * k) / (n - 1) - 1;
+    points.push(conic_state(el, t_max * u * Math.abs(u)).r);
+  }
+  return points;
+}
+
+// 真近点角 nu に達するまでの近点からの経過時間 [s] (開いた軌道用)
+function time_from_true_anomaly(el, nu) {
+  const { q, e } = el;
+  if (Math.abs(e - 1) <= 1e-8) {
+    const D = Math.tan(nu / 2);
+    return Math.sqrt((2 * q * q * q) / MU_SUN) * (D + (D * D * D) / 3);
+  }
+  const a = q / (1 - e); // 双曲線では負
+  const H = 2 * Math.atanh(Math.sqrt((e - 1) / (e + 1)) * Math.tan(nu / 2));
+  const M = e * Math.sinh(H) - H;
+  return M / Math.sqrt(MU_SUN / Math.abs(a * a * a));
 }
 
 /* ==================================================================

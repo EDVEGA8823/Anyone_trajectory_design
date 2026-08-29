@@ -90,3 +90,6 @@
 46P      # Wirtanen
 55P      # Tempel-Tuttle
 C/1995 O1   # Hale-Bopp
+
+# 恒星間天体 (1I/'Oumuamua など) はここに書かない。
+# 数が少なく別のまとまりとして最初から読むので、書くと木に二重に出てしまう。

@@ -1848,10 +1848,9 @@ button {
 .bp-node {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  padding: 6px 12px 6px 10px;
+  padding: 6px 12px 6px 8px;
   border: none;
   border-left: 2px solid transparent;
   background: transparent;
@@ -1872,9 +1871,29 @@ button {
 }
 .bp-node-count {
   flex: 0 0 auto;
+  margin-left: auto;
   color: var(--text-muted);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+/* 開閉の目印。子を持つ分類だけ矢印が入り、開くと下を向く */
+.bp-node-mark {
+  flex: 0 0 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  transition: transform 0.15s ease;
+}
+.bp-node.open .bp-node-mark {
+  transform: rotate(90deg);
+}
+.bp-node-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 右: 天体の一覧 */
@@ -1920,9 +1939,6 @@ button {
 .bp-row.selected {
   background: var(--accent-soft);
 }
-.bp-row.unsupported {
-  color: var(--text-muted);
-}
 .bp-row-main {
   flex: 1 1 auto;
   min-width: 0;
@@ -1952,14 +1968,16 @@ button {
   min-width: 74px;
   text-align: right;
 }
+/* 開いた軌道 (双曲線・放物線) の目印 */
 .bp-badge {
   flex: 0 0 auto;
-  padding: 1px 6px;
-  border: 1px solid var(--warn-border);
+  padding: 1px 7px;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--warn-soft);
-  color: var(--warn);
+  background: var(--gray-100);
+  color: var(--text-muted);
   font-size: 10px;
+  white-space: nowrap;
 }
 
 .bp-foot {

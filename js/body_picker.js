@@ -126,41 +126,75 @@ function on_key(e) {
    左の木
    ================================================================== */
 
-function tree_node(label, depth, on_click, count) {
+// 子を持つ分類は畳んでおき、押したときだけ開く。分類が10個以上あるので、
+// 全部並べると左枠が読みにくくなる
+const expanded = new Set(); // 開いている分類の道のり ("探査機が訪れた" など)
+
+function tree_node(label, depth, on_click, count, foldable) {
   const item = el("button", "bp-node");
   item.type = "button";
-  item.style.paddingLeft = 10 + depth * 14 + "px";
+  item.style.paddingLeft = 8 + depth * 14 + "px";
+  const mark = el("span", "bp-node-mark");
+  if (foldable) {
+    mark.innerHTML =
+      '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" ' +
+      'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+  }
+  item.appendChild(mark);
   item.appendChild(el("span", "bp-node-label", label));
-  if (count != undefined) item.appendChild(el("span", "bp-node-count", String(count)));
+  if (count != undefined) item.appendChild(el("span", "bp-node-count", count.toLocaleString()));
   item.onclick = on_click;
   return item;
 }
 
 function render_tree() {
+  const active = tree_el.querySelector(".bp-node.active");
+  const active_key = active ? active.dataset.key : null;
   tree_el.innerHTML = "";
 
   tree_el.appendChild(el("div", "bp-tree-head", "よく使う天体"));
-  const walk = (nodes, depth) => {
+  const walk = (nodes, depth, parent_path) => {
     for (const n of nodes) {
-      const ids = collect_ids(n);
-      const item = tree_node(n.label, depth, () => show_tree_node(n, item), ids.length);
+      const path = parent_path ? parent_path + "/" + n.label : n.label;
+      const has_children = !!(n.children && n.children.length);
+      const open = expanded.has(path);
+      const item = tree_node(
+        n.label,
+        depth,
+        () => {
+          // 押したら中身を出し、子を持つものはその場で開閉もする
+          if (has_children) {
+            if (open) expanded.delete(path);
+            else expanded.add(path);
+          }
+          show_tree_node(n, path);
+        },
+        collect_ids(n).length,
+        has_children
+      );
+      item.dataset.key = path;
+      if (has_children) item.classList.toggle("open", open);
+      if (path === active_key) item.classList.add("active");
       tree_el.appendChild(item);
-      if (n.children) walk(n.children, depth + 1);
+      if (has_children && open) walk(n.children, depth + 1, path);
     }
   };
   const tree = popularTree();
   if (tree.length === 0) {
     tree_el.appendChild(el("div", "bp-tree-empty", "読み込み中…"));
   } else {
-    walk(tree, 0);
+    walk(tree, 0, "");
   }
 
   // すべての天体。開いたときに取りに行く
   tree_el.appendChild(el("div", "bp-tree-head", "すべての天体"));
   for (const s of bodySets()) {
     if (s.id === "popular") continue;
-    const item = tree_node(s.label, 0, () => show_set(s, item), s.count);
+    const key = "set:" + s.id;
+    const item = tree_node(s.label, 0, () => show_set(s, key), s.count);
+    item.dataset.key = key;
     item.title = s.note + "\n" + s.count.toLocaleString() + " 件 (" + Math.round(s.bytes / 1e5) / 10 + " MB)";
+    if (key === active_key) item.classList.add("active");
     tree_el.appendChild(item);
   }
 }
@@ -172,20 +206,22 @@ function collect_ids(node) {
   return ids;
 }
 
-function mark_active(item) {
-  for (const b of tree_el.querySelectorAll(".bp-node")) b.classList.remove("active");
-  if (item) item.classList.add("active");
+function mark_active(key) {
+  for (const b of tree_el.querySelectorAll(".bp-node")) {
+    b.classList.toggle("active", key != null && b.dataset.key === key);
+  }
 }
 
-function show_tree_node(node, item) {
-  mark_active(item);
+function show_tree_node(node, key) {
   search_el.value = "";
   current = { type: "tree", node };
+  render_tree(); // 開閉が変わっているので作り直す
+  mark_active(key);
   render_list(bodiesByIds(collect_ids(node)), node.label);
 }
 
-async function show_set(entry, item) {
-  mark_active(item);
+async function show_set(entry, key) {
+  mark_active(key);
   search_el.value = "";
   current = { type: "set", entry };
   set_status("「" + entry.label + "」を読み込み中… (" + Math.round(entry.bytes / 1e5) / 10 + " MB)");
@@ -252,17 +288,18 @@ function make_row(b) {
 
   const nums = el("div", "bp-row-nums");
   const period = period_years(b);
-  nums.appendChild(el("span", null, "a " + fmt(b.a, 3) + " AU"));
+  // 開いた軌道 (放物線・双曲線) には軌道長半径も周期も無いので、近点距離を出す
+  nums.appendChild(el("span", null, b.closed ? "a " + fmt(b.a, 3) + " AU" : "q " + fmt(b.q, 3) + " AU"));
   nums.appendChild(el("span", null, "e " + fmt(b.e, 3)));
   nums.appendChild(el("span", null, "i " + fmt(b.i, 1) + "°"));
   nums.appendChild(el("span", null, period ? "周期 " + fmt(period, 1) + "年" : "周期 —"));
   row.appendChild(nums);
 
-  if (!b.supported) {
-    // 楕円でない軌道はいまの伝播で扱えない (data/bodies/README.md の未対応)
-    row.classList.add("unsupported");
-    row.title = "放物線・双曲線の軌道はまだ扱えません";
-    row.appendChild(el("span", "bp-badge", "未対応"));
+  if (!b.closed) {
+    // 二度と戻らない軌道。設計としては「一度きりの機会」なので目印を出す
+    const open_kind = Math.abs(b.e - 1) < 1e-6 ? "放物線" : "双曲線";
+    row.title = open_kind + "軌道。太陽系を離れるので、次の機会は無い";
+    row.appendChild(el("span", "bp-badge", open_kind));
   }
 
   row.onclick = () => select_body(b, row);
@@ -274,7 +311,7 @@ function make_row(b) {
 }
 
 function select_body(b, row) {
-  selected = b && b.supported ? b : null;
+  selected = b || null;
   for (const r of list_el.querySelectorAll(".bp-row.selected")) r.classList.remove("selected");
   if (row) row.classList.add("selected");
 
@@ -286,13 +323,12 @@ function select_body(b, row) {
   const period = period_years(b);
   const bits = [
     bodyLabel(b),
-    "a " + fmt(b.a, 4) + " AU",
+    b.closed ? "a " + fmt(b.a, 4) + " AU" : null,
     "e " + fmt(b.e, 4),
     "i " + fmt(b.i, 2) + "°",
     "近日点 " + fmt(b.q, 3) + " AU",
-    period ? "周期 " + fmt(period, 2) + " 年" : null,
+    period ? "周期 " + fmt(period, 2) + " 年" : "太陽系を離れる軌道",
     b.H != null ? "H " + fmt(b.H, 1) : null,
-    b.supported ? null : "(放物線・双曲線の軌道はまだ扱えません)",
   ].filter(Boolean);
   detail_el.textContent = bits.join(" ・ ");
 }

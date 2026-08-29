@@ -226,21 +226,90 @@ export const i_hat = [1, 0, 0];
 export const j_hat = [0, 1, 0];
 export const k_hat = [0, 0, 1];
 
+// |e-1| がこれ以下なら放物線として扱う。楕円・双曲線の式は e が1に近づくほど
+// 軌道長半径が発散して桁落ちするので、その手前で放物線の式に切り替える。
+export const PARABOLIC_TOL = 1e-8;
+
+const KEPLER_TOL = 1e-12; // 離心近点角の収束判定 [rad]
+const KEPLER_MAX_ITER = 100;
+
+/**
+ * ケプラー方程式を解く。楕円は離心近点角 E、双曲線は双曲線近点角 H を返す。
+ *
+ *   楕円   M = E - e sin E
+ *   双曲線 M = e sinh H - H
+ *
+ * ニュートン法だけだと、双曲線で M が大きいときに初期値 H=M から sinh(M) が
+ * 溢れて発散する。単調な関数なので、必ず解を含む区間を先に作り、その中で
+ * ニュートン法を回して、外に出たら二分法に落とす。
+ *
+ * 放物線 (e≒1) はこの形では解けない (M=0 で微分が0になる)。
+ * conic_state が barker_true_anomaly に振り分けるので、ここには来ない。
+ */
 export function solve_kepler(e, M) {
-  let E = M;
-  let dE = 1;
-  if (e < 1) {
-    while (Math.abs(dE) > 1e-6) {
-      dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-      E -= dE;
+  if (!isFinite(e) || !isFinite(M)) return NaN;
+  if (M === 0) return 0;
+
+  const hyperbolic = e > 1;
+  const f = hyperbolic ? (x) => e * Math.sinh(x) - x - M : (x) => x - e * Math.sin(x) - M;
+  const df = hyperbolic ? (x) => e * Math.cosh(x) - 1 : (x) => 1 - e * Math.cos(x);
+
+  // 解を挟む区間。楕円は E = M + e sinE から |E-M| ≦ e、双曲線は0から広げる
+  let lo, hi;
+  if (hyperbolic) {
+    const s = Math.sign(M);
+    hi = s;
+    for (let i = 0; i < 200 && f(hi) * s < 0; i++) hi *= 2;
+    lo = 0;
+    if (s < 0) {
+      const t = lo;
+      lo = hi;
+      hi = t;
     }
   } else {
-    while (Math.abs(dE) > 1e-6) {
-      dE = (e * Math.sinh(E) - E - M) / (e * Math.cosh(E) - 1);
-      E -= dE;
-    }
+    lo = M - e - 1e-12;
+    hi = M + e + 1e-12;
   }
-  return E;
+
+  // 初期値。楕円は定番の M + e sinM、双曲線は M ≒ e sinh H の逆から
+  let x = hyperbolic ? Math.asinh(M / e) : M + e * Math.sin(M);
+  if (!isFinite(x)) x = (lo + hi) / 2;
+
+  for (let i = 0; i < KEPLER_MAX_ITER; i++) {
+    const y = f(x);
+    // 区間を詰める (次に外へ飛んだときの落とし先になる)
+    if (y > 0) hi = x;
+    else lo = x;
+
+    const d = df(x);
+    let next = d !== 0 ? x - y / d : (lo + hi) / 2;
+    if (!isFinite(next) || next < Math.min(lo, hi) || next > Math.max(lo, hi)) {
+      next = (lo + hi) / 2; // 区間の外に出たら二分法
+    }
+    const step = next - x;
+    x = next;
+    if (Math.abs(step) < KEPLER_TOL) break;
+  }
+  return x;
+}
+
+/**
+ * 放物線軌道 (e=1) のバーカーの方程式を解いて、真近点角を返す。
+ *
+ *   t - tp = sqrt(2q^3/mu) (D + D^3/3),  D = tan(nu/2)
+ *
+ * 3次方程式なので、カルダノの公式でそのまま解ける。
+ *
+ * @param {number} mu 中心天体の重力定数 [km^3/s^2]
+ * @param {number} q  近点距離 [km]
+ * @param {number} dt 近点通過からの経過時間 [s]
+ */
+export function barker_true_anomaly(mu, q, dt) {
+  const A = Math.sqrt(mu / (2 * q * q * q)) * dt; // = D + D^3/3
+  const B = 1.5 * A;
+  const s = Math.sqrt(B * B + 1);
+  const D = Math.cbrt(B + s) + Math.cbrt(B - s);
+  return 2 * Math.atan(D);
 }
 
 export function get_planet_elements(T, n) {
@@ -343,6 +412,64 @@ export function get_planets_pos_E(elements, E) {
   }
 
   return { r, v };
+}
+
+/**
+ * 近点距離と離心率で与えられた軌道の、近点通過から dt 秒後の位置と速度。
+ *
+ * 楕円・放物線・双曲線を同じ入口で扱う。小天体 (特に長周期彗星や恒星間天体)
+ * は e が1をまたぐので、軌道長半径ではなく近点距離を基準にした方が素直に書ける
+ * (e=1 では軌道長半径が発散する)。
+ *
+ * 真近点角さえ出れば、位置と速度は円錐曲線に共通の式で書ける:
+ *   r = p / (1 + e cos nu),  p = q(1 + e),  h = sqrt(mu p)
+ *   v = (mu/h) { -sin nu * P + (e + cos nu) * Q }
+ *
+ * @param {object} el {q[km], e, i[rad], node[rad], peri[rad]}
+ * @param {number} dt 近点通過からの経過時間 [s]
+ * @param {number} mu 中心天体の重力定数 [km^3/s^2]
+ * @returns {{r: number[], v: number[], nu: number}}
+ */
+export function conic_state(el, dt, mu = MU_SUN) {
+  const { q, e } = el;
+  let nu;
+
+  if (Math.abs(e - 1) <= PARABOLIC_TOL) {
+    nu = barker_true_anomaly(mu, q, dt);
+  } else if (e < 1) {
+    const a = q / (1 - e);
+    const M = Math.sqrt(mu / (a * a * a)) * dt;
+    const E = solve_kepler(e, M);
+    // tan(nu/2) = sqrt((1+e)/(1-e)) tan(E/2) を atan2 で象限ごと出す
+    nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2));
+  } else {
+    const a = q / (1 - e); // 双曲線では負
+    const M = Math.sqrt(mu / Math.abs(a * a * a)) * dt;
+    const H = solve_kepler(e, M);
+    // tan(nu/2) = sqrt((e+1)/(e-1)) tanh(H/2)
+    nu = 2 * Math.atan2(Math.sqrt(e + 1) * Math.tanh(H / 2), Math.sqrt(e - 1));
+  }
+
+  const p = q * (1 + e);
+  const r_norm = p / (1 + e * Math.cos(nu));
+  const h = Math.sqrt(mu * p);
+  // get_P_hat / get_Q_hat は [a, e, i, W, w] の並びだけを見る
+  const orient = [0, e, el.i, el.node, el.peri];
+  const P = get_P_hat(orient);
+  const Q = get_Q_hat(orient);
+
+  const cn = Math.cos(nu);
+  const sn = Math.sin(nu);
+  const vr = -(mu / h) * sn;
+  const vt = (mu / h) * (e + cn);
+
+  const r = [];
+  const v = [];
+  for (let k = 0; k < 3; k++) {
+    r[k] = r_norm * (cn * P[k] + sn * Q[k]);
+    v[k] = vr * P[k] + vt * Q[k];
+  }
+  return { r, v, nu };
 }
 
 export function ic2par(r, v, mu) {

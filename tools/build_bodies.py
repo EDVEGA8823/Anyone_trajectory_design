@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import time
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
@@ -50,9 +51,17 @@ SOURCES = {
     },
 }
 
+# 恒星間天体 (1I/'Oumuamua など) はMPCの配布ファイルに入っていない
+# (MPCORB は双曲線の天体を1件も持たず、CometEls.txt にもI系列は無い)。
+# JPLの小天体データベースから1件ずつ引く。番号は続き番号なので、
+# 見つからないものが2つ続くまで順に試す (新しく見つかっても自動で入る)。
+JPL_SBDB = "https://ssd-api.jpl.nasa.gov/sbdb.api?full-prec=1&sstr="
+INTERSTELLAR_MAX = 12
+
 # 出力するまとまり。id はファイル名と、ミッションファイルからの参照に使う
 SETS = [
     ("popular", "よく使う天体", "探査機が訪れた天体や、名前の通った大きな天体"),
+    ("interstellar", "恒星間天体", "太陽系の外から来た天体。双曲線軌道で二度と戻らない"),
     ("neo", "地球接近天体", "地球の軌道に近づく小惑星。到達しやすい目標が多い"),
     ("comet", "彗星", "周期彗星と非周期彗星"),
     ("distant", "遠方天体", "木星以遠のケンタウルス・太陽系外縁天体・準惑星"),
@@ -65,6 +74,14 @@ NAMED_MIN_H = 11.0
 
 ASTEROID_FIELDS = ["num", "name", "desig", "epoch", "a", "e", "i", "node", "peri", "M", "H", "type"]
 COMET_FIELDS = ["num", "name", "desig", "epoch", "q", "e", "i", "node", "peri", "tp", "H", "type"]
+
+# まとまりごとの天体の種別と、天体を指すidの接頭辞。
+# 小惑星・彗星・恒星間天体は番号の体系が別 (1 は Ceres、1P は Halley、1I は
+# 'Oumuamua) なので、番号だけでは天体を指せない。
+KIND_OF_SET = {"comet": "comet", "interstellar": "interstellar"}
+ID_PREFIX = {"asteroid": "a", "comet": "c", "interstellar": "i"}
+# 近点距離と近点通過で与えるもの (楕円に限らないため軌道長半径では書けない)
+PERIHELION_KINDS = ("comet", "interstellar")
 
 FORMAT = "atd-bodies"
 VERSION = 1
@@ -238,6 +255,83 @@ def comet_record(line):
     ]
 
 
+def fetch_interstellar(cache_dir, offline=False):
+    """恒星間天体をJPLの小天体データベースから引く"""
+    out = []
+    misses = 0
+    for n in range(1, INTERSTELLAR_MAX + 1):
+        desig = "%dI" % n
+        path = os.path.join(cache_dir, "sbdb_%s.json" % desig)
+        try:
+            if not (os.path.exists(path) and (offline or _fresh(path))):
+                if offline:
+                    raise FileNotFoundError(path)
+                req = urllib.request.Request(
+                    JPL_SBDB + urllib.parse.quote(desig),
+                    headers={"User-Agent": "anyone-trajectory-design/1.0"},
+                )
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    body = r.read()
+                with open(path, "wb") as f:
+                    f.write(body)
+            with io.open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            misses += 1
+            if misses >= 2:
+                break
+            continue
+
+        rec = interstellar_record(desig, data)
+        if rec:
+            out.append(rec)
+            misses = 0
+            print("  %s %s" % (desig, rec[1] or ""))
+        else:
+            misses += 1
+    return out
+
+
+def interstellar_record(desig, data):
+    """JPLの返す軌道要素を、彗星と同じ並びのレコードに直す"""
+    orbit = data.get("orbit") or {}
+    els = {e["name"]: e.get("value") for e in orbit.get("elements", []) if e.get("name")}
+    need = ("e", "q", "i", "om", "w", "tp")
+    if any(els.get(k) in (None, "") for k in need):
+        return None
+
+    # "'Oumuamua (A/2017 U1)" は前が名前、"C/2019 Q4 (Borisov)" は後ろが名前
+    full = (data.get("object") or {}).get("fullname") or desig
+    name = full
+    m = re.match(r"^(.*?)\s*\((.*)\)\s*$", full)
+    if m:
+        head, paren = m.group(1).strip(), m.group(2).strip()
+        name = head if re.match(r"^[A-Z]?/?\d{4}\s+[A-Z]", paren) else paren
+
+    h = None
+    for p in data.get("phys_par") or []:
+        if p.get("name") == "H":
+            try:
+                h = float(p.get("value"))
+            except (TypeError, ValueError):
+                h = None
+
+    return [
+        int(desig[:-1]),
+        name,
+        desig,
+        round(float(orbit.get("epoch") or els["tp"]), 4),
+        round(float(els["q"]), 7),
+        round(float(els["e"]), 7),
+        round(float(els["i"]), 5),
+        round(float(els["om"]), 5),
+        round(float(els["w"]), 5),
+        round(float(els["tp"]), 5),
+        h,
+        "恒星間天体",
+    ]
+
+
 def julian_day(year, month, day):
     """グレゴリオ暦 (日は小数可) からユリウス日"""
     a = (14 - month) // 12
@@ -317,7 +411,7 @@ def popular_key(rec, keys, kind):
     (「1」でCeresを指定したつもりが 1P/Halley にも当たってしまう)。
     """
     num, name, desig = rec[0], rec[1], rec[2]
-    if kind != "comet" and num and str(num) in keys:
+    if kind == "asteroid" and num and str(num) in keys:
         return str(num)
     if desig and desig in keys:
         return desig
@@ -357,7 +451,7 @@ def make_group(kind, bodies):
     bodies.sort(key=lambda r: (r[10] is None, r[10], r[0] or 10 ** 9))  # 明るい順
     return {
         "kind": kind,
-        "fields": COMET_FIELDS if kind == "comet" else ASTEROID_FIELDS,
+        "fields": COMET_FIELDS if kind in PERIHELION_KINDS else ASTEROID_FIELDS,
         "count": len(bodies),
         "bodies": bodies,
     }
@@ -386,12 +480,12 @@ def main():
 
     sets = {}       # set_id -> [record, ...]
     seen = set()    # 同じ天体を2つのまとまりに入れない
-    popular = {"asteroid": [], "comet": []}
+    popular = {"asteroid": [], "comet": [], "interstellar": []}
     tree_items = []  # (分類の道のり, id)
 
     def take(set_id, rec):
-        kind = "comet" if set_id == "comet" else "asteroid"
-        key = body_id(rec[0], rec[2], "c" if kind == "comet" else "a")
+        kind = KIND_OF_SET.get(set_id, "asteroid")
+        key = body_id(rec[0], rec[2], ID_PREFIX[kind])
         if key in seen:
             return False
         seen.add(key)
@@ -429,6 +523,19 @@ def main():
             if row and take("comet", row):
                 n += 1
     print("  %d 件" % n)
+
+    # --- 恒星間天体 (JPL) ---
+    print("interstellar: 太陽系の外から来た天体")
+    inter = fetch_interstellar(args.cache, args.offline)
+    if inter:
+        source_info["files"].append({
+            "set": "interstellar",
+            "url": JPL_SBDB + "<符号>",
+            "note": "NASA/JPL Small-Body Database (MPCの配布ファイルに恒星間天体が無いため)",
+        })
+        for rec in inter:
+            take("interstellar", rec)
+    print("  %d 件" % len(inter))
 
     # --- 名前付き小惑星 (大きい配布ファイル) ---
     if args.full:
@@ -470,9 +577,9 @@ def main():
     total = 0
     for set_id, label, note in SETS:
         if set_id == "popular":
-            groups = [make_group(k, popular[k]) for k in ("asteroid", "comet") if popular[k]]
+            groups = [make_group(k, popular[k]) for k in ("asteroid", "comet", "interstellar") if popular[k]]
         elif sets.get(set_id):
-            groups = [make_group("comet" if set_id == "comet" else "asteroid", sets[set_id])]
+            groups = [make_group(KIND_OF_SET.get(set_id, "asteroid"), sets[set_id])]
         else:
             kept = old_index.get(set_id)
             if kept and os.path.exists(os.path.join(args.out, kept["file"])):
@@ -494,8 +601,8 @@ def main():
             "kinds": [g["kind"] for g in groups],
             "count": count,
             "bytes": size,
-            # よく使う天体だけは最初から読む。他は検索されたときに取りに行く
-            "preload": set_id == "popular",
+            # 小さいまとまりは最初から読む。他は検索されたときに取りに行く
+            "preload": set_id in ("popular", "interstellar"),
         })
         total += count
         print("  %-8s %6d 件 %8.2f MB" % (set_id, count, size / 1e6))
@@ -523,7 +630,7 @@ def main():
     print("合計 %d 件 / %.2f MB" % (total, sum(e["bytes"] for e in entries) / 1e6))
     # 「popular」に取り込めなかった指定を知らせる (綴り違いに気付けるように)
     got = set()
-    for r in popular["asteroid"] + popular["comet"]:
+    for r in popular["asteroid"] + popular["comet"] + popular["interstellar"]:
         got.update([str(r[0]), r[1], r[2]])
     missing = sorted(k for k in popular_keys if k not in got)
     if missing:
