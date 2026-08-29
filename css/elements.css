@@ -1833,13 +1833,28 @@ button {
   overflow-y: auto;
   padding-bottom: 8px;
 }
-.bp-tree-head {
-  padding: 10px 12px 4px;
+/* 見出し。押すとその塊ごと開閉する */
+.bp-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 12px 7px 8px;
+  border: none;
+  background: transparent;
   color: var(--text-muted);
+  font-family: inherit;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.bp-section:hover {
+  color: var(--text);
+}
+.bp-section.open .bp-node-mark {
+  transform: rotate(90deg);
 }
 .bp-tree-empty {
   padding: 8px 12px;

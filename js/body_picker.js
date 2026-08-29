@@ -126,20 +126,44 @@ function on_key(e) {
    左の木
    ================================================================== */
 
-// 子を持つ分類は畳んでおき、押したときだけ開く。分類が10個以上あるので、
-// 全部並べると左枠が読みにくくなる
-const expanded = new Set(); // 開いている分類の道のり ("探査機が訪れた" など)
+// 折りたたみは見出し (よく使う天体 / すべての天体) と、子を持つ分類の両方。
+// 分類が十数個あるので、全部並べると左枠が読みにくい。
+// 既定では「よく使う天体」だけを開き、その中の分類はすべて畳んでおく。
+const SECTION_POPULAR = "sec:popular";
+const SECTION_ALL = "sec:all";
+const expanded = new Set([SECTION_POPULAR]);
+
+const CHEVRON =
+  '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" ' +
+  'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+
+function toggle(key) {
+  if (expanded.has(key)) expanded.delete(key);
+  else expanded.add(key);
+}
+
+// 見出し。押すとその塊ごと開閉する
+function section_head(key, label, on_toggle) {
+  const item = el("button", "bp-section");
+  item.type = "button";
+  const mark = el("span", "bp-node-mark");
+  mark.innerHTML = CHEVRON;
+  item.appendChild(mark);
+  item.appendChild(el("span", null, label));
+  item.classList.toggle("open", expanded.has(key));
+  item.onclick = () => {
+    toggle(key);
+    on_toggle();
+  };
+  return item;
+}
 
 function tree_node(label, depth, on_click, count, foldable) {
   const item = el("button", "bp-node");
   item.type = "button";
   item.style.paddingLeft = 8 + depth * 14 + "px";
   const mark = el("span", "bp-node-mark");
-  if (foldable) {
-    mark.innerHTML =
-      '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" ' +
-      'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
-  }
+  if (foldable) mark.innerHTML = CHEVRON;
   item.appendChild(mark);
   item.appendChild(el("span", "bp-node-label", label));
   if (count != undefined) item.appendChild(el("span", "bp-node-count", count.toLocaleString()));
@@ -152,7 +176,9 @@ function render_tree() {
   const active_key = active ? active.dataset.key : null;
   tree_el.innerHTML = "";
 
-  tree_el.appendChild(el("div", "bp-tree-head", "よく使う天体"));
+  // --- よく使う天体 ---
+  tree_el.appendChild(section_head(SECTION_POPULAR, "よく使う天体", render_tree));
+
   const walk = (nodes, depth, parent_path) => {
     for (const n of nodes) {
       const path = parent_path ? parent_path + "/" + n.label : n.label;
@@ -163,10 +189,7 @@ function render_tree() {
         depth,
         () => {
           // 押したら中身を出し、子を持つものはその場で開閉もする
-          if (has_children) {
-            if (open) expanded.delete(path);
-            else expanded.add(path);
-          }
+          if (has_children) toggle(path);
           show_tree_node(n, path);
         },
         collect_ids(n).length,
@@ -179,15 +202,17 @@ function render_tree() {
       if (has_children && open) walk(n.children, depth + 1, path);
     }
   };
-  const tree = popularTree();
-  if (tree.length === 0) {
-    tree_el.appendChild(el("div", "bp-tree-empty", "読み込み中…"));
-  } else {
-    walk(tree, 0, "");
+
+  if (expanded.has(SECTION_POPULAR)) {
+    const tree = popularTree();
+    if (tree.length === 0) tree_el.appendChild(el("div", "bp-tree-empty", "読み込み中…"));
+    else walk(tree, 0, "");
   }
 
-  // すべての天体。開いたときに取りに行く
-  tree_el.appendChild(el("div", "bp-tree-head", "すべての天体"));
+  // --- すべての天体。枝を開いたときに取りに行く ---
+  tree_el.appendChild(section_head(SECTION_ALL, "すべての天体", render_tree));
+  if (!expanded.has(SECTION_ALL)) return;
+
   for (const s of bodySets()) {
     if (s.id === "popular") continue;
     const key = "set:" + s.id;
@@ -401,9 +426,10 @@ export function openBodyPicker() {
     .then(() => {
       if (!isBodyPickerOpen()) return;
       render_tree();
-      // 最初の分類を開いておく
-      const first = tree_el.querySelector(".bp-node");
-      if (first) first.click();
+      // 右側が空のままだと何をする画面か分かりにくいので、最初の分類の中身は
+      // 出しておく。ただし枝は畳んだまま (押されるまで開かない)
+      const first = popularTree()[0];
+      if (first) show_tree_node(first, first.label);
     })
     .catch((e) => {
       set_status("天体のデータを読み込めませんでした: " + e.message);
