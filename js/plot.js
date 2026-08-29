@@ -327,30 +327,59 @@ export function updateDsmArrows(list) {
   invalidate();
 }
 
+const planetGeometry = new THREE.SphereGeometry(0.02, 32, 32);
+const planetMaterial = new THREE.MeshStandardMaterial({ color: 0xddaa44 });
+// 取り込んだ小天体は惑星と見分けが付くように、少し冷たい色にする
+const smallBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x9aa7b8 });
+
+/** 天体の丸とラベルを1つ足す (i は天体番号) */
+export function appendPlanet(pos, i, is_small_body = false) {
+  const sphere = new THREE.Mesh(planetGeometry, is_small_body ? smallBodyMaterial : planetMaterial);
+  const planetDiv = document.createElement("div");
+  planetDiv.className = "label_planet";
+  planetDiv.textContent = State.planet_list[i];
+  planetDiv.style.backgroundColor = "transparent";
+  planetDiv.style.marginTop = "-1.2em";
+  planetDiv.style.cursor = "pointer";
+
+  const planetLabel = new THREE.CSS2DObject(planetDiv);
+  planetLabel.position.set(0, 0, 0);
+  sphere.add(planetLabel);
+  planetLabel.layers.set(0);
+
+  sphere.position.copy(drawingPos(pos));
+  scene.add(sphere);
+  PlotState.planet_speres[i] = sphere;
+  sphere.name = String(i);
+  invalidate();
+  return sphere;
+}
+
 export function createPlanets(planet_pos) {
-  const sphereGeometry = new THREE.SphereGeometry(0.02, 32, 32);
-  const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0xddaa44 });
-  sphereMaterial.transparent = false;
+  planet_pos.forEach((pos, i) => appendPlanet(pos, i, false));
+}
 
-  planet_pos.forEach((pos, i) => {
-    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    const planetDiv = document.createElement("div");
-    planetDiv.className = "label_planet";
-    planetDiv.textContent = State.planet_list[i];
-    planetDiv.style.backgroundColor = "transparent";
-    planetDiv.style.marginTop = "-1.2em";
-    planetDiv.style.cursor = "pointer";
+/**
+ * 天体番号 base 以降の丸と軌道を消す (取り込んだ小天体を入れ替えるとき用)。
+ * CSS2DRendererはオブジェクトを消してもラベルのDOMを片付けないので、
+ * こちらで外しておかないと文字だけが画面に残る。
+ */
+export function removePlanetsFrom(base) {
+  for (let i = base; i < PlotState.planet_speres.length; i++) {
+    const sphere = PlotState.planet_speres[i];
+    if (!sphere) continue;
+    for (const child of sphere.children) {
+      if (child.element && child.element.parentNode) child.element.parentNode.removeChild(child.element);
+    }
+    scene.remove(sphere);
+  }
+  PlotState.planet_speres.length = Math.min(PlotState.planet_speres.length, base);
 
-    const planetLabel = new THREE.CSS2DObject(planetDiv);
-    planetLabel.position.set(0, 0, 0);
-    sphere.add(planetLabel);
-    planetLabel.layers.set(0);
-
-    sphere.position.copy(drawingPos(pos));
-    scene.add(sphere);
-    PlotState.planet_speres.push(sphere);
-    sphere.name = String(i);
-  });
+  for (let i = base; i < PlotState.orbit_lines.length; i++) {
+    const entry = PlotState.orbit_lines[i];
+    if (entry && entry.line) scene.remove(entry.line);
+  }
+  PlotState.orbit_lines.length = Math.min(PlotState.orbit_lines.length, base);
   invalidate();
 }
 

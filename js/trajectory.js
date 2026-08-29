@@ -312,7 +312,54 @@ export function barker_true_anomaly(mu, q, dt) {
   return 2 * Math.atan(D);
 }
 
+// 惑星の数 (水星〜冥王星)。これ以降の番号は取り込んだ小天体に割り当てる
+export const PLANET_COUNT = 9;
+
+// 小天体の軌道要素を返す関数。取り込みを担う側 (js/small_bodies.js) が
+// 起動時に登録する。ここから小天体の一覧を直接見に行くと、物理の計算だけを
+// 持つこのファイルが画面側の都合に依存してしまうので、口だけ開けておく。
+let small_body_provider = null;
+
+/** @param {(n:number) => ({q,e,i,node,peri,tp}|null)} fn 天体番号から近点基準の要素を返す関数 */
+export function setSmallBodyProvider(fn) {
+  small_body_provider = fn;
+}
+
+/**
+ * 取り込んだ小天体の物理量を、天体番号で引く表に足す。
+ * こうしておけば、天体ごとの定数を引いている既存の処理が番号だけで動く。
+ */
+export function setBodyConstants(n, { mu, radius, min_altitude = 0, entry_altitude = 0 }) {
+  planet_mu[n] = mu;
+  planet_radius[n] = radius;
+  MIN_FLYBY_ALTITUDE[n] = min_altitude;
+  ENTRY_ALTITUDE[n] = entry_altitude;
+}
+
+/**
+ * 近点距離基準の要素 {q,e,i,node,peri,tp} を、この先の計算で使う
+ * [a, e, i, Ω, ω, 離心近点角] の並びに直す。
+ *
+ * 放物線 (e=1) はこの並びでは表せない (軌道長半径が発散する) ので、ごくわずかに
+ * 楕円へ寄せる。形の違いは相対 1e-7 程度で、設計の当たりを付けるには影響しない。
+ */
+function conic_to_elements(el, T) {
+  let e = el.e;
+  if (Math.abs(e - 1) <= PARABOLIC_TOL) e = 1 - 1e-7;
+
+  const a = el.q / (1 - e); // 双曲線では負
+  const n = Math.sqrt(MU_SUN / Math.abs(a * a * a)); // [rad/s]
+  const M = n * (T - el.tp) * 86400;
+  const E = solve_kepler(e, M);
+  return [a, e, el.i, el.node, el.peri, E];
+}
+
 export function get_planet_elements(T, n) {
+  if (n >= PLANET_COUNT) {
+    const el = small_body_provider ? small_body_provider(n) : null;
+    return el ? conic_to_elements(el, T) : undefined;
+  }
+
   let T_TDB = (T - 2451545.0) / 36525.0;
   let X = element_0[n].map((y, i) => y + T_TDB * element_dot[n][i]);
 
@@ -333,8 +380,28 @@ export function change_coordinate(v) {
   return [v[0], v[2], -v[1]];
 }
 
+// 開いた軌道を描く範囲。近日点距離の何倍まで伸ばすか (これ以上は画面外)
+const OPEN_ORBIT_SPAN = 30;
+
 export function get_orbit(elements) {
+  const e = elements[1];
   let pos = [100];
+
+  if (e >= 1) {
+    // 双曲線は一周しない。近点をはさんで、太陽から離れすぎない範囲だけ描く。
+    // 中央ほど点が詰まるように取る (一番速く曲がるのが近点のまわり)
+    const a = elements[0];
+    const q = a * (1 - e);
+    const far = Math.max(q * OPEN_ORBIT_SPAN, 5 * AU);
+    const H_max = Math.acosh(Math.max(1, (1 - far / a) / e));
+    for (let i = 0; i < 100; i++) {
+      const u = (2 * i) / 99 - 1;
+      const { r } = get_planets_pos_E(elements, H_max * u * Math.abs(u));
+      pos[i] = new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU);
+    }
+    return pos;
+  }
+
   for (let i = 0; i < 100; i++) {
     let { r, v } = get_planets_pos_E(elements, (2 * Math.PI * i) / 99);
     pos[i] = new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU);

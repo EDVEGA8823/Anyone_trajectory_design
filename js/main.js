@@ -16,6 +16,8 @@ import {
   createDashedLine,
   updateDashedLine,
   createPlanets,
+  appendPlanet,
+  removePlanetsFrom,
   updateLayout,
   updateVinfArrow,
   hideVinfArrow,
@@ -65,7 +67,10 @@ import {
 } from './porkchop.js';
 import { initTopbar, setTopbarHandlers } from './topbar.js';
 import { saveMissionFile, openMissionFile, initMissionFileDrop } from './mission_file.js';
-import { openBodyPicker } from './body_picker.js';
+import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
+import { addSmallBody, isSmallBody, smallBody, resetSmallBodies, smallBodyBase } from './small_bodies.js';
+import { bodyLabel } from './bodies.js';
+import { notify } from './topbar.js';
 import {
   initEntryView,
   updateEntryView,
@@ -485,16 +490,22 @@ export function change_sequence_propaty() {
         } else if (value == Sequence_Type.Escape) {
           if (can_escape) sequence_propaty.add(option);
         } else if (value == Sequence_Type.Entry) {
-          if (can_entry) sequence_propaty.add(option);
+          // 小天体には大気が無いので突入も無い
+          if (can_entry && !isSmallBody(State.mission_sequence.planet_num(State.selected_sequence))) {
+            sequence_propaty.add(option);
+          }
         } else if (value == Sequence_Type.Maneuver) {
           // マヌーバは手動レグ (手動の打上げ/スイングバイと次の目的地の間) に
           // だけ置ける節なので、種別の変更では選ばせない。その区間で
           // 「+ シーケンスを追加」を押すと手動マヌーバとして入る。
-        } else if (State.mission_sequence.planet_num(State.selected_sequence) < 10) {
+        } else if (!isSmallBody(State.mission_sequence.planet_num(State.selected_sequence))) {
+          // 惑星: スイングバイ (重力で曲げる) と周回軌道投入
           if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
             sequence_propaty.add(option);
           }
         } else {
+          // 小天体: 重力がほとんど無いので曲げられないし、周回軌道に入れる意味も
+          // 薄い。代わりにフライバイ (通過) とランデブー (速度を合わせる) を出す
           if (value != Sequence_Type.Swingby && value != Sequence_Type.Orbit) {
             sequence_propaty.add(option);
           }
@@ -615,6 +626,47 @@ export function make_plot() {
   planet_orbits.forEach((orbit) => {
     PlotState.orbit_lines.push(createLine(orbit, 0x999999));
   });
+}
+
+// 取り込んだ小天体の色。惑星 (0x999999) と見分けが付くよう少し冷たくする
+const COLOR_SMALL_BODY_ORBIT = 0x8fa0b8;
+
+/**
+ * 天体を選ぶ画面で選ばれた小天体を取り込む。
+ *
+ * 取り込むと惑星の続きの番号が振られ、天体の一覧・軌道の描画・シーケンスの
+ * 天体割り当てが、惑星と同じ仕組みでそのまま効くようになる。
+ */
+export function import_small_body(body) {
+  const { num, added } = addSmallBody(body);
+  if (!added) {
+    notify("「" + bodyLabel(body) + "」はすでに一覧にあります");
+    return num;
+  }
+
+  // 丸と軌道を作る (惑星と同じ配列に、同じ番号で並べる)
+  const elements = get_planet_elements(State.tmp_date, num);
+  State.planet_elements[num] = elements;
+  const { r } = get_planets_pos(elements);
+  appendPlanet(r, num, true);
+  PlotState.orbit_lines[num] = createLine(get_orbit(elements), COLOR_SMALL_BODY_ORBIT);
+
+  update_plot();
+  toggle_planet();
+  change_sequence_propaty(); // 天体の選択肢に加える
+  notify("「" + bodyLabel(body) + "」を天体に追加しました (シーケンスの天体欄から選べます)");
+  return num;
+}
+
+/** ミッションを読み込んだときなど、取り込んだ小天体を丸ごと入れ替える */
+export function reload_small_bodies(list) {
+  removePlanetsFrom(smallBodyBase());
+  resetSmallBodies(list);
+  const [planet_pos, planet_orbits] = calc();
+  for (let n = smallBodyBase(); n < State.planet_num; n++) {
+    appendPlanet(planet_pos[n], n, true);
+    PlotState.orbit_lines[n] = createLine(planet_orbits[n], COLOR_SMALL_BODY_ORBIT);
+  }
 }
 
 export function toggle_planet() {
@@ -2043,6 +2095,7 @@ function boot() {
   // (差し込まれていないボタンは「準備中」と出るだけ)
   initTopbar();
   setTopbarHandlers({ save: saveMissionFile, load: openMissionFile, add_body: openBodyPicker });
+  setBodyPickerHandlers({ onAdd: import_small_body });
   initMissionFileDrop();
 
   const z_btn = document.getElementById("z_zoom");

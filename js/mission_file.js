@@ -1,8 +1,10 @@
 import { State } from './state.js';
 import { launcher_list } from './launchers.js';
 import { notify, missionName, setMissionName } from './topbar.js';
-import { update_plot } from './main.js';
+import { update_plot, reload_small_bodies } from './main.js';
 import { updateAfterAdd } from './event.js';
+import { isSmallBody, smallBody, smallBodyNumber, smallBodiesForSave } from './small_bodies.js';
+import { normalizeBody } from './bodies.js';
 
 // ミッションの保存と読込。
 //
@@ -21,7 +23,8 @@ const DEFAULT_NAME = "無題のミッション";
 export function missionData() {
   const mission = State.mission_sequence;
   if (!mission) return null;
-  return {
+
+  const data = {
     format: FORMAT,
     version: VERSION,
     app: "だれでも軌道設計",
@@ -30,6 +33,24 @@ export function missionData() {
     launcher: State.launcher,
     ...mission.serialize(),
   };
+
+  // 取り込んだ小天体は軌道要素ごと保存する。データベース側が更新されて元期が
+  // 変わっても、保存したときと同じ軌道でミッションを開き直せるようにするため。
+  const bodies = smallBodiesForSave();
+  if (bodies.length > 0) data.bodies = bodies;
+
+  // 節が持つ天体の番号は「取り込んだ順」で決まるので、そのままでは他の環境で
+  // 別の天体を指しかねない。小天体はidで書いておく
+  for (const node of data.nodes) {
+    if (isSmallBody(node.planet)) {
+      const b = smallBody(node.planet);
+      if (b) {
+        node.body = b.id;
+        delete node.planet;
+      }
+    }
+  }
+  return data;
 }
 
 // ファイル名に使えない文字を落とす
@@ -105,6 +126,18 @@ export function loadMissionData(data, filename) {
   if (data && data.version > VERSION) {
     // 新しい版で増えた項目は読み飛ばされるだけなので、断ったうえで読む
     notify("新しい版のファイルです。読めない項目があるかもしれません");
+  }
+
+  // 小天体を先に取り込む (節が指す天体番号は、この並び順で決まる)
+  const bodies = Array.isArray(data.bodies) ? data.bodies.map(normalizeBody).filter(Boolean) : [];
+  reload_small_bodies(bodies);
+
+  // idで書かれている天体を、取り込んだ後の番号に直す
+  const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+  for (const node of nodes) {
+    if (typeof node.body !== "string") continue;
+    const num = smallBodyNumber(node.body);
+    if (num >= 0) node.planet = num;
   }
 
   if (!mission.restore(data)) {

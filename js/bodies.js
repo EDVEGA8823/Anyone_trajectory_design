@@ -54,14 +54,32 @@ export function bodySubLabel(b) {
 function to_object(row, fields, kind, set_id) {
   const b = { kind, set: set_id };
   for (let i = 0; i < fields.length; i++) b[fields[i]] = row[i];
+  return normalizeBody(b);
+}
 
-  // 小惑星は (a, 元期の平均近点角)、彗星と恒星間天体は (近点距離, 近点通過時刻)。
-  // どちらでも使えるよう、足りない方を補っておく
+/**
+ * 天体の足りない項目を補う。
+ * 小惑星は (a, 元期の平均近点角)、彗星と恒星間天体は (近点距離, 近点通過時刻)
+ * で与えられるので、どちらでも使えるよう反対側も計算しておく。
+ * ミッションファイルから読んだ天体もここを通す。
+ *
+ * @returns {object|null} 軌道が読み取れないものは null
+ */
+export function normalizeBody(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const kind = PERIHELION_KINDS.includes(raw.kind) ? raw.kind : "asteroid";
+  const b = { ...raw, kind };
+  const num = (v) => typeof v === "number" && isFinite(v);
+
+  if (!num(b.e) || !num(b.i) || !num(b.node) || !num(b.peri)) return null;
   if (PERIHELION_KINDS.includes(kind)) {
+    if (!num(b.q) || !num(b.tp)) return null;
     b.a = b.e < 1 ? b.q / (1 - b.e) : null; // 放物線・双曲線では意味を持たない
   } else {
+    if (!num(b.a) || !num(b.M) || !num(b.epoch)) return null;
     b.q = b.a * (1 - b.e);
   }
+
   b.id = makeBodyId(kind, b.num, b.desig);
   b.closed = b.e < 1; // 閉じた軌道か (周期があるか)
   return b;
@@ -101,6 +119,7 @@ export function loadBodySet(set_id) {
       for (const g of data.groups) {
         for (const row of g.bodies) {
           const b = to_object(row, g.fields, g.kind, set_id);
+          if (!b) continue;
           list.push(b);
           if (!by_id.has(b.id)) by_id.set(b.id, b);
         }
