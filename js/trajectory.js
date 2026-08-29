@@ -1053,8 +1053,12 @@ export class Mission {
   }
 
   // 指定した値だけで軌道が決まるノードか (= 目的地を持たなくても成立する)
+  // 「自力では次の目的地に届かない節」。この後ろにはDSMのマヌーバノードが要る。
+  //   手動の打上げ・スイングバイ … 大きさと向きを自分で決めるので届く保証が無い
+  //   フライバイ                 … 無推力で通り過ぎるだけなので軌道を変えられない
   #is_manual_node(i) {
     const t = this.#m_types[i];
+    if (t === Sequence_Type.Flyby) return true;
     return (t === Sequence_Type.Launch || t === Sequence_Type.Swingby) && !this.#m_is_auto_mode[i];
   }
 
@@ -1572,6 +1576,11 @@ export class Mission {
     return i > 0 && this.#m_types[i - 1] === Sequence_Type.Orbit;
   }
 
+  /** 再出発 (ランデブーした天体から飛び立つ節) が置けるか */
+  can_depart(i) {
+    return i > 0 && this.#m_types[i - 1] === Sequence_Type.Rendezvous;
+  }
+
   /**
    * 周回軌道投入 / 軌道脱出のΔVを求める。
    *
@@ -1596,41 +1605,42 @@ export class Mission {
    */
   #calc_encounter(i) {
     this.#m_encounter_info[i] = undefined;
-    const is_rendezvous = this.#m_types[i] === Sequence_Type.Rendezvous;
+    const type = this.#m_types[i];
     const n = this.#m_planet_nums[i];
     const v_pla = this.#m_planet_vel[i];
     if (n == undefined || n === -1 || v_pla == undefined) return;
 
-    // ランデブーで先が無いなら、天体と一緒に漂う (速度を確定させておかないと
-    // 軌道が繋がらない)。周回軌道投入と同じ扱い。
-    if (is_rendezvous && this.#m_s_c_vel[i] == undefined) this.#m_s_c_vel[i] = [v_pla];
-
     const v_in = this.#m_s_c_vel[i - 1] != undefined ? this.#m_s_c_vel[i - 1][1] : undefined;
+
+    if (type === Sequence_Type.Rendezvous) {
+      // 天体に速度を合わせる。その先は天体と一緒に進むので、出ていく速度は
+      // 天体の速度で固定する (周回軌道投入とまったく同じ扱い)。
+      // 次の目的地へ向かうぶんのΔVは、後ろに続く「再出発」の節が持つ。
+      this.#m_s_c_vel[i] = [v_pla];
+    } else if (type === Sequence_Type.Flyby) {
+      // フライバイは無推力。入ってきた速度のまま通り過ぎる。
+      // つまり出ていく軌道は入ってきた軌道の続きで、こちらから選べない。
+      // 次の目的地へ届かせるのは、後ろに入るDSMの役目 (手動スイングバイと同じ)
+      if (v_in != undefined) this.#m_s_c_vel[i] = [v_in];
+    }
+    // 再出発は軌道がランベール解のまま (出ていく向きは次の目的地が決める)
+
     const v_out = this.#m_s_c_vel[i] != undefined ? this.#m_s_c_vel[i][0] : undefined;
     const rel = (v) => (v == undefined ? undefined : math.norm(math.subtract(v, v_pla)));
-
     const v_rel_in = rel(v_in);
     const v_rel_out = rel(v_out);
 
-    let dv_arrive = 0;
-    let dv_depart = 0;
     let dv = 0;
-    if (is_rendezvous) {
-      dv_arrive = v_rel_in ?? 0;
-      dv_depart = v_rel_out ?? 0;
-      dv = dv_arrive + dv_depart;
-    } else if (v_in != undefined && v_out != undefined) {
-      dv = math.norm(math.subtract(v_out, v_in));
-    }
+    if (type === Sequence_Type.Rendezvous) dv = v_rel_in ?? 0; // 到着で速度を合わせる
+    else if (type === Sequence_Type.Departure) dv = v_rel_out ?? 0; // 出発で振り切る
 
     this.#m_encounter_info[i] = {
-      kind: is_rendezvous ? "rendezvous" : "flyby",
+      kind:
+        type === Sequence_Type.Rendezvous ? "rendezvous" : type === Sequence_Type.Departure ? "departure" : "flyby",
       planet_num: n,
-      v_rel_in, // 天体に対する接近速度 (フライバイの見かけの速さ)
+      v_rel_in, // 天体に対する相対速度 (フライバイの通過の速さ)
       v_rel_out,
-      dv_arrive,
-      dv_depart,
-      dv,
+      dv, // フライバイは常に0
       // 到着だけで終わる節か (この先が無い)
       terminal: i + 1 >= this.#m_count,
     };
@@ -1733,6 +1743,21 @@ export class Mission {
       return;
     }
 
+    // フライバイ: 無推力で通り過ぎるだけなので、次の目的地をランベールで
+    // 狙うことはできない (狙えるなら、それはもうΔVを使っている)。
+    // 入ってきた軌道の続きをそのまま飛ぶ。
+    if (this.#m_types[i] === Sequence_Type.Flyby) {
+      this.#calc_encounter(i);
+      return;
+    }
+
+    // ランデブー: 天体に速度を合わせてそのまま張り付く。次へ向かうのは
+    // 後ろに続く「再出発」の役目 (周回軌道投入と軌道脱出の関係と同じ)
+    if (this.#m_types[i] === Sequence_Type.Rendezvous) {
+      this.#calc_encounter(i);
+      return;
+    }
+
     const is_swingby = this.#m_types[i] === Sequence_Type.Swingby;
 
     // 手動モードの打上げ(MGA-1DSM): ランベールを使わず、指定した|V∞|と2つの
@@ -1760,11 +1785,9 @@ export class Mission {
         // 自動スイングバイ: 軌道はランベール解のまま、rp/beta/近点ΔVを診断情報として計算する
         this.#calc_swingby_auto(i);
       }
-      // フライバイ・ランデブー: 小天体には頼れる重力が無いので、速度の変化は
-      // すべて自前のΔVになる。軌道はランベール解のまま、その費用を計算する
-      if (this.#m_types[i] === Sequence_Type.Flyby || this.#m_types[i] === Sequence_Type.Rendezvous) {
-        this.#calc_encounter(i);
-      }
+      // 再出発: 軌道はランベール解のまま、天体に張り付いた状態から
+      // その速度に乗るためのΔVを計算する (軌道脱出と同じ立ち位置)
+      if (this.#m_types[i] === Sequence_Type.Departure) this.#calc_encounter(i);
       // 軌道脱出: 軌道はランベール解のまま (出発の向き・大きさは次の目的地が決める)。
       // 周回軌道からその出発速度に乗るための近点ΔVを計算する。
       if (this.#m_types[i] === Sequence_Type.Escape) this.#calc_orbit(i);
@@ -1815,6 +1838,13 @@ export class Mission {
     for (let i = 0; i < this.#m_count; i++) {
       if (this.#m_types[i] === Sequence_Type.Escape) {
         if (!this.can_escape(i)) {
+          this.#m_types[i] = Sequence_Type.None;
+          continue;
+        }
+        this.#m_planet_nums[i] = this.#m_planet_nums[i - 1];
+      } else if (this.#m_types[i] === Sequence_Type.Departure) {
+        // 再出発は、直前のランデブーと同じ天体から飛び立つ節
+        if (!this.can_depart(i)) {
           this.#m_types[i] = Sequence_Type.None;
           continue;
         }
@@ -1992,15 +2022,15 @@ export class Mission {
   }
 
   set_type(i, type) {
-    const was_manual_swingby =
-      this.#m_types[i] === Sequence_Type.Swingby && !this.#m_is_auto_mode[i];
+    // 自力では次の目的地に届かない節 (手動の打上げ/スイングバイ・フライバイ) は
+    // 後ろにDSMを従える。その要否は種別を変えると入れ替わる
+    const was_manual = this.#is_manual_node(i);
     const was_end = this.#m_types[i] === Sequence_Type.End;
     this.#m_types[i] = type;
+    const is_manual = this.#is_manual_node(i);
 
-    // スイングバイ(手動)を別の種別に変えたら、付随していたDSMのマヌーバノードも外す
-    if (was_manual_swingby && type !== Sequence_Type.Swingby) {
-      this.#remove_maneuvers_after(i);
-    }
+    if (was_manual && !is_manual) this.#remove_maneuvers_after(i);
+    if (!was_manual && is_manual && !this.#has_maneuver_after(i)) this.#insert_maneuver_after(i);
 
     if (type === Sequence_Type.End) {
       // 天体を持たない節になるので、割り当てられていた天体は外す
@@ -2294,9 +2324,16 @@ export class Mission {
 
     // 周回軌道投入の直後に節を足したら、既定でその軌道からの脱出にする。
     // 捕獲されたまま次の目的地へ飛べはしないので、続きがあるならまず脱出しか
-    // ありえない。天体も投入側に揃える (#normalize_escape が維持する)。
+    // ありえない。天体も投入側に揃える (#normalize_types が維持する)。
     if (idx > 0 && this.#m_types[idx - 1] === Sequence_Type.Orbit) {
       this.#m_types[idx] = Sequence_Type.Escape;
+      this.#m_planet_nums[idx] = this.#m_planet_nums[idx - 1];
+    }
+
+    // ランデブーの直後も同じ。天体に張り付いたままでは次へ行けないので、
+    // 続きがあるならまず再出発
+    if (idx > 0 && this.#m_types[idx - 1] === Sequence_Type.Rendezvous) {
+      this.#m_types[idx] = Sequence_Type.Departure;
       this.#m_planet_nums[idx] = this.#m_planet_nums[idx - 1];
     }
 

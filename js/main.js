@@ -484,6 +484,8 @@ export function change_sequence_propaty() {
     const can_end = State.mission_sequence.can_end(State.selected_sequence);
     // 軌道脱出は「直前が周回軌道投入」のときだけ。天体は投入側に自動で揃う
     const can_escape = State.mission_sequence.can_escape(State.selected_sequence);
+    // 再出発は「直前がランデブー」のときだけ (軌道脱出と同じ関係)
+    const can_depart = State.mission_sequence.can_depart(State.selected_sequence);
     // 大気圏突入は大気に入って終わりなので、最後の節でだけ選べる
     const can_entry = State.mission_sequence.can_entry(State.selected_sequence);
 
@@ -496,6 +498,8 @@ export function change_sequence_propaty() {
           if (can_end) sequence_propaty.add(option);
         } else if (value == Sequence_Type.Escape) {
           if (can_escape) sequence_propaty.add(option);
+        } else if (value == Sequence_Type.Departure) {
+          if (can_depart) sequence_propaty.add(option);
         } else if (value == Sequence_Type.Entry) {
           // 小天体には大気が無いので突入も無い
           if (can_entry && !isSmallBody(State.mission_sequence.planet_num(State.selected_sequence))) {
@@ -854,8 +858,11 @@ export function updateControlPanelDisplay() {
     entry_only[i].style.display = is_entry ? "flex" : "none";
   }
 
-  // 小天体との出会い (フライバイ・ランデブー)
-  const is_encounter = sel_type === Sequence_Type.Flyby || sel_type === Sequence_Type.Rendezvous;
+  // 小天体との出会い (フライバイ・ランデブー・再出発)
+  const is_encounter =
+    sel_type === Sequence_Type.Flyby ||
+    sel_type === Sequence_Type.Rendezvous ||
+    sel_type === Sequence_Type.Departure;
   const encounter_only = document.getElementsByClassName("encounter-only");
   for (let i = 0; i < encounter_only.length; i++) {
     encounter_only[i].style.display = is_encounter ? "flex" : "none";
@@ -1206,8 +1213,8 @@ export function renderEncounterControls() {
 
   const mission = State.mission_sequence;
   const info = mission.get_encounter_info(i);
-  const is_rendezvous = mission.type(i) === Sequence_Type.Rendezvous;
-  title.textContent = is_rendezvous ? "ランデブー" : "フライバイ";
+  const type = mission.type(i);
+  title.textContent = type;
   box.innerHTML = "";
 
   if (info == null) {
@@ -1219,20 +1226,28 @@ export function renderEncounterControls() {
 
   const rows = [];
   const ms = (v) => (v * 1000).toFixed(0) + " m/s";
-  if (is_rendezvous) {
-    rows.push(["到着ΔV", ms(info.dv_arrive)]);
-    if (!info.terminal) rows.push(["出発ΔV", ms(info.dv_depart)]);
-    rows.push(["合計ΔV", ms(info.dv)]);
+  if (info.kind === "rendezvous") {
+    rows.push(["到着ΔV", ms(info.dv)]);
     if (info.v_rel_in != undefined) rows.push(["接近速度", info.v_rel_in.toFixed(3) + " km/s"]);
+    rows.push(["この先", info.terminal ? "天体と一緒に進む" : "「再出発」で次へ向かう"]);
+  } else if (info.kind === "departure") {
+    rows.push(["出発ΔV", ms(info.dv)]);
+    if (info.v_rel_out != undefined) rows.push(["離脱速度", info.v_rel_out.toFixed(3) + " km/s"]);
   } else {
+    // フライバイは無推力。ΔVはかからない
     if (info.v_rel_in != undefined) rows.push(["通過の相対速度", info.v_rel_in.toFixed(3) + " km/s"]);
-    rows.push(["必要ΔV", ms(info.dv)]);
-    if (info.v_rel_out != undefined) rows.push(["通過後の相対速度", info.v_rel_out.toFixed(3) + " km/s"]);
+    rows.push(["必要ΔV", "0 m/s (無推力)"]);
+    const dsm = mission.get_dsm_info(i + 1);
+    if (dsm) rows.push(["この後のDSM", ms(dsm.dv)]);
   }
   box.appendChild(makeReadout(rows));
 
-  // 重力がほとんど無いことは繰り返し言うより、費用として見せた方が伝わる
   const dv_ms = info.dv * 1000;
+  if (info.kind === "flyby") {
+    badge.textContent = "無推力";
+    badge.className = "orbit-badge safe";
+    return;
+  }
   badge.textContent = dv_ms < 1 ? "ΔV不要" : dv_ms < 500 ? "現実的" : dv_ms < 2000 ? "重い" : "かなり重い";
   badge.className =
     "orbit-badge " + (dv_ms < 1 ? "safe" : dv_ms < 500 ? "" : dv_ms < 2000 ? "caution" : "risk");
