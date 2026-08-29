@@ -1,8 +1,12 @@
-# 「よく使う天体」に入れるもの。小惑星番号・仮符号・名前のどれかを1行ずつ書く。
-# ここに書いたものは popular.json にも入り、天体を追加するときに最初から出てくる。
-# (元のまとまり neo/distant/comet などにも残るので、二重には数えない)
+# 「よく使う天体」に入れるもの。天体を追加する画面で、木構造のタブとして出る。
+#
+#   [親/子]  … ここからのまとまりが属する分類。「/」で階層にする
+#   1行1天体 … 小惑星番号・仮符号・名前のどれかを書く。# 以降は注釈
+#
+# ここに書いたものは popular.json に入り、最初から (他のファイルを読まずに) 出る。
+# 元のまとまり (neo/comet/distant/named) にも残るので、二重には数えない。
 
-# --- 探査機が訪れた小惑星 ---
+[探査機が訪れた/小惑星]
 433      # Eros        NEAR Shoemaker
 951      # Gaspra      Galileo
 243      # Ida         Galileo
@@ -13,30 +17,41 @@
 162173   # Ryugu       はやぶさ2
 101955   # Bennu       OSIRIS-REx
 65803    # Didymos     DART / Hera
-152830   # Dinkinesh   Lucy
-52246    # Donaldjohanson  Lucy
+98943    # Torifune    はやぶさ2 (2001 CC21)
+9969     # Braille     Deep Space 1
+5535     # Annefrank   Stardust
+4        # Vesta       Dawn
+1        # Ceres       Dawn
+16       # Psyche      Psyche
+486958   # Arrokoth    New Horizons
+
+[探査機が訪れた/彗星]
+1P       # Halley      ジオット / さきがけ・すいせい
+9P       # Tempel 1    Deep Impact
+19P      # Borrelly    Deep Space 1
+21P      # Giacobini-Zinner  ICE
+26P      # Grigg-Skjellerup  ジオット
+67P      # Churyumov-Gerasimenko  ロゼッタ
+81P      # Wild 2      Stardust
+103P     # Hartley 2   EPOXI
+
+[探査機が訪れた/木星トロヤ群]
+152830   # Dinkinesh   Lucy (小惑星帯)
+52246    # Donaldjohanson  Lucy (小惑星帯)
 3548     # Eurybates   Lucy
 15094    # Polymele    Lucy
 11351    # Leucus      Lucy
 21900    # Orus        Lucy
 617      # Patroclus   Lucy
-16       # Psyche      Psyche
-9969     # Braille     Deep Space 1
-5535     # Annefrank   Stardust
-4        # Vesta       Dawn
-1        # Ceres       Dawn
-98943    # Torifune (2001 CC21)  はやぶさ2 拡張ミッションでフライバイ済み
 
-# --- 探査計画の目標・候補 ---
+[これからの目標]
 1998 KY26   # はやぶさ2 拡張ミッションのランデブー目標
 99942       # Apophis   OSIRIS-APEX / RAMSES
 3200        # Phaethon  DESTINY+
-1566        # Icarus
-1620        # Geographos
-4660        # Nereus
-4179        # Toutatis  嫦娥2号
+4179        # Toutatis  嫦娥2号がフライバイ
+12P         # Pons-Brooks
 
-# --- 大きい小惑星 ---
+[大きい小惑星]
 2        # Pallas
 10       # Hygiea
 3        # Juno
@@ -47,7 +62,7 @@
 15       # Eunomia
 31       # Euphrosyne
 
-# --- 準惑星・太陽系外縁天体・ケンタウルス ---
+[準惑星・太陽系外縁天体]
 # 冥王星 (134340) は天体の一覧に最初から入っているので、ここには書かない
 136199   # Eris
 136472   # Makemake
@@ -56,22 +71,22 @@
 50000    # Quaoar
 90482    # Orcus
 225088   # Gonggong
-486958   # Arrokoth   New Horizons
+
+[ケンタウルス]
 2060     # Chiron
 10199    # Chariklo
 5145     # Pholus
 
-# --- 彗星 ---
-1P       # Halley     ジオット / さきがけ・すいせい
+[近づきやすい小惑星]
+1566     # Icarus
+1620     # Geographos
+4660     # Nereus
+1943     # Anteros
+4034     # Vishnu
+7482     # 1994 PC1
+
+[有名な彗星]
 2P       # Encke
-9P       # Tempel 1   Deep Impact
-19P      # Borrelly   Deep Space 1
-21P      # Giacobini-Zinner  ICE
-26P      # Grigg-Skjellerup  ジオット
 46P      # Wirtanen
 55P      # Tempel-Tuttle
-67P      # Churyumov-Gerasimenko  ロゼッタ
-81P      # Wild 2     Stardust
-103P     # Hartley 2  EPOXI
-12P      # Pons-Brooks
 C/1995 O1   # Hale-Bopp

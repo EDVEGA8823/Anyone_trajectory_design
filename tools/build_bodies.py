@@ -252,31 +252,81 @@ def julian_day(year, month, day):
 # ------------------------------------------------------------------
 
 def load_popular(path):
-    """よく使う天体の一覧を読む (番号か符号を1行ずつ。# 以降は注釈)"""
+    """よく使う天体の一覧を読む。
+
+    [親/子] の行がそこからの分類。天体を追加する画面では、この分類が
+    そのまま木構造のタブになる。
+
+    @return (キーの集合, キー -> 分類の道のり)
+    """
     keys = set()
+    where = {}
+    category = ["その他"]
     if not os.path.exists(path):
-        return keys
+        return keys, where
     with io.open(path, encoding="utf-8") as f:
         for line in f:
             line = line.split("#")[0].strip()
-            if line:
-                keys.add(line)
-    return keys
+            if not line:
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                category = [p.strip() for p in line[1:-1].split("/") if p.strip()]
+                continue
+            keys.add(line)
+            where.setdefault(line, list(category))
+    return keys, where
 
 
-def is_popular(rec, keys, kind):
-    """よく使う天体の指定 (番号・符号・名前) に当たるか。
+def build_tree(paths_and_ids):
+    """(分類の道のり, id) の並びから、入れ子の木を作る"""
+    root = []
+
+    def child(nodes, label):
+        for n in nodes:
+            if n["label"] == label:
+                return n
+        n = {"label": label, "children": [], "ids": []}
+        nodes.append(n)
+        return n
+
+    for path, body_id_ in paths_and_ids:
+        nodes = root
+        node = None
+        for label in path:
+            node = child(nodes, label)
+            nodes = node["children"]
+        if node is not None:
+            node["ids"].append(body_id_)
+
+    def prune(nodes):
+        for n in nodes:
+            prune(n["children"])
+            if not n["children"]:
+                del n["children"]
+            if not n["ids"]:
+                del n["ids"]
+        return nodes
+
+    return prune(root)
+
+
+def popular_key(rec, keys, kind):
+    """よく使う天体の指定 (番号・符号・名前) に当たれば、その指定の文字列を返す。
 
     彗星の番号は小惑星の番号と別の体系なので、彗星は番号だけでは当てない
     (「1」でCeresを指定したつもりが 1P/Halley にも当たってしまう)。
     """
     num, name, desig = rec[0], rec[1], rec[2]
     if kind != "comet" and num and str(num) in keys:
-        return True
-    return (name and name in keys) or (desig and desig in keys)
+        return str(num)
+    if desig and desig in keys:
+        return desig
+    if name and name in keys:
+        return name
+    return None
 
 
-def write_set(out_dir, set_id, label, note, groups, source, generated):
+def write_set(out_dir, set_id, label, note, groups, source, generated, extra=None):
     """1つのまとまりを書き出す。
 
     小惑星と彗星は要素の与え方が違う (a,M と q,tp) ので、同じ配列には混ぜず
@@ -295,6 +345,8 @@ def write_set(out_dir, set_id, label, note, groups, source, generated):
         "count": sum(len(g["bodies"]) for g in groups),
         "groups": groups,
     }
+    if extra:
+        data.update(extra)
     with io.open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         f.write("\n")
@@ -322,7 +374,7 @@ def main():
 
     os.makedirs(args.out, exist_ok=True)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    popular_keys = load_popular(args.popular)
+    popular_keys, popular_where = load_popular(args.popular)
     print("よく使う天体の指定: %d 件" % len(popular_keys))
 
     source_info = {
@@ -335,6 +387,7 @@ def main():
     sets = {}       # set_id -> [record, ...]
     seen = set()    # 同じ天体を2つのまとまりに入れない
     popular = {"asteroid": [], "comet": []}
+    tree_items = []  # (分類の道のり, id)
 
     def take(set_id, rec):
         kind = "comet" if set_id == "comet" else "asteroid"
@@ -345,8 +398,10 @@ def main():
         sets.setdefault(set_id, []).append(rec)
         # よく使う天体は、元のまとまりに残したまま popular にも複製する
         # (最初に読むファイルを小さくするため。idが重なるので使う側で重複を除く)
-        if is_popular(rec, popular_keys, kind):
+        hit = popular_key(rec, popular_keys, kind)
+        if hit:
             popular[kind].append(rec)
+            tree_items.append((popular_where.get(hit, ["その他"]), key))
         return True
 
     # --- 小さい配布ファイル ---
@@ -399,6 +454,18 @@ def main():
         print("named: --full が無いので飛ばす")
 
     # --- 書き出し ---
+    # 今回作らなかったまとまり (--full なしのときの named など) は、前回のものを
+    # そのまま残して目録にも載せ続ける。載せ忘れるとアプリから見えなくなる。
+    old_index = {}
+    old_path = os.path.join(args.out, "index.json")
+    if os.path.exists(old_path):
+        try:
+            with io.open(old_path, encoding="utf-8") as f:
+                for e in json.load(f).get("sets", []):
+                    old_index[e["id"]] = e
+        except (ValueError, KeyError):
+            pass
+
     entries = []
     total = 0
     for set_id, label, note in SETS:
@@ -407,11 +474,17 @@ def main():
         elif sets.get(set_id):
             groups = [make_group("comet" if set_id == "comet" else "asteroid", sets[set_id])]
         else:
+            kept = old_index.get(set_id)
+            if kept and os.path.exists(os.path.join(args.out, kept["file"])):
+                entries.append(kept)
+                total += kept["count"]
+                print("  %-8s %6d 件 (前回のものを据え置き)" % (set_id, kept["count"]))
             continue
         if not groups:
             continue
 
-        size = write_set(args.out, set_id, label, note, groups, source_info, generated)
+        extra = {"tree": build_tree(tree_items)} if set_id == "popular" else None
+        size = write_set(args.out, set_id, label, note, groups, source_info, generated, extra)
         count = sum(g["count"] for g in groups)
         entries.append({
             "id": set_id,

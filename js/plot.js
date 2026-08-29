@@ -123,6 +123,10 @@ export function initPlot() {
   labelRenderer.domElement.style.position = "absolute";
   labelRenderer.domElement.style.top = CANVAS_PADDING + "px";
   labelRenderer.domElement.style.left = CANVAS_PADDING + "px";
+  // CSS2DRendererは手前のラベルほど大きなz-indexを個々のラベルに振る。この層に
+  // z-indexを与えて重なりの文脈を作らないと、その値が画面全体と競合して、
+  // ラベルの数が多いときにダイアログや道具ボタンの上に抜けてしまう。
+  labelRenderer.domElement.style.zIndex = "1";
   plot_area.appendChild(labelRenderer.domElement);
 
   controls = new THREE.OrbitControls(camera, labelRenderer.domElement);

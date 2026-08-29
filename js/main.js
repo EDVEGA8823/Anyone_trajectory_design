@@ -65,6 +65,7 @@ import {
 } from './porkchop.js';
 import { initTopbar, setTopbarHandlers } from './topbar.js';
 import { saveMissionFile, openMissionFile, initMissionFileDrop } from './mission_file.js';
+import { openBodyPicker } from './body_picker.js';
 import {
   initEntryView,
   updateEntryView,
@@ -2041,7 +2042,7 @@ function boot() {
   // 上部バーは並びだけ作ってある。中身のあるものをここで差し込む
   // (差し込まれていないボタンは「準備中」と出るだけ)
   initTopbar();
-  setTopbarHandlers({ save: saveMissionFile, load: openMissionFile });
+  setTopbarHandlers({ save: saveMissionFile, load: openMissionFile, add_body: openBodyPicker });
   initMissionFileDrop();
 
   const z_btn = document.getElementById("z_zoom");
