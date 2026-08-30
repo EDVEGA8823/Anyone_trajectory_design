@@ -19,6 +19,9 @@ const LEG_IDLE_OPACITY = 0.4;
 // css/elements.css の --header-height / --canvas-padding と一致させること
 const HEADER_HEIGHT = 64;
 const CANVAS_PADDING = 24;
+// 下だけは詰める。統計バーの下に余白を残すと画面の底が空いて見えるため
+// (CSSの #graph-panel の padding-bottom と揃えること)
+const CANVAS_PADDING_BOTTOM = 12;
 // canvasと、その下の統計バーとの間隔 (css/elements.css の #graph-panel > .stat-bar と揃える)
 const STAT_BAR_GAP = 10;
 
@@ -521,9 +524,9 @@ export function updateLayout() {
   if (window.innerWidth <= window.innerHeight) {
     // 縦長ウィンドウ: #main_area は縦積みになるので、
     // 正方形に近い形にしつつ縦の使用可能量を超えないようにする
-    h = Math.min(w, window.innerHeight - HEADER_HEIGHT - CANVAS_PADDING * 2 - below);
+    h = Math.min(w, window.innerHeight - HEADER_HEIGHT - CANVAS_PADDING - CANVAS_PADDING_BOTTOM - below);
   } else {
-    h = plot_area.clientHeight - CANVAS_PADDING * 2 - below;
+    h = plot_area.clientHeight - CANVAS_PADDING - CANVAS_PADDING_BOTTOM - below;
   }
   w = Math.max(w, 50);
   h = Math.max(h, 50);

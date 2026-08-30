@@ -374,7 +374,9 @@ body.file-drop::after {
      ラベルの層 (CSS2DRenderer) とのずれが出ない */
   justify-content: flex-start;
   align-items: center;
-  padding: var(--canvas-padding);
+  /* 下だけ詰める (統計バーの下が空いて見えるのを防ぐ)。
+     js/plot.js の CANVAS_PADDING_BOTTOM と揃えること */
+  padding: var(--canvas-padding) var(--canvas-padding) 12px;
 }
 
 /* 数値のまとめは太陽系ビューの下に置く。操作パネル側の縦を空けるため
@@ -470,16 +472,39 @@ body.file-drop::after {
   gap: 10px;
 }
 
-.sequence-panel-title {
+/* 「ミッションシーケンス」「操作パネル」の見出し。太陽系ビューの下のバーと同じく
+   枠の中に入れて仕切り線で区切る。中身は縦に長くスクロールするので、
+   見出しは上に貼り付けたままにして、どの枠を見ているかが常に分かるようにする。
+   枠の左右の余白 (--panel-pad) の分だけ外側へ広げ、線を枠いっぱいに引く。
+   枠の上の余白は0にしてある (負のmarginで持ち上げると、その分だけ中身が
+   見出しの上へはみ出して見えてしまうため) */
+.panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  flex: 0 0 auto;
+  margin: 0 calc(-1 * var(--panel-pad));
+  padding: 9px var(--panel-pad);
+  background: var(--surface);
   font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding-left: 4px;
+  font-weight: 700;
+  color: var(--text);
+}
+/* 仕切り線は枠の端まで伸ばさず、中身の左右に揃える。
+   (下の帯そのものは枠いっぱいに広げてある。スクロールした中身が
+    見出しの左右から覗かないようにするため) */
+.panel-head::after {
+  content: "";
+  position: absolute;
+  left: var(--panel-pad);
+  right: var(--panel-pad);
+  bottom: 0;
+  height: 1px;
+  background: var(--border);
 }
 
 .sequence-panel {
+  --panel-pad: 16px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -488,10 +513,28 @@ body.file-drop::after {
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  padding: 16px;
+  /* 上は見出しが持つので0 (.panel-head の説明を参照) */
+  padding: 0 var(--panel-pad) var(--panel-pad);
   overflow-y: auto;
   z-index: 1;
   height: 100%;
+}
+/* 見出しと一括操作は上に貼り付けたままにする
+   (カードを選んで下までスクロールしても、一括操作が消えないように) */
+.panel-top {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  flex: 0 0 auto;
+  background: var(--surface);
+  padding-bottom: 6px;
+}
+/* 貼り付けは .panel-top がまとめて持つ (仕切り線の位置決めのため relative は残す) */
+.panel-top > .panel-head {
+  position: relative;
+}
+.panel-top > .bulk-bar {
+  margin-top: 6px;
 }
 
 .right_panel {
@@ -502,11 +545,6 @@ body.file-drop::after {
   height: 100%;
   min-width: 0;
   min-height: 0;
-}
-/* 「操作パネル」の見出し。縦を詰めるため行高を切り詰めている */
-.right_panel > label {
-  line-height: 1.2;
-  padding-left: 4px;
 }
 
 .bold_box {
@@ -522,6 +560,7 @@ body.file-drop::after {
 /* 縦の余裕に合わせてB面プレビューが縮むので、通常はスクロールしない。
    それでも入り切らない場合の逃げ道として overflow-y は残してある */
 .control-panel {
+  --panel-pad: 10px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -531,7 +570,8 @@ body.file-drop::after {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  padding: 10px;
+  /* 上は見出しが持つので0 (.panel-head の説明を参照) */
+  padding: 0 var(--panel-pad) var(--panel-pad);
   overflow-y: auto;
 }
 .control-panel > .box {
@@ -539,22 +579,43 @@ body.file-drop::after {
 }
 
 /* ==================================================================
-   Stat tiles (V∞ / C3 / ΔV)
+   Stat tiles (打上げエネルギー / ΔV / ロケットと質量)
    ================================================================== */
-/* 幅が足りないときは 総ΔV が下の行に回る。
-   V∞とC3のまとまり(.stat-group)は分断せず、常に1行に収める */
+/* 太陽系ビューの下に置いたので横幅には余裕がある。左から「見出し → 成績 →
+   (右端に寄せて) ロケットと質量」の順に並べる。
+   2段になると太陽系ビューの高さをそのぶん食うので、折り返しは禁止。
+   代わりに、幅が足りなくなったら下のメディアクエリで添え物から順に消す */
 .row.stat-bar {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex: 0 0 auto;
-  gap: 4px;
-  padding: 6px;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 6px 10px;
   overflow-x: auto;
 }
 .row.stat-group {
   flex-wrap: nowrap;
   flex: 0 0 auto;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
+}
+/* ロケットと質量は「打ち上げ側の話」でひとまとまりなので右端に寄せる */
+.stat-bar .launcher-group {
+  margin-left: auto;
+}
+
+/* バーの見出し。値の並びと混ざらないよう、縦線で区切る */
+.stat-bar-title {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  flex: 0 0 auto;
+  padding-right: 14px;
+  border-right: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
 }
 
 /* 縦を詰めるため、項目名の下に「値 + 単位」を1行に並べる2行組みにする */
@@ -588,6 +649,8 @@ body.file-drop::after {
   font-weight: 700;
   color: var(--text);
   line-height: 1.15;
+  /* 桁が変わっても枠の幅が動かないように */
+  font-variant-numeric: tabular-nums;
 }
 
 .value_box .unit {
@@ -606,22 +669,52 @@ body.file-drop::after {
   opacity: 0.85;
 }
 
+/* 脱出速度と打上げエネルギーは同じ量の言い換え (C3 = V∞²) なので1つの枠にまとめ、
+   中を縦線で仕切る。添えているほう (エネルギー) は数字を小さく淡くして、
+   どちらを見ればよいかが一目で分かるようにする */
+.energy-box {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.stat-cell {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  justify-content: start;
+  column-gap: 3px;
+}
+.stat-cell .title {
+  grid-column: 1 / -1;
+}
+.stat-cell--sub {
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+}
+.stat-cell--sub .value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 /* 数値ではなく「打ち上げ不可」などの文字を出すとき */
-.value_box .value .as-text {
+.value_box .value.as-text {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
 }
 /* 「打ち上げ不可」のような文字にも段階の色を効かせる (後述の lvl-* より前に
    置くと色が上書きされてしまうので、ここでは色を指定し直さない) */
-.value_box .value .as-text.lvl-bad {
+.value_box .value.as-text.lvl-bad {
   color: var(--danger);
 }
 
-/* 打上げ時と燃料を使い切った後の質量を1つの枠にまとめる */
-.mass-box .mass-arrow {
-  color: var(--text-muted);
-  font-weight: 500;
+/* 打上げ質量 → 残る質量 をつなぐ矢印 */
+.stat-bar .mass-arrow {
+  flex: 0 0 auto;
+  color: var(--gray-400);
+  font-size: 13px;
 }
 
 /* 値の大きさによる色分け。数字は常に色を付け、注意すべき側 (warn/bad) だけ
@@ -655,13 +748,69 @@ body.file-drop::after {
   border-style: dashed;
 }
 
-/* 打上げロケットの選択と、そこから出る質量のまとまり */
+/* 打上げロケットの選択。他の数値と同じ枠に入れ、上に項目名を出す */
+.select-box {
+  padding: 2px 6px;
+}
+/* 幅が足りなくなったら、意味が薄いものから順に落として1段を守る。
+   (捨てる順: 補足の文字 → 打上げエネルギー → バーの見出し → 余白と文字の大きさ)
+   閾値は「太陽系ビューの幅 ≒ ウィンドウの半分」から決めている */
+@media (max-width: 1580px) {
+  .stat-bar .value_box .title .sub {
+    display: none;
+  }
+}
+@media (max-width: 1450px) {
+  .stat-cell--sub {
+    display: none;
+  }
+}
+@media (max-width: 1260px) {
+  .stat-bar-title {
+    display: none;
+  }
+}
+@media (max-width: 1010px) {
+  .row.stat-bar {
+    gap: 8px;
+    padding: 6px 8px;
+  }
+  .row.stat-group {
+    gap: 4px;
+  }
+  .launcher-group select {
+    width: 92px;
+  }
+}
+@media (max-width: 950px) {
+  .row.stat-bar {
+    gap: 4px;
+    padding: 6px;
+  }
+  /* 縦の余白はそのまま (ここを変えるとバーの高さが動く) */
+  .stat-bar .value_box {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  .stat-bar .value_box .value {
+    font-size: 12px;
+  }
+  .launcher-group select {
+    width: 80px;
+  }
+}
+
 .launcher-group select {
-  flex: 0 0 auto;
-  max-width: 118px;
-  padding: 3px 4px;
+  grid-column: 1 / -1;
+  /* バーの高さを他の枠に合わせるため、選択欄の高さは明示しておく
+     (既定だと文字の大きさに対して余白が大きく、この枠だけ背が高くなる) */
+  width: 132px;
+  height: 20px;
+  margin: 0;
+  padding: 0 4px;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1.15;
 }
 
 /* ==================================================================

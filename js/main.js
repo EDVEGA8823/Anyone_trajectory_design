@@ -300,7 +300,7 @@ function paint(el, level, paint_box = true) {
   if (box && paint_box) box.classList.add("lvl-" + level);
 }
 
-// 右下の統計バー (脱出速度・C3・総ΔV・打上げ質量) をまとめて更新する。
+// 太陽系ビューの下のバー (脱出速度・総ΔV・ロケットと質量) をまとめて更新する。
 // 時刻のドラッグ中も呼ばれるので、軽い処理だけにしておく。
 export function update_stat_bar() {
   const mission = State.mission_sequence;
@@ -309,12 +309,11 @@ export function update_stat_bar() {
   const v = mission.get_v_inf();
   const v_el = document.getElementById("v_inf");
   const c3_el = document.getElementById("C3");
+  // 打上げエネルギーは脱出速度の言い換え (= V∞²) なので、主役は脱出速度にして
+  // 打上げエネルギーは添え物として色を付けずに出す
   v_el.textContent = v.toFixed(2);
   c3_el.textContent = (v * v).toFixed(2);
-  // 脱出速度とC3は同じ量なので同じ色にする
-  const c3_level = mission.count > 0 ? level_low(v * v, C3_LEVELS) : null;
-  paint(v_el, c3_level);
-  paint(c3_el, c3_level);
+  paint(v_el, mission.count > 0 ? level_low(v * v, C3_LEVELS) : null);
 
   const dv = mission.get_total_dv(); // km/s
   const dv_el = document.getElementById("total_dv");
@@ -333,7 +332,8 @@ function update_launch_mass(vinf, dv_kms) {
 
   const mission = State.mission_sequence;
   const arrow = document.getElementById("mass_arrow");
-  const box = wet_el.closest(".value_box");
+  const wet_box = document.getElementById("wet_box");
+  const dry_box = document.getElementById("dry_box");
   const show = (wet, dry, note, level, approx = false) => {
     wet_el.textContent = wet;
     dry_el.textContent = dry;
@@ -342,18 +342,20 @@ function update_launch_mass(vinf, dv_kms) {
     const numeric = /^[\d.]+$/.test(wet);
     wet_el.classList.toggle("as-text", !numeric);
     if (arrow) arrow.style.display = numeric ? "" : "none";
-    dry_el.style.display = numeric ? "" : "none";
+    if (dry_box) dry_box.style.display = numeric ? "" : "none";
     if (group) group.title = note;
     // 色は「燃料を使った後にどれだけ残るか」で決める。打上げ質量そのものは
     // 機種で桁が変わるので色を付けず、既定の文字色のままにする。
     paint(wet_el, numeric ? null : level, false);
     paint(dry_el, level, false);
-    if (box) {
-      LEVELS.forEach((l) => box.classList.remove("lvl-" + l));
-      if (level) box.classList.add("lvl-" + level);
-      // 表の値そのものでない (外挿・近似) ときは枠を破線にする
-      box.classList.toggle("approx", approx);
+    // 段階の色は「残る質量」の枠だけに乗せる。打上げ質量の枠まで染めると
+    // 2つとも同じ色になって、どちらの話なのかが読めなくなる。
+    if (dry_box) {
+      LEVELS.forEach((l) => dry_box.classList.remove("lvl-" + l));
+      if (numeric && level) dry_box.classList.add("lvl-" + level);
     }
+    // 表の値そのものでない (外挿・近似) ときは枠を破線にする
+    [wet_box, dry_box].forEach((b) => b && b.classList.toggle("approx", approx));
   };
 
   // 打上げ能力の表・式はいずれも地球からの打上げのもの
@@ -1062,7 +1064,7 @@ export function renderLaunchControls() {
     const angles = mission.get_launch_angles();
     const rows = [
       ["脱出速度 V∞", vinf.toFixed(3) + " km/s"],
-      ["C3", (vinf * vinf).toFixed(2) + " km²/s²"],
+      ["打上げエネルギー", (vinf * vinf).toFixed(2) + " km²/s²"],
     ];
     if (angles) {
       rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°"]);
@@ -1125,7 +1127,7 @@ export function renderLaunchControls() {
   form.appendChild(hint);
   container.appendChild(form);
 
-  const rows = [["C3", (vinf * vinf).toFixed(2) + " km²/s²"]];
+  const rows = [["打上げエネルギー", (vinf * vinf).toFixed(2) + " km²/s²"]];
   const dsm = mission.get_dsm_info(i + 1);
   if (dsm) rows.push(["DSMのΔV", (dsm.dv * 1000).toFixed(1) + " m/s"]);
   container.appendChild(makeReadout(rows));
@@ -1419,7 +1421,7 @@ export function renderEndControls() {
   const tiles = info.escaping
     ? [
         ["離心率", info.e.toFixed(3), "", true],
-        ["C3", info.c3.toFixed(2), "km²/s²", false],
+        ["打上げエネルギー", info.c3.toFixed(2), "km²/s²", false],
         ["近日点", (info.periapsis / AU).toFixed(3), "AU", false],
         ["傾斜角", (info.inc * RAD2DEG).toFixed(2), "°", false],
       ]

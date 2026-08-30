@@ -62,16 +62,17 @@
         <span class="view-tool-label" id="z_zoom_factor">Z拡大</span>
       </button>
       <div class="row bold_box stat-bar">
-        <div class="row stat-group">
-          <div class="value_box" title="地球を離れるときの双曲線余剰速度。&#10;色の目安 (C3): 10未満=楽 / 30未満=普通 / 60未満=苦しい / それ以上=かなり苦しい">
-              <div class="title">脱出速度</div>
-              <div class="value" id="v_inf">0</div>
-              <div class="unit">km/s</div>
+        <div class="stat-bar-title">ミッションの成績</div>
+        <div class="value_box energy-box" title="地球を離れるときの双曲線余剰速度。&#10;ロケットが出せる打上げ質量は、この速度 (の2乗の打上げエネルギー) で決まる。&#10;色の目安: 約3.2km/s未満=楽 / 約5.5km/s未満=普通 / 約7.7km/s未満=苦しい / それ以上=かなり苦しい">
+          <div class="stat-cell">
+            <div class="title">脱出速度</div>
+            <div class="value" id="v_inf">0</div>
+            <div class="unit">km/s</div>
           </div>
-          <div class="value_box" title="打上げエネルギー (脱出速度の2乗)。&#10;色の目安: 10未満=楽 / 30未満=普通 / 60未満=苦しい / それ以上=かなり苦しい">
-              <div class="title">C<sub>3</sub></div>
-              <div class="value" id="C3">0</div>
-              <div class="unit">km<sup>2</sup>/s<sup>2</sup></div>
+          <div class="stat-cell stat-cell--sub">
+            <div class="title">打上げエネルギー</div>
+            <div class="value" id="C3">0</div>
+            <div class="unit">km²/s²</div>
           </div>
         </div>
         <div class="value_box" title="ミッション中に探査機が出す速度変化の合計 (DSMと近点ΔV)。&#10;色の目安: 300未満=楽 / 1000未満=普通 / 2500未満=苦しい / それ以上=かなり苦しい">
@@ -80,12 +81,19 @@
           <div class="unit">m/s</div>
         </div>
         <div class="row stat-group launcher-group">
-          <select id="launcher" title="打上げに使うロケット"></select>
-          <div class="value_box mass-box">
-            <div class="title" title="色の目安 (残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">質量<span class="sub">燃料込み → 燃料抜き</span></div>
-            <div class="value">
-              <span id="wet_mass">-</span><span class="mass-arrow" id="mass_arrow"> → </span><span id="dry_mass">-</span>
-            </div>
+          <div class="value_box select-box">
+            <div class="title">打ち上げロケット</div>
+            <select id="launcher" title="打上げに使うロケット"></select>
+          </div>
+          <div class="value_box mass-box" id="wet_box">
+            <div class="title">打上げ質量<span class="sub">燃料込み</span></div>
+            <div class="value" id="wet_mass">-</div>
+            <div class="unit">kg</div>
+          </div>
+          <div class="mass-arrow" id="mass_arrow" aria-hidden="true">→</div>
+          <div class="value_box mass-box" id="dry_box" title="色の目安 (打上げ質量に対して残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">
+            <div class="title">残る質量<span class="sub">燃料抜き</span></div>
+            <div class="value" id="dry_mass">-</div>
             <div class="unit">kg</div>
           </div>
         </div>
@@ -93,17 +101,19 @@
     </div>
     <div id="UI-panel">
       <div class="sequence-panel-wrapper">
-        <div class="sequence-panel-title">ミッションシーケンス</div>
-        <div class="row bulk-bar" id="bulk_bar"></div>
         <div class="sequence-panel">
+          <div class="panel-top">
+            <div class="panel-head">ミッションシーケンス</div>
+            <div class="row bulk-bar" id="bulk_bar"></div>
+          </div>
           <div id="sequence">
             <div class="add_sequence" id="0">+ シーケンスを追加</div>
           </div>
         </div>
       </div>
       <div class="right_panel column">
-        <label>操作パネル</label>
         <div class="control-panel bold_box">
+          <div class="panel-head">操作パネル</div>
           <div class="row box alway">
             <div class="column">
               <label>シーケンス</label>
