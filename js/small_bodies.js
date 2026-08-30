@@ -1,5 +1,5 @@
 import { State } from './state.js';
-import { AU, PLANET_COUNT, setSmallBodyProvider, setBodyConstants } from './trajectory.js';
+import { AU, PLANET_COUNT, setSmallBodyProvider, setBodyConstants, clearBodyConstantsFrom } from './trajectory.js';
 import { bodyConic, bodyLabel } from './bodies.js';
 
 // 取り込んだ小天体の置き場。
@@ -140,7 +140,22 @@ export function resetSmallBodies(list) {
   registered.length = 0;
   State.planet_list.length = PLANET_COUNT;
   State.planet_num = PLANET_COUNT;
+  clearBodyConstantsFrom(PLANET_COUNT);
   for (const b of list || []) addSmallBody(b);
+}
+
+/**
+ * 取り込んだ小天体を消したあとの並びを返す (実際の入れ替えは呼ぶ側が
+ * resetSmallBodies で行う)。番号は前に詰まるので、消した番号より後ろの
+ * 天体を使っているノードは番号を1つ繰り上げる必要がある。
+ *
+ * @param {number} num 天体番号
+ * @returns {object[]|null} 消したあとの天体の並び (消せないときは null)
+ */
+export function smallBodiesWithout(num) {
+  const i = num - PLANET_COUNT;
+  if (i < 0 || i >= registered.length) return null;
+  return registered.filter((_, k) => k !== i).map((r) => r.body);
 }
 
 /** 保存用の素の値 (天体の中身をそのまま持たせる) */

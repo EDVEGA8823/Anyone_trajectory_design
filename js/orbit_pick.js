@@ -35,10 +35,12 @@ const TIE_DISTANCE = 0.03;
  * わずかに変わるが、掴んでいる線が足元で動くと操作感が悪いため。
  *
  * @param {number[]} elements 軌道要素 [a, e, i, W, w, E]
+ * @param {Float64Array} [anomalies] 描画側と揃えた近点角の並び
+ *   (省略すると天体の軌道と同じ範囲。マヌーバの「未実行時の軌道」は
+ *    描く範囲が違うので、呼ぶ側が coast_anomalies を渡す)
  * @returns {{anomalies: Float64Array, pos: THREE.Vector3[], closed: boolean}}
  */
-export function buildOrbitSamples(elements) {
-  const anomalies = orbit_anomalies(elements, PICK_SAMPLES);
+export function buildOrbitSamples(elements, anomalies = orbit_anomalies(elements, PICK_SAMPLES)) {
   const pos = new Array(anomalies.length);
   for (let i = 0; i < anomalies.length; i++) {
     const { r } = get_planets_pos_E(elements, anomalies[i]);

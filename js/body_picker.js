@@ -33,9 +33,11 @@ let detail_el = null;
 let add_btn = null;
 
 let selected = null; // いま選んでいる天体
-let current = null; // いま一覧に出しているもの {type:"tree"|"set"|"search", ...}
+let current = null; // いま一覧に出しているもの {type:"tree"|"set"|"mine"|"search", ...}
 let search_timer = 0;
 let on_add = null;
+let on_remove = null;
+let list_imported = null; // 取り込み済みの天体を返す関数 () => [{num, id, label, body}]
 
 /* ==================================================================
    組み立て
@@ -129,9 +131,18 @@ function on_key(e) {
 // 折りたたみは見出し (よく使う天体 / すべての天体) と、子を持つ分類の両方。
 // 分類が十数個あるので、全部並べると左枠が読みにくい。
 // 既定では「よく使う天体」だけを開き、その中の分類はすべて畳んでおく。
+const SECTION_MINE = "sec:mine";
 const SECTION_POPULAR = "sec:popular";
 const SECTION_ALL = "sec:all";
-const expanded = new Set([SECTION_POPULAR]);
+// 取り込んだ天体はここからしか消せないうえ、多くても数件なので開いておく
+const expanded = new Set([SECTION_MINE, SECTION_POPULAR]);
+
+/** 取り込み済みの天体 (id をキーにした表) */
+function imported_map() {
+  const map = new Map();
+  for (const r of list_imported ? list_imported() : []) map.set(r.id, r);
+  return map;
+}
 
 const CHEVRON =
   '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" ' +
@@ -175,6 +186,18 @@ function render_tree() {
   const active = tree_el.querySelector(".bp-node.active");
   const active_key = active ? active.dataset.key : null;
   tree_el.innerHTML = "";
+
+  // --- 取り込んだ天体。ここからしか消せないので、1件でもあれば見せる ---
+  const mine = list_imported ? list_imported() : [];
+  if (mine.length > 0) {
+    tree_el.appendChild(section_head(SECTION_MINE, "取り込んだ天体", render_tree));
+    if (expanded.has(SECTION_MINE)) {
+      const item = tree_node("一覧 (消せます)", 0, () => show_imported(), mine.length);
+      item.dataset.key = SECTION_MINE + ":list";
+      if (item.dataset.key === active_key) item.classList.add("active");
+      tree_el.appendChild(item);
+    }
+  }
 
   // --- よく使う天体 ---
   tree_el.appendChild(section_head(SECTION_POPULAR, "よく使う天体", render_tree));
@@ -239,10 +262,19 @@ function mark_active(key) {
 
 function show_tree_node(node, key) {
   search_el.value = "";
-  current = { type: "tree", node };
+  current = { type: "tree", node, key };
   render_tree(); // 開閉が変わっているので作り直す
   mark_active(key);
   render_list(bodiesByIds(collect_ids(node)), node.label);
+}
+
+function show_imported() {
+  search_el.value = "";
+  current = { type: "mine" };
+  render_tree();
+  mark_active(SECTION_MINE + ":list");
+  const mine = list_imported ? list_imported() : [];
+  render_list(mine.map((r) => r.body), "取り込んだ天体");
 }
 
 async function show_set(entry, key) {
@@ -283,7 +315,9 @@ function render_list(bodies, title) {
   select_body(null);
 
   if (!bodies || bodies.length === 0) {
-    list_el.appendChild(el("div", "bp-empty", "該当する天体がありません"));
+    list_el.appendChild(
+      el("div", "bp-empty", current && current.type === "mine" ? "取り込んだ天体はまだありません" : "該当する天体がありません")
+    );
     return;
   }
 
@@ -295,13 +329,14 @@ function render_list(bodies, title) {
   list_el.appendChild(head);
 
   const table = el("div", "bp-rows");
+  const mine = imported_map();
   for (const b of bodies.slice(0, MAX_ROWS)) {
-    table.appendChild(make_row(b));
+    table.appendChild(make_row(b, mine.get(b.id)));
   }
   list_el.appendChild(table);
 }
 
-function make_row(b) {
+function make_row(b, imported) {
   const row = el("div", "bp-row");
   row.dataset.id = b.id;
 
@@ -327,12 +362,36 @@ function make_row(b) {
     row.appendChild(el("span", "bp-badge", open_kind));
   }
 
+  if (imported) {
+    row.classList.add("imported");
+    row.appendChild(el("span", "bp-badge bp-badge--in", "取り込み済み"));
+    const del = el("button", "bp-del", "外す");
+    del.type = "button";
+    del.title = "「" + imported.label + "」を天体の一覧から外す";
+    del.onclick = (e) => {
+      e.stopPropagation(); // 行の選択には反応させない
+      remove_imported(imported);
+    };
+    row.appendChild(del);
+  }
+
   row.onclick = () => select_body(b, row);
   row.ondblclick = () => {
     select_body(b, row);
     add_selected();
   };
   return row;
+}
+
+function remove_imported(entry) {
+  if (!on_remove) return;
+  if (!on_remove(entry.num)) return; // 使用中などで消せなかった
+  // 一覧と左の木を作り直す (番号が繰り上がっているので取り直す)
+  render_tree();
+  if (current && current.type === "mine") show_imported();
+  else if (current && current.type === "tree") show_tree_node(current.node, current.key);
+  else if (current && current.type === "search") run_search();
+  else if (current && current.type === "set") render_list(bodiesOfSet(current.entry.id), current.entry.label);
 }
 
 function select_body(b, row) {
@@ -445,9 +504,20 @@ export function isBodyPickerOpen() {
   return !!root && root.style.display !== "none";
 }
 
-/** 天体が選ばれたときに呼ぶ関数を登録する */
+/**
+ * 外側と繋ぐ関数を登録する。
+ *
+ * @param {object} h
+ * @param {(body:object) => void} h.onAdd 天体が選ばれたとき
+ * @param {(num:number) => boolean} h.onRemove 取り込み済みの天体を外すとき
+ *   (消せたら true を返すこと。シーケンスで使われている等で断ることがある)
+ * @param {() => {num:number,id:string,label:string,body:object}[]} h.listImported
+ *   取り込み済みの天体を返す関数
+ */
 export function setBodyPickerHandlers(h) {
   on_add = h && h.onAdd;
+  on_remove = h && h.onRemove;
+  list_imported = h && h.listImported;
 }
 
 // テスト・デバッグ用

@@ -2155,6 +2155,33 @@ button {
   font-size: 10px;
   white-space: nowrap;
 }
+/* すでに天体の一覧に入っているもの */
+.bp-badge--in {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* 取り込んだ天体を一覧から外すボタン。押し間違えると設計が消えるので、
+   普段は控えめにしておき、触ったときだけ赤くする */
+.bp-del {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.bp-del:hover {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
 
 .bp-foot {
   display: flex;

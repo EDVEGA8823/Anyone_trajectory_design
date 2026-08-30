@@ -10,7 +10,7 @@ import {
   update_plot,
 } from './main.js';
 import { camera, controls, createLine, getZScale } from './plot.js';
-import { kepler_equation, MU_SUN } from './trajectory.js';
+import { coast_anomalies, kepler_equation, MU_SUN } from './trajectory.js';
 import { buildOrbitSamples, pickAnomaly } from './orbit_pick.js';
 import { JulianToDate, DateToJulian } from './trajectory.js';
 
@@ -405,8 +405,9 @@ function Select_marker(v, x_0) {
  *
  * @param {number[]} elements 軌道要素 [a, e, i, W, w, E]
  * @param {number} base_date elements[5] に対応する日付 [JD]
+ * @param {Float64Array} [anomalies] 描かれている線と揃えた近点角の並び
  */
-function set_drag_orbit(elements, base_date) {
+function set_drag_orbit(elements, base_date, anomalies) {
   const a = elements[0];
   const e = elements[1];
   const E_base = elements[5];
@@ -417,7 +418,7 @@ function set_drag_orbit(elements, base_date) {
     elements: elements.slice(),
     base_date,
     t_base,
-    samples: buildOrbitSamples(elements),
+    samples: buildOrbitSamples(elements, anomalies),
     E_prev: E_base,
   };
   return true;
@@ -435,8 +436,9 @@ function start_drag_node(n) {
     if (conic == null) return false;
 
     set_edit_target(n);
-    // 軌道要素の epoch は前のノードの日付 (そこでの近点角が par[5])
-    if (!set_drag_orbit(conic.par, conic.epoch)) return false;
+    // 軌道要素の epoch は前のノードの日付 (そこでの近点角が par[5])。
+    // 掴めるのは描かれている「未実行時の軌道」の上だけなので、その範囲を渡す
+    if (!set_drag_orbit(conic.par, conic.epoch, coast_anomalies(conic.par, 241))) return false;
     State.is_change_time = true;
     State.is_selected = true;
     if (controls) controls.enableRotate = false;

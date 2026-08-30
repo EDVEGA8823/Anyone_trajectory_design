@@ -337,6 +337,17 @@ export function setBodyConstants(n, { mu, radius, min_altitude = 0, entry_altitu
 }
 
 /**
+ * 番号 n 以降の物理量を捨てる。
+ * 取り込んだ小天体を消すと後ろの番号が繰り上がるので、入れ直す前に一度空にする
+ * (消さないと、消した天体のぶんが表の末尾に残る)。
+ */
+export function clearBodyConstantsFrom(n) {
+  for (const table of [planet_mu, planet_radius, MIN_FLYBY_ALTITUDE, ENTRY_ALTITUDE]) {
+    if (table.length > n) table.length = n;
+  }
+}
+
+/**
  * 近点距離基準の要素 {q,e,i,node,peri,tp} を、この先の計算で使う
  * [a, e, i, Ω, ω, 離心近点角] の並びに直す。
  *
@@ -380,8 +391,17 @@ export function change_coordinate(v) {
   return [v[0], v[2], -v[1]];
 }
 
-// 開いた軌道を描く範囲。近日点距離の何倍まで伸ばすか (これ以上は画面外)
-const OPEN_ORBIT_SPAN = 30;
+// 開いた軌道 (放物線・双曲線) を描く範囲。
+//
+// 恒星間天体は太陽の近くにいる期間がごく短く、探査の当たりを付けるには
+// 「まだ遠くにいる時期に出発して追いかける」「通り過ぎたあとを追う」といった
+// ところまで見えている必要がある。近点まわりだけを描いていると、そこから先へ
+// 時刻を動かせなかった (線の上しか掴めないため)。
+//
+// 1I/'Oumuamua (近日点0.26AU・V∞26km/s) で 100AU までとると、近点をはさんで
+// 前後およそ18年ぶんになる。海王星の軌道 (30AU) の外まで届く。
+const OPEN_ORBIT_SPAN = 60; // 近日点距離の何倍まで伸ばすか
+const OPEN_ORBIT_MIN_FAR = 100; // ただし最低でもこれだけは伸ばす [AU]
 
 /**
  * 軌道を折れ線で描くときの、点を取る離心近点角(双曲線なら双曲線近点角)の並び。
@@ -403,7 +423,7 @@ export function orbit_anomalies(elements, n = 100) {
     // 双曲線は一周しない。近点をはさんで、太陽から離れすぎない範囲だけ描く。
     // 中央ほど点が詰まるように取る (一番速く曲がるのが近点のまわり)
     const q = a * (1 - e);
-    const far = Math.max(q * OPEN_ORBIT_SPAN, 5 * AU);
+    const far = Math.max(q * OPEN_ORBIT_SPAN, OPEN_ORBIT_MIN_FAR * AU);
     const H_max = Math.acosh(Math.max(1, (1 - far / a) / e));
     for (let i = 0; i < n; i++) {
       const u = (2 * i) / (n - 1) - 1;
@@ -413,6 +433,28 @@ export function orbit_anomalies(elements, n = 100) {
   }
 
   for (let i = 0; i < n; i++) out[i] = (2 * Math.PI * i) / (n - 1);
+  return out;
+}
+
+// マヌーバの「未実行時の軌道」で、開いた軌道を描く幅 (いまの位置の前後)。
+// こちらは天体の軌道と違って「この節がどこへ流されるか」を見るためのものなので、
+// 遠くまで伸ばさず手元だけを描く
+const COAST_OPEN_SPAN = 2.5;
+
+/**
+ * マヌーバの「未実行時の軌道」を描く近点角の並び。
+ * 楕円は1周分、開いた軌道はいまの位置のまわりだけ。
+ *
+ * 描画 (get_coast_orbit) と、マウスで掴むときの当たり判定で同じ並びを使う。
+ */
+export function coast_anomalies(par, n = 181) {
+  const out = new Float64Array(n);
+  if (par[1] < 1) {
+    for (let k = 0; k < n; k++) out[k] = (2 * Math.PI * k) / (n - 1);
+    return out;
+  }
+  const E0 = par[5];
+  for (let k = 0; k < n; k++) out[k] = E0 - COAST_OPEN_SPAN + (2 * COAST_OPEN_SPAN * k) / (n - 1);
   return out;
 }
 
@@ -1079,29 +1121,15 @@ export class Mission {
   }
 
   // DSMを実行しなかった場合の軌道の描画点 (#coast_conic を参照)。
-  // 楕円なら1周分、双曲線なら前後に適当な範囲を描く。
   get_coast_orbit(i) {
     const conic = this.#coast_conic(i);
     if (conic == null) return [];
     const par = conic.par;
-    const e = par[1];
-    const pts = [];
-    const N = 180;
-    if (e < 1) {
-      // 楕円: 1周分
-      for (let k = 0; k <= N; k++) {
-        const { r } = get_planets_pos_E(par, (2 * Math.PI * k) / N);
-        pts.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
-      }
-    } else {
-      // 双曲線: 現在の離心近点角の周辺を描く
-      const E0 = par[5];
-      const span = 2.5;
-      for (let k = 0; k <= N; k++) {
-        const E = E0 - span + (2 * span * k) / N;
-        const { r } = get_planets_pos_E(par, E);
-        pts.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
-      }
+    const anomalies = coast_anomalies(par);
+    const pts = new Array(anomalies.length);
+    for (let k = 0; k < anomalies.length; k++) {
+      const { r } = get_planets_pos_E(par, anomalies[k]);
+      pts[k] = new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU);
     }
     return pts;
   }
@@ -2231,6 +2259,36 @@ export class Mission {
 
   get count() {
     return this.#m_count;
+  }
+
+  /**
+   * ノードが指している天体番号を付け替える。
+   * 取り込んだ小天体を消すと後ろの番号が繰り上がるので、そのときに使う。
+   *
+   * @param {(n:number) => number} map 今の番号から新しい番号を返す関数
+   * @returns {boolean} 1つでも変わったか
+   */
+  renumber_planets(map) {
+    let changed = false;
+    for (let i = 0; i < this.#m_count; i++) {
+      const now = this.#m_planet_nums[i];
+      if (now == undefined || now === -1) continue;
+      const next = map(now);
+      if (next === now) continue;
+      this.#m_planet_nums[i] = next;
+      changed = true;
+    }
+    if (changed) this.#recompute_all();
+    return changed;
+  }
+
+  /** その天体を使っているノードの番号 (無ければ空) */
+  nodes_using_planet(num) {
+    const out = [];
+    for (let i = 0; i < this.#m_count; i++) {
+      if (this.#m_planet_nums[i] === num) out.push(i);
+    }
+    return out;
   }
 
   async set_planet_num(i, num) {

@@ -74,6 +74,8 @@ import {
   isSmallBody,
   isMajorBody,
   smallBody,
+  smallBodies,
+  smallBodiesWithout,
   resetSmallBodies,
   smallBodyBase,
 } from './small_bodies.js';
@@ -676,6 +678,46 @@ export function import_small_body(body) {
   change_sequence_propaty(); // 天体の選択肢に加える
   notify("「" + bodyLabel(body) + "」を天体に追加しました (シーケンスの天体欄から選べます)");
   return num;
+}
+
+/**
+ * 取り込んだ小天体を一覧から外す。
+ *
+ * 天体番号は取り込んだ順に振ってあるので、消すと後ろの天体が1つずつ繰り上がる。
+ * シーケンスが持っているのはこの番号なので、繰り上がったぶんを付け替える。
+ * 消そうとしている天体をシーケンスが使っている場合は、行き先が消えて
+ * ミッションが壊れるので断る (先にシーケンス側を直してもらう)。
+ *
+ * @param {number} num 天体番号
+ * @returns {boolean} 消せたか
+ */
+export function remove_small_body(num) {
+  const body = smallBody(num);
+  if (!body) return false;
+
+  const mission = State.mission_sequence;
+  const used = mission ? mission.nodes_using_planet(num) : [];
+  if (used.length > 0) {
+    notify(
+      "「" + body.label + "」はシーケンス " +
+        used.map((i) => i + 1).join("・") +
+        " で使われています。先に別の天体に変えるか、そのシーケンスを消してください"
+    );
+    return false;
+  }
+
+  reload_small_bodies(smallBodiesWithout(num));
+  // 消した天体より後ろは番号が1つ前へ詰まる
+  if (mission) mission.renumber_planets((n) => (n > num ? n - 1 : n));
+  if (State.selected_planet > num) State.selected_planet -= 1;
+  else if (State.selected_planet === num) State.selected_planet = EARTH;
+
+  update_plot();
+  toggle_planet();
+  change_sequence_propaty(); // 天体の選択肢から外す
+  updateControlPanelDisplay();
+  notify("「" + body.label + "」を一覧から外しました");
+  return true;
 }
 
 /** ミッションを読み込んだときなど、取り込んだ小天体を丸ごと入れ替える */
@@ -2309,7 +2351,12 @@ function boot() {
   // (差し込まれていないボタンは「準備中」と出るだけ)
   initTopbar();
   setTopbarHandlers({ save: saveMissionFile, load: openMissionFile, add_body: openBodyPicker });
-  setBodyPickerHandlers({ onAdd: import_small_body });
+  setBodyPickerHandlers({
+    onAdd: import_small_body,
+    onRemove: remove_small_body,
+    listImported: () =>
+      smallBodies().map((b, i) => ({ num: smallBodyBase() + i, id: b.id, label: b.label, body: b.body })),
+  });
   initMissionFileDrop();
 
   const leg_fold = document.getElementById("leg_fold");
