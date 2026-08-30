@@ -22,7 +22,10 @@ const PLANET_COLORS = [
 
 const view = createVectorView({
   canvasId: "launch_canvas",
-  cells: 10, // 1目盛 = 1 km/s なので、グリッド全体で ±5 km/s
+  cells: 10, // 1目盛 = 1 km/s。画角はこの ±5 km/s に合わせる
+  // 軌道面(≒黄道面)は画角よりずっと広く敷く。V∞が数km/sでも面が画面いっぱいに
+  // 広がるので、どの面から飛び出しているのかが読み取れる (1目盛は1 km/sのまま)
+  gridCells: 36,
   centerRadius: 0.55, // 天体の見た目の半径 [km/s単位]。物理的な意味は無い
   alphaR: 3.2,
   deltaR: 2.2,

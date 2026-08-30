@@ -38,7 +38,9 @@ const NICE_SCALES = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10];
  *
  * @param {object} config
  * @param {string} config.canvasId    描画先のcanvasのid
- * @param {number} config.cells       グリッドの一辺の目の数
+ * @param {number} config.cells       画角を合わせる範囲の目の数
+ * @param {number} config.gridCells   実際に敷くグリッドの目の数 (省略すると cells)
+ *        cells より多くすると、矢印の見え方はそのままで軌道面だけを広く敷ける
  * @param {number} config.centerRadius 中心に置く球の見た目の半径 [目盛]
  * @param {number} config.alphaR      方位角ハンドルの半径 [目盛]
  * @param {number} config.deltaR      仰角ハンドルの半径 [目盛]
@@ -52,6 +54,7 @@ export function createVectorView(config) {
   const {
     canvasId,
     cells = 10,
+    gridCells = cells,
     centerRadius = 0.55,
     alphaR = 3.2,
     deltaR = 2.2,
@@ -63,7 +66,10 @@ export function createVectorView(config) {
 
   const CANVAS_MAX = 460;
   const CANVAS_BORDER = 1;
-  const HALF = cells / 2; // グリッドの半幅 [目盛]
+  const HALF = cells / 2; // 画角を合わせる半幅 [目盛]
+  // 実際に敷くグリッドの半幅。画角より広く敷いておくと、矢印が短いときでも
+  // 軌道面が画面いっぱいに広がって「どの面の話か」が読み取れる
+  const GRID_HALF = gridCells / 2;
   // カメラを合わせる広さの上限 [目盛]。これを超えると矢印は画面からはみ出すが、
   // 天体とグリッドが見える状態を保つほうが「桁違いに大きい」ことは伝わる
   // (無理な日付では V∞ が数百km/sになることがある)
@@ -105,7 +111,7 @@ export function createVectorView(config) {
 
     // 軌道面 (= 方位角αを測る面)。グリッドはXY平面で作られるので寝かせる。
     planeGrid = new THREE.LineSegments(
-      squareGridGeometry(HALF, cells),
+      squareGridGeometry(GRID_HALF, gridCells),
       new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.22, depthWrite: false })
     );
     planeGrid.rotation.x = -Math.PI / 2;
@@ -284,16 +290,17 @@ export function createVectorView(config) {
     shadowLine.visible = tilted;
     riseLine.visible = tilted;
 
-    // 基準方向 (=α の基準) は中心を貫いて前後に伸ばす
+    // 基準方向 (=α の基準) は中心を貫いて前後に伸ばす。
+    // 大きさではなく向きを示す線なので、グリッドの端まで引く
     setArrow(
       referenceArrow,
-      new THREE.Vector3(-HALF, 0, 0),
-      new THREE.Vector3(HALF, 0, 0),
+      new THREE.Vector3(-GRID_HALF, 0, 0),
+      new THREE.Vector3(GRID_HALF, 0, 0),
       0.45,
       0.1,
       0.45
     );
-    setLinePoints(referenceLine, [new THREE.Vector3(), new THREE.Vector3(HALF, 0, 0)]);
+    setLinePoints(referenceLine, [new THREE.Vector3(), new THREE.Vector3(GRID_HALF, 0, 0)]);
 
     // 方位角の円弧 (軌道面内、基準方向から反時計回りに α)
     const arcA = Math.min(alphaR * 0.55, Math.max(shown * 0.45, 0.8));

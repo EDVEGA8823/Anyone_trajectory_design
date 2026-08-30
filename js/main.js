@@ -129,12 +129,11 @@ export function add_sequence(id) {
     // マヌーバ(DSM)は天体ではなく深宇宙の一点なので、天体名の代わりにΔVを出す。
     // 並びの最後の自動マヌーバだけが次の目的地へ繋ぐ役目を持つので、
     // 手で足した手動マヌーバとは見分けが付くようにする。
-    // (単位のm/sで速度変化と分かるので「ΔV」の文字は省いて幅を空ける)
     const dsm = mission.get_dsm_info(id);
     if (!mission.is_auto_mode(id)) {
       span1.textContent = "深宇宙 (手動)";
     } else {
-      span1.textContent = dsm ? (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+      span1.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
     }
   } else if (type === Sequence_Type.End) {
     // 最終軌道も天体を持たないので、到達した軌道の種類を出す

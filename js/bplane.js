@@ -29,7 +29,7 @@ export let renderer, scene, camera, controls;
 
 let planetMesh, keepOutSphere, eclipticPlane, bplaneGroup, hyperbolaLine, asymptoteArrow, travelArrowhead;
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine, coastHyperbola;
-let orbitArrow, dvArrow;
+let orbitArc, orbitArrowhead, dvArrow;
 let root, sunLight;
 let lastViewKey; // いま表示しているノード。切り替わったときだけ画角を取り直す
 
@@ -211,9 +211,16 @@ export function initBPlane() {
   rpLine = makeLine([new THREE.Vector3()], COLOR_RP, 1);
   root.add(rpLine);
 
-  // 天体の進行方向 (公転方向)
-  orbitArrow = makeArrow(COLOR_PLANET_ORBIT, 0.85);
-  root.add(orbitArrow);
+  // 天体の公転軌道 (弧) と、進行方向を示す先端の矢じるし
+  orbitArc = makeLine([new THREE.Vector3()], COLOR_PLANET_ORBIT, 0.85);
+  root.add(orbitArc);
+  orbitArrowhead = new THREE.Mesh(
+    new THREE.ConeGeometry(1, 1, 16),
+    new THREE.MeshBasicMaterial({ color: COLOR_PLANET_ORBIT })
+  );
+  orbitArrowhead.material.depthTest = false;
+  orbitArrowhead.renderOrder = 2;
+  root.add(orbitArrowhead);
 
   // 太陽方向は陰影(平行光の向き)で示すので、線としては描画しない。
   // 太陽光自体は updateBPlane 内の applyOrientation で毎回向きを更新する。
@@ -440,22 +447,30 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
   // --- B面(正方形) ---
   const halfSize = Math.max(b_n * 1.3, rp_n * 1.6);
 
-  // --- 双曲線本体 ---
-  // 真近点角で切ると漸近線近くで急に遠方へ飛んでいくため、動径がビューの
-  // 大きさを超えたところで切る。こうすると常に画面内に収まる。
   const rMax = halfSize * 2.3;
+
+  // 画角を合わせる広さ。黄道面グリッドはこれを基準に敷くので、先に決めておく
+  // (双曲線と公転軌道はそのグリッドの端まで引く)
+  const extent = Math.max(halfSize, rp_n, b_n, rMax);
+  const view_changed = key !== lastViewKey;
+  const farEdge = fitEcliptic(extent, view_changed);
+
+  // --- 双曲線本体 ---
+  // 真近点角で切ると漸近線近くで急に遠方へ飛んでいくため、動径がグリッドの
+  // 端を超えたところで切る。画角の外まで伸ばすのは、途中でぷつりと終わると
+  // 「ここで止まる軌道」に見えてしまうため。
   // 近点から真近点角 nu の点 (軌道要素 e, p から)
   const conicPoint = (e_b, p_b, nu) => {
     const r = p_b / (1 + e_b * Math.cos(nu));
     return new THREE.Vector3().addScaledVector(P_hat, r * Math.cos(nu)).addScaledVector(Q_hat, r * Math.sin(nu));
   };
-  // 動径が rMax を超えない範囲での真近点角の上限
+  // 動径が farEdge を超えない範囲での真近点角の上限
   const clipNu = (e_b, p_b) => {
-    const cosClip = (p_b / rMax - 1) / e_b;
+    const cosClip = (p_b / farEdge - 1) / e_b;
     const nu_inf_b = Math.acos(-1 / e_b);
-    return Math.min(Math.acos(Math.max(-1, Math.min(1, cosClip))), nu_inf_b * 0.995);
+    return Math.min(Math.acos(Math.max(-1, Math.min(1, cosClip))), nu_inf_b * 0.9995);
   };
-  const branch = (e_b, p_b, nu0, nu1, N = 80) =>
+  const branch = (e_b, p_b, nu0, nu1, N = 120) =>
     Array.from({ length: N + 1 }, (_, k) => conicPoint(e_b, p_b, nu0 + ((nu1 - nu0) * k) / N));
 
   const p_n = a_n * (1 - e * e);
@@ -506,7 +521,7 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
 
   // --- 入射漸近線 (進行方向 = inHat の矢印) ---
   const pierce = bHat.clone().multiplyScalar(b_n);
-  const far = rMax;
+  const far = farEdge;
   setArrow(
     asymptoteArrow,
     pierce.clone().addScaledVector(inHat, -far),
@@ -534,10 +549,6 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
   const periapsis = P_hat.clone().multiplyScalar(rp_n);
   periapsisMarker.position.copy(periapsis);
   setLinePoints(rpLine, [new THREE.Vector3(), periapsis]);
-
-  // rMax(双曲線・漸近線の描画範囲)も含めて、実際に描いた内容全体が画角に
-  // 収まるようにする
-  const extent = Math.max(halfSize, rp_n, b_n, rMax);
 
   // マウスのハンドル用に、いまの縮尺と掴む点を控えておく
   geom = {
@@ -586,23 +597,31 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
   // --- 天体の公転方向・太陽方向(陰影用)・天の北極方向 ---
   const haveFrame = iHat && jHat && kHat;
   let vHat, sHat, northHat;
+  let sunDist = 0; // 太陽までの距離 [天体半径]
 
   if (haveFrame && planetVel) {
     const vn = Math.hypot(planetVel[0], planetVel[1], planetVel[2]);
     if (vn > 1e-12) {
       vHat = toDrawing([planetVel[0] / vn, planetVel[1] / vn, planetVel[2] / vn], iHat, jHat, kHat);
-      const L = extent * 1.5;
-      // 手前(-L)から矢じるし(+L)まで。天体を通り抜けて進行方向を示す
-      setArrow(orbitArrow, vHat.clone().multiplyScalar(-L), vHat.clone().multiplyScalar(L), extent * 0.22, 0.12, 0.4);
-      orbitArrow.visible = true;
-    } else orbitArrow.visible = false;
-  } else orbitArrow.visible = false;
+    }
+  }
 
   if (haveFrame && planetPos) {
     const rn = Math.hypot(planetPos[0], planetPos[1], planetPos[2]);
     // 天体から見た太陽の方向 = -r_pla。線には描かず、陰影(平行光)にのみ使う。
-    if (rn > 1e-12) sHat = toDrawing([-planetPos[0] / rn, -planetPos[1] / rn, -planetPos[2] / rn], iHat, jHat, kHat);
+    if (rn > 1e-12) {
+      sHat = toDrawing([-planetPos[0] / rn, -planetPos[1] / rn, -planetPos[2] / rn], iHat, jHat, kHat);
+      sunDist = rn / radius;
+    }
   }
+
+  // --- 天体の公転軌道 ---
+  // 直線の矢印では「たまたまこの向きに進んでいる」ようにしか見えないので、
+  // 実際の公転軌道の弧として描く。太陽を中心とする半径 sunDist の円で近似する
+  // (この視野は天体半径の数百倍、公転半径は数万倍なので、円と実際の楕円の
+  //  ずれは線の太さにも届かない)。長さの目盛りではなく道筋なので、
+  // 双曲線と同じくグリッドの端まで引く。
+  drawOrbitArc(vHat, sHat, sunDist, farEdge, extent);
 
   if (haveFrame) {
     // 黄道面の法線(=天の北極方向)。太陽系全体で共通の固定ベクトル[0,0,1]。
@@ -615,10 +634,6 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
   }
 
   applyOrientation(vHat, sHat, northHat);
-
-  const view_changed = key !== lastViewKey;
-  // 黄道面グリッドは中身より広く保つ (ノードを選び直したときは合わせ直す)
-  fitEcliptic(extent, view_changed);
 
   // 画角を取り直すのは表示するノードが変わったときだけ。
   // rpやβを変えるたびにカメラが動くと、見ている大きさの感覚が崩れて
@@ -641,14 +656,17 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
  * (ドラッグの途中でグリッドが縮むと、目の大きさが変わってちらつくため)。
  *
  * @param {boolean} reset 縮める向きにも合わせ直すか
+ * @returns {number} 敷いたグリッドの半幅 [天体半径] (双曲線と公転軌道はここまで引く)
  */
 function fitEcliptic(extent, reset) {
   const want = (extent * ECLIPTIC_MARGIN * 2) / ECLIPTIC_CELLS;
   const cell = ECLIPTIC_CELL_STEPS.find((s) => s >= want) ?? ECLIPTIC_CELL_STEPS[ECLIPTIC_CELL_STEPS.length - 1];
-  if (cell === eclipticCell || (!reset && cell < eclipticCell)) return;
-  eclipticCell = cell;
-  eclipticPlane.geometry.dispose();
-  eclipticPlane.geometry = squareGridGeometry((cell * ECLIPTIC_CELLS) / 2, ECLIPTIC_CELLS);
+  if (cell !== eclipticCell && (reset || cell > eclipticCell)) {
+    eclipticCell = cell;
+    eclipticPlane.geometry.dispose();
+    eclipticPlane.geometry = squareGridGeometry((cell * ECLIPTIC_CELLS) / 2, ECLIPTIC_CELLS);
+  }
+  return (eclipticCell * ECLIPTIC_CELLS) / 2;
 }
 
 // 全体が画角に収まる距離にカメラを置き直す
@@ -712,6 +730,61 @@ function setOrbitVisible(visible) {
 }
 
 function setContextVisible(visible) {
-  orbitArrow.visible = visible;
+  orbitArc.visible = visible;
+  orbitArrowhead.visible = visible;
   if (!visible) eclipticPlane.visible = false;
+}
+
+/**
+ * 天体の公転軌道を弧として描く。
+ *
+ * このビューは天体半径=1、視野はその数十〜数百倍。公転半径は数万倍あるので、
+ * 見えている範囲では軌道は「太陽を中心とする半径 sunDist の円」とみなして
+ * 差し支えない (実際の楕円とのずれは線の太さに届かない)。
+ *
+ * @param {THREE.Vector3} vHat 公転方向 (描画座標)
+ * @param {THREE.Vector3} sHat 天体から見た太陽の方向 (描画座標)
+ * @param {number} sunDist 太陽までの距離 [天体半径]
+ * @param {number} reach どこまで描くか (弧長 [天体半径])
+ * @param {number} extent 場面の広さ (矢じるしの大きさに使う)
+ */
+function drawOrbitArc(vHat, sHat, sunDist, reach, extent) {
+  if (!vHat || !sHat || !(sunDist > 0)) {
+    orbitArc.visible = false;
+    orbitArrowhead.visible = false;
+    return;
+  }
+
+  // 太陽方向を軸に、それに直交する進行方向を取る (離心率があると公転速度は
+  // 動径成分を持つので、円の接線になるよう直交成分だけを使う)
+  const out = sHat.clone().multiplyScalar(-1); // 太陽と反対 = 動径方向
+  const along = vHat.clone().addScaledVector(out, -vHat.dot(out));
+  if (along.lengthSq() < 1e-12) {
+    orbitArc.visible = false;
+    orbitArrowhead.visible = false;
+    return;
+  }
+  along.normalize();
+
+  const center = sHat.clone().multiplyScalar(sunDist); // 太陽の位置
+  const half = Math.min(reach / sunDist, Math.PI / 2); // 描く角度の半分 [rad]
+  const N = 96;
+  const pts = Array.from({ length: N + 1 }, (_, k) => {
+    const t = -half + (2 * half * k) / N;
+    return center
+      .clone()
+      .addScaledVector(out, sunDist * Math.cos(t))
+      .addScaledVector(along, sunDist * Math.sin(t));
+  });
+  setLinePoints(orbitArc, pts);
+  orbitArc.visible = true;
+
+  // 進行方向の先端に矢じるし
+  const tip = pts[pts.length - 1];
+  const tangent = new THREE.Vector3().subVectors(tip, pts[pts.length - 2]).normalize();
+  const headLen = extent * 0.22;
+  orbitArrowhead.position.copy(tip);
+  orbitArrowhead.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+  orbitArrowhead.scale.set(headLen * 0.4, headLen, headLen * 0.4);
+  orbitArrowhead.visible = true;
 }
