@@ -378,8 +378,10 @@ export function update_stat_bar() {
   update_launch_mass(v, dv);
 }
 
-// 打上げから最後のシーケンスまでの日数。運用費も観測機会も期間で効くので、
-// ΔVと並べて「どれだけ長い旅になるか」が一目で分かるようにしておく。
+// 打上げから最後のシーケンスまでの長さ。運用費も観測機会も期間で効くので、
+// バーの見出しに添えて「どれだけ長い旅になるか」が一目で分かるようにしておく。
+// 1年に満たないうちはヶ月、それを超えたら年で出す (日数だと桁が大きすぎて
+// 長さの感覚が掴めない)。
 function update_duration() {
   const el = document.getElementById("duration");
   const box = document.getElementById("duration_box");
@@ -388,12 +390,15 @@ function update_duration() {
   const mission = State.mission_sequence;
   const n = mission.count;
   const days = n >= 2 ? mission.date(n - 1) - mission.date(0) : undefined;
-  const ok = days != undefined && isFinite(days);
-  el.textContent = ok ? days.toFixed(0) : "-";
-  el.classList.toggle("as-text", !ok);
+  const ok = days != undefined && isFinite(days) && days > 0;
+  el.textContent = ok
+    ? days < 365.25
+      ? (days / (365.25 / 12)).toFixed(1) + "ヶ月"
+      : (days / 365.25).toFixed(1) + "年"
+    : "-";
   if (box) {
     box.title = ok
-      ? "打上げから最後のシーケンスまでの日数 (およそ " + (days / 365.25).toFixed(1) + " 年)"
+      ? "打上げから最後のシーケンスまでの長さ (" + days.toFixed(0) + "日)"
       : "シーケンスが2つ以上あると出ます";
   }
 }
@@ -407,7 +412,8 @@ function update_launch_mass(vinf, dv_kms) {
 
   const mission = State.mission_sequence;
   const arrow = document.getElementById("mass_arrow");
-  const box = document.getElementById("mass_box");
+  const wet_box = document.getElementById("wet_box");
+  const dry_box = document.getElementById("dry_box");
   const show = (wet, dry, note, level, approx = false) => {
     wet_el.textContent = wet;
     dry_el.textContent = dry;
@@ -416,18 +422,20 @@ function update_launch_mass(vinf, dv_kms) {
     const numeric = /^[\d.]+$/.test(wet);
     wet_el.classList.toggle("as-text", !numeric);
     if (arrow) arrow.style.display = numeric ? "" : "none";
-    dry_el.style.display = numeric ? "" : "none";
+    if (dry_box) dry_box.style.display = numeric ? "" : "none";
     if (group) group.title = note;
     // 色は「燃料を使った後にどれだけ残るか」で決める。打上げ質量そのものは
     // 機種で桁が変わるので色を付けず、既定の文字色のままにする。
     paint(wet_el, numeric ? null : level, false);
     paint(dry_el, level, false);
-    if (box) {
-      LEVELS.forEach((l) => box.classList.remove("lvl-" + l));
-      if (level) box.classList.add("lvl-" + level);
-      // 表の値そのものでない (外挿・近似) ときは枠を破線にする
-      box.classList.toggle("approx", approx);
+    // 段階の色は「残る質量」の枠だけに乗せる。打上げ質量の枠まで染めると
+    // 2つとも同じ色になって、どちらの話なのかが読めなくなる。
+    if (dry_box) {
+      LEVELS.forEach((l) => dry_box.classList.remove("lvl-" + l));
+      if (numeric && level) dry_box.classList.add("lvl-" + level);
     }
+    // 表の値そのものでない (外挿・近似) ときは枠を破線にする
+    [wet_box, dry_box].forEach((b) => b && b.classList.toggle("approx", approx));
   };
 
   // 打上げ能力の表・式はいずれも地球からの打上げのもの

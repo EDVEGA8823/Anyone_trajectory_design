@@ -513,28 +513,29 @@ body.file-drop::after {
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  /* 上は見出しが持つので0 (.panel-head の説明を参照) */
-  padding: 0 var(--panel-pad) var(--panel-pad);
+  /* 上下は見出しと一括操作が持つので0 (.panel-head の説明を参照) */
+  padding: 0 var(--panel-pad);
   overflow-y: auto;
   z-index: 1;
   height: 100%;
 }
-/* 見出しと一括操作は上に貼り付けたままにする
-   (カードを選んで下までスクロールしても、一括操作が消えないように) */
-.panel-top {
+/* カードの一覧。見出しとの間の余白はここで持つ */
+.sequence-panel > #sequence {
+  flex: 0 0 auto;
+  padding: 6px 0 0;
+}
+/* 一括操作は枠の下に貼り付ける (カードを選んで下までスクロールしても消えない
+   ように)。下の余白は帯の内側に持たせてある。外側のmarginにすると、貼り付いて
+   いる間だけ余白が無視されて位置が16pxずれるため */
+.panel-bottom {
   position: sticky;
-  top: 0;
+  bottom: 0;
   z-index: 3;
   flex: 0 0 auto;
+  /* 中身が短いときは枠の下端まで下げる */
+  margin: auto calc(-1 * var(--panel-pad)) 0;
+  padding: 0 var(--panel-pad) var(--panel-pad);
   background: var(--surface);
-  padding-bottom: 6px;
-}
-/* 貼り付けは .panel-top がまとめて持つ (仕切り線の位置決めのため relative は残す) */
-.panel-top > .panel-head {
-  position: relative;
-}
-.panel-top > .bulk-bar {
-  margin-top: 6px;
 }
 
 .right_panel {
@@ -604,10 +605,14 @@ body.file-drop::after {
   margin-left: auto;
 }
 
-/* バーの見出し。値の並びと混ざらないよう、縦線で区切る */
+/* バーの見出し。値の並びと混ざらないよう、縦線で区切る。
+   ミッション期間はここに添える (ΔVや質量のような「設計の成績」ではなく、
+   ミッション全体がどれだけ長いかという枠組みの話なので) */
 .stat-bar-title {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
   align-self: stretch;
   flex: 0 0 auto;
   padding-right: 14px;
@@ -616,6 +621,13 @@ body.file-drop::after {
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
+}
+.stat-bar-sub {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* 縦を詰めるため、項目名の下に「値 + 単位」を1行に並べる2行組みにする */
@@ -698,25 +710,23 @@ body.file-drop::after {
   color: var(--text-muted);
 }
 
-/* 数値ではなく「打ち上げ不可」などの文字を出すとき
-   (値そのものの場合と、質量のように .value の中の span の場合がある) */
-.value_box .value.as-text,
-.value_box .value .as-text {
+/* 数値ではなく「打ち上げ不可」などの文字を出すとき */
+.value_box .value.as-text {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
 }
 /* 「打ち上げ不可」のような文字にも段階の色を効かせる (後述の lvl-* より前に
    置くと色が上書きされてしまうので、ここでは色を指定し直さない) */
-.value_box .value.as-text.lvl-bad,
-.value_box .value .as-text.lvl-bad {
+.value_box .value.as-text.lvl-bad {
   color: var(--danger);
 }
 
 /* 打上げ質量 → 残る質量 をつなぐ矢印 */
-.mass-box .mass-arrow {
+.stat-bar .mass-arrow {
+  flex: 0 0 auto;
   color: var(--gray-400);
-  font-weight: 500;
+  font-size: 13px;
 }
 
 /* 値の大きさによる色分け。数字は常に色を付け、注意すべき側 (warn/bad) だけ
@@ -757,22 +767,22 @@ body.file-drop::after {
 /* 幅が足りなくなったら、意味が薄いものから順に落として1段を守る。
    (捨てる順: 補足の文字 → 打上げエネルギー → バーの見出し → 余白と文字の大きさ)
    閾値は「太陽系ビューの幅 ≒ ウィンドウの半分」から決めている */
-@media (max-width: 1700px) {
+@media (max-width: 1580px) {
   .stat-bar .value_box .title .sub {
     display: none;
   }
 }
-@media (max-width: 1540px) {
+@media (max-width: 1450px) {
   .stat-cell--sub {
     display: none;
   }
 }
-@media (max-width: 1300px) {
+@media (max-width: 1260px) {
   .stat-bar-title {
     display: none;
   }
 }
-@media (max-width: 1060px) {
+@media (max-width: 1010px) {
   .row.stat-bar {
     gap: 8px;
     padding: 6px 8px;
@@ -784,14 +794,7 @@ body.file-drop::after {
     width: 92px;
   }
 }
-/* ここまで詰めても入らない幅では、いちばん新しい項目 (期間) を落とす */
-@media (max-width: 940px) {
-  #duration_box {
-    display: none;
-  }
-}
-
-@media (max-width: 1060px) {
+@media (max-width: 950px) {
   .row.stat-bar {
     gap: 4px;
     padding: 6px;
@@ -955,24 +958,30 @@ body.file-drop::after {
   background: var(--accent-soft);
   border-radius: var(--radius-md);
 }
+/* 件数 → 操作 → 補足 の3段。操作は「選択解除」を左端、「まとめて削除」を
+   右端に振り分けて、押し間違えないだけの距離を空ける */
 .bulk-count {
+  flex: 1 1 100%;
+  order: 1;
   font-size: 12px;
   font-weight: 600;
   color: var(--accent-strong);
   white-space: nowrap;
 }
+.bulk-actions {
+  flex: 1 1 100%;
+  order: 2;
+  gap: 6px;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+}
 .bulk-hint {
   flex: 1 1 100%;
-  order: 3; /* 件数と操作ボタンの下に回す */
+  order: 3;
   font-size: 10px;
   line-height: 1.3;
   color: var(--accent-strong);
   opacity: 0.85;
-}
-.bulk-actions {
-  gap: 6px;
-  flex: 0 0 auto;
-  flex-wrap: nowrap;
 }
 .bulk-btn {
   border: 1px solid var(--border);

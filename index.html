@@ -62,7 +62,10 @@
         <span class="view-tool-label" id="z_zoom_factor">Z拡大</span>
       </button>
       <div class="row bold_box stat-bar">
-        <div class="stat-bar-title">ミッションの成績</div>
+        <div class="stat-bar-title">
+          <span>ミッションの成績</span>
+          <span class="stat-bar-sub" id="duration_box" title="打上げから最後のシーケンスまでの長さ">期間 <span id="duration">-</span></span>
+        </div>
         <div class="value_box energy-box" title="地球を離れるときの双曲線余剰速度。&#10;ロケットが出せる打上げ質量は、この速度 (の2乗の打上げエネルギー) で決まる。&#10;色の目安: 約3.2km/s未満=楽 / 約5.5km/s未満=普通 / 約7.7km/s未満=苦しい / それ以上=かなり苦しい">
           <div class="stat-cell">
             <div class="title">脱出速度</div>
@@ -80,21 +83,20 @@
           <div class="value" id="total_dv">0</div>
           <div class="unit">m/s</div>
         </div>
-        <div class="value_box" id="duration_box" title="打上げから最後のシーケンスまでの日数">
-          <div class="title">ミッション期間</div>
-          <div class="value" id="duration">-</div>
-          <div class="unit">日</div>
-        </div>
         <div class="row stat-group launcher-group">
           <div class="value_box select-box">
             <div class="title">打ち上げロケット</div>
             <select id="launcher" title="打上げに使うロケット"></select>
           </div>
-          <div class="value_box mass-box" id="mass_box" title="色の目安 (打上げ質量に対して残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">
-            <div class="title">質量<span class="sub">打上げ → 残り</span></div>
-            <div class="value">
-              <span id="wet_mass">-</span><span class="mass-arrow" id="mass_arrow"> → </span><span id="dry_mass">-</span>
-            </div>
+          <div class="value_box mass-box" id="wet_box">
+            <div class="title">打上げ質量<span class="sub">燃料込み</span></div>
+            <div class="value" id="wet_mass">-</div>
+            <div class="unit">kg</div>
+          </div>
+          <div class="mass-arrow" id="mass_arrow" aria-hidden="true">→</div>
+          <div class="value_box mass-box" id="dry_box" title="色の目安 (打上げ質量に対して残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">
+            <div class="title">残る質量<span class="sub">燃料抜き</span></div>
+            <div class="value" id="dry_mass">-</div>
             <div class="unit">kg</div>
           </div>
         </div>
@@ -103,12 +105,12 @@
     <div id="UI-panel">
       <div class="sequence-panel-wrapper">
         <div class="sequence-panel">
-          <div class="panel-top">
-            <div class="panel-head">ミッションシーケンス</div>
-            <div class="row bulk-bar" id="bulk_bar"></div>
-          </div>
+          <div class="panel-head">ミッションシーケンス</div>
           <div id="sequence">
             <div class="add_sequence" id="0">+ シーケンスを追加</div>
+          </div>
+          <div class="panel-bottom">
+            <div class="row bulk-bar" id="bulk_bar"></div>
           </div>
         </div>
       </div>
