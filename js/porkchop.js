@@ -1,4 +1,4 @@
-import { MU_SUN, get_planet_elements, get_planets_pos, JulianToDate } from './trajectory.js';
+import { MU_SUN, get_planet_elements, get_planets_pos, JulianToDate, lambert_min_tof } from './trajectory.js';
 
 // ポークチョップ図。
 //
@@ -14,6 +14,23 @@ import { MU_SUN, get_planet_elements, get_planets_pos, JulianToDate } from './tr
 
 const MIN_TOF_DAYS = 10; // これより短い飛行時間は Mission 側の最小間隔と揃えて除外する
 const DAY = 86400;
+
+// 何周までの解を計算するか。太陽を1周してから着く解は直行とはまったく別の
+// 島として現れる。2周までで実用上ほぼ足りる (それ以上は飛行時間が長すぎる)
+const MAX_REVS = 2;
+
+// 周回数と分枝の組み合わせ。0周は解が1つだけ、1周以上は2つある
+const COMBOS = (() => {
+  const list = [{ rev: 0, low: true }];
+  for (let m = 1; m <= MAX_REVS; m++) {
+    list.push({ rev: m, low: true });
+    list.push({ rev: m, low: false });
+  }
+  return list;
+})();
+
+// 表示する周回数。"auto" は各点で一番安い周回数を採る
+let rev_mode = "auto";
 
 // 表示できる指標。key はグリッドに持たせた配列名と対応する
 const METRICS = {
@@ -57,6 +74,7 @@ let spinner_el = null;
 let status_el = null;
 let title_el = null;
 let metric_sel = null;
+let rev_sel = null;
 let dep_span_input = null;
 let arr_span_input = null;
 let res_sel = null;
@@ -179,17 +197,20 @@ async function compute_grid(spec, on_progress, generation) {
   }
 
   const n = cols * rows;
-  const c3 = new Float32Array(n);
-  const vdep = new Float32Array(n);
-  const varr = new Float32Array(n);
-  c3.fill(NaN);
-  vdep.fill(NaN);
-  varr.fill(NaN);
+  // 周回数と分枝の組み合わせごとに面を作る。表示のときにどれを使うかを選ぶので、
+  // 指標を切り替えても解き直さなくて済む。
+  // 周回数を固定しているときはその分だけ解く (自動の5通りに対して2通りなので、
+  // 飛行時間の長い範囲では倍以上速くなる)
+  const combos = spec.combos ?? COMBOS;
+  const c3 = combos.map(() => new Float32Array(n).fill(NaN));
+  const vdep = combos.map(() => new Float32Array(n).fill(NaN));
+  const varr = combos.map(() => new Float32Array(n).fill(NaN));
 
   const r1 = [0, 0, 0];
   const r2 = [0, 0, 0];
   let mark = performance.now();
   let solved = 0;
+  let calls = 0; // ランベールを解いた回数 (重さの目安。1回20マイクロ秒ほど)
 
   for (let k = 0; k < rows; k++) {
     r2[0] = arr_r[k * 3];
@@ -204,29 +225,39 @@ async function compute_grid(spec, on_progress, generation) {
       r1[1] = dep_r[j * 3 + 1];
       r1[2] = dep_r[j * 3 + 2];
 
-      let v;
-      try {
-        v = lambert_probrem(MU_SUN, r1, r2, tof);
-      } catch (e) {
-        continue; // 収束しない配置 (ほぼ180度遷移など) は空白のまま残す
-      }
-      if (!v || !v[0] || !v[1]) continue;
-
-      const ax = v[0][0] - dep_v[j * 3];
-      const ay = v[0][1] - dep_v[j * 3 + 1];
-      const az = v[0][2] - dep_v[j * 3 + 2];
-      const bx = v[1][0] - arr_v[k * 3];
-      const by = v[1][1] - arr_v[k * 3 + 1];
-      const bz = v[1][2] - arr_v[k * 3 + 2];
-      const a2 = ax * ax + ay * ay + az * az;
-      const b2 = bx * bx + by * by + bz * bz;
-      if (!isFinite(a2) || !isFinite(b2)) continue;
-
+      // 何周まで見込めるか。無理な周回数まで解かせると、そのぶん例外が飛んで
+      // 何万セルぶんとなると効いてくる
+      const limit = rev_limit(r1, r2, tof);
       const idx = k * cols + j;
-      c3[idx] = a2; // C3 = |V∞|^2 がそのまま打上げエネルギー
-      vdep[idx] = Math.sqrt(a2);
-      varr[idx] = Math.sqrt(b2);
-      solved++;
+      let any = false;
+
+      for (let c = 0; c < combos.length; c++) {
+        if (combos[c].rev > limit) continue;
+        let v;
+        calls++;
+        try {
+          v = lambert_probrem(MU_SUN, r1, r2, tof, combos[c].rev, true, combos[c].low);
+        } catch (e) {
+          continue; // 収束しない配置 (ほぼ180度遷移など) は空白のまま残す
+        }
+        if (!v || !v[0] || !v[1]) continue;
+
+        const ax = v[0][0] - dep_v[j * 3];
+        const ay = v[0][1] - dep_v[j * 3 + 1];
+        const az = v[0][2] - dep_v[j * 3 + 2];
+        const bx = v[1][0] - arr_v[k * 3];
+        const by = v[1][1] - arr_v[k * 3 + 1];
+        const bz = v[1][2] - arr_v[k * 3 + 2];
+        const a2 = ax * ax + ay * ay + az * az;
+        const b2 = bx * bx + by * by + bz * bz;
+        if (!isFinite(a2) || !isFinite(b2)) continue;
+
+        c3[c][idx] = a2; // C3 = |V∞|^2 がそのまま打上げエネルギー
+        vdep[c][idx] = Math.sqrt(a2);
+        varr[c][idx] = Math.sqrt(b2);
+        any = true;
+      }
+      if (any) solved++;
     }
 
     // 数ミリ秒使ったら一度実行を手放す。ぐるぐると進捗が動き、操作も効くようになる
@@ -239,7 +270,97 @@ async function compute_grid(spec, on_progress, generation) {
     }
   }
 
-  return { ...spec, dep_t, arr_t, c3, vdep, varr, solved };
+  const grid = { ...spec, dep_t, arr_t, combos, c3, vdep, varr, solved, calls };
+  // どの組み合わせを採るかは表示のたびに決まる。最初に一度きめておく
+  choose_solutions(grid);
+  return grid;
+}
+
+/**
+ * その飛行時間で見込める周回数の上限。
+ * trajectory.js の lambert_rev_limit と同じ式だが、こちらは何万回も回るので
+ * mathjs を使わず素の演算で書く (1回あたり5マイクロ秒ほど違う)。
+ */
+function rev_limit(r1, r2, tof) {
+  const cx = r2[0] - r1[0];
+  const cy = r2[1] - r1[1];
+  const cz = r2[2] - r1[2];
+  const c = Math.sqrt(cx * cx + cy * cy + cz * cz);
+  const n1 = Math.sqrt(r1[0] * r1[0] + r1[1] * r1[1] + r1[2] * r1[2]);
+  const n2 = Math.sqrt(r2[0] * r2[0] + r2[1] * r2[1] + r2[2] * r2[2]);
+  const s = (n1 + n2 + c) / 2;
+  const T = Math.sqrt((2 * MU_SUN) / (s * s * s)) * tof;
+  return Math.max(0, Math.floor(T / Math.PI));
+}
+
+// いまの表示に必要な組み合わせが、その格子に入っているか
+function has_needed_combos(g) {
+  if (!g || !g.combos) return false;
+  if (rev_mode === "auto") return g.combos.length === COMBOS.length;
+  return g.combos.some((c) => c.rev === rev_mode);
+}
+
+/**
+ * 指定した周回数の解が成り立つところへ、到着日の範囲を移す。
+ *
+ * M周の解には最短飛行時間があり (地球→火星なら1周で817日)、既定の範囲は
+ * ホーマン遷移のまわりなので、そのままでは1周の島がほとんど入らない。
+ * 最短飛行時間を求めて、その少し先を中心にした窓に取り直す。
+ *
+ * @returns {boolean} 移したか
+ */
+function fit_view_for_revs(revs) {
+  if (!view || !target) return false;
+  const dep_c = (view.dep0 + view.dep1) / 2;
+  const p1 = get_planets_pos(get_planet_elements(dep_c, target.dep_num)).r;
+
+  // 最短飛行時間は到着側の位置にも依るので、2〜3回まわして落ち着かせる
+  let arr_c = (view.arr0 + view.arr1) / 2;
+  for (let k = 0; k < 3; k++) {
+    const p2 = get_planets_pos(get_planet_elements(arr_c, target.arr_num)).r;
+    const tof = lambert_min_tof(p1, p2, revs);
+    if (tof == undefined) return false;
+    arr_c = dep_c + (tof / DAY) * 1.25; // 最短ぴったりだと解が1点しかないので少し先
+  }
+
+  const half = clamp((arr_c - dep_c) * 0.3, 60, 3000);
+  view.arr0 = arr_c - half;
+  view.arr1 = arr_c + half;
+  return true;
+}
+
+/**
+ * 各点で「どの周回数・どの分枝を採るか」を決めて、その値を面に焼く。
+ *
+ * 自動のときは、いま色に使っている量が一番小さくなる組み合わせを採る。
+ * 周回数を指定したときは、その周回数の2つの分枝のうち安い方。
+ * 描画やマウス操作はこの結果 (value/choice) だけを見るので、周回数や指標を
+ * 切り替えても解き直しは要らない。
+ */
+function choose_solutions(g) {
+  if (!g) return;
+  const n = g.dep_t.length * g.arr_t.length;
+  const value = new Float32Array(n).fill(NaN);
+  const choice = new Int8Array(n).fill(-1);
+
+  for (let c = 0; c < g.combos.length; c++) {
+    if (rev_mode !== "auto" && g.combos[c].rev !== rev_mode) continue;
+    const c3 = g.c3[c];
+    const vdep = g.vdep[c];
+    const varr = g.varr[c];
+    for (let i = 0; i < n; i++) {
+      const base = c3[i];
+      if (!(base === base)) continue;
+      const v = metric === "c3" ? base : metric === "arrive" ? varr[i] : vdep[i] + varr[i];
+      if (!(v === v)) continue;
+      if (choice[i] < 0 || v < value[i]) {
+        value[i] = v;
+        choice[i] = c;
+      }
+    }
+  }
+  g.value = value;
+  g.choice = choice;
 }
 
 /**
@@ -255,29 +376,49 @@ function solve_point(dep_num, arr_num, t1, t2) {
 
   const p1 = get_planets_pos(get_planet_elements(t1, dep_num));
   const p2 = get_planets_pos(get_planet_elements(t2, arr_num));
-  let v;
-  try {
-    v = lambert_probrem(MU_SUN, p1.r, p2.r, tof);
-  } catch (e) {
-    return null;
-  }
-  if (!v || !v[0] || !v[1]) return null;
+  const limit = rev_limit(p1.r, p2.r, tof);
 
-  const ax = v[0][0] - p1.v[0], ay = v[0][1] - p1.v[1], az = v[0][2] - p1.v[2];
-  const bx = v[1][0] - p2.v[0], by = v[1][1] - p2.v[1], bz = v[1][2] - p2.v[2];
-  const a2 = ax * ax + ay * ay + az * az;
-  const b2 = bx * bx + by * by + bz * bz;
-  if (!isFinite(a2) || !isFinite(b2)) return null;
-  return { c3: a2, vdep: Math.sqrt(a2), varr: Math.sqrt(b2) };
+  // 表示している周回数の中で、いま色に使っている量が一番小さいものを採る
+  let best = null;
+  for (const cb of COMBOS) {
+    if (cb.rev > limit) continue;
+    if (rev_mode !== "auto" && cb.rev !== rev_mode) continue;
+
+    let v;
+    try {
+      v = lambert_probrem(MU_SUN, p1.r, p2.r, tof, cb.rev, true, cb.low);
+    } catch (e) {
+      continue;
+    }
+    if (!v || !v[0] || !v[1]) continue;
+
+    const ax = v[0][0] - p1.v[0], ay = v[0][1] - p1.v[1], az = v[0][2] - p1.v[2];
+    const bx = v[1][0] - p2.v[0], by = v[1][1] - p2.v[1], bz = v[1][2] - p2.v[2];
+    const a2 = ax * ax + ay * ay + az * az;
+    const b2 = bx * bx + by * by + bz * bz;
+    if (!isFinite(a2) || !isFinite(b2)) continue;
+
+    const vdep = Math.sqrt(a2);
+    const varr = Math.sqrt(b2);
+    const value = metric === "c3" ? a2 : metric === "arrive" ? varr : vdep + varr;
+    if (best == null || value < best.value) {
+      best = { c3: a2, vdep, varr, rev: cb.rev, low: cb.low, value };
+    }
+  }
+  return best;
 }
 
 // 格子の (j,k) の指標値。無効なセルは NaN
+// (どの周回数の解を採るかは choose_solutions が決めてある)
 function cell_value(g, idx) {
-  const c3 = g.c3[idx];
-  if (!(c3 === c3)) return NaN;
-  if (metric === "c3") return c3;
-  if (metric === "arrive") return g.varr[idx];
-  return g.vdep[idx] + g.varr[idx];
+  return g.value ? g.value[idx] : NaN;
+}
+
+/** その点で採用している周回数と分枝 */
+function cell_combo(g, idx) {
+  if (!g || !g.choice) return null;
+  const c = g.choice[idx];
+  return c < 0 ? null : g.combos[c];
 }
 
 /* ==================================================================
@@ -424,6 +565,7 @@ function draw() {
   if (range) {
     draw_field(ctx, rect, range);
     draw_contours(ctx, rect, range);
+    draw_rev_borders(ctx, rect);
     draw_colorbar(ctx, rect, range);
   }
   draw_tof_lines(ctx, rect);
@@ -539,6 +681,54 @@ function draw_contours(ctx, rect, range) {
           case 5: seg(left(), bottom()); seg(right(), top()); break;
           case 10: seg(bottom(), right()); seg(left(), top()); break;
         }
+      }
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * 周回数が切り替わる境目を点線で示す (自動のときだけ)。
+ * 多周回の解は直行とは別の島として現れるので、どこからが「1周の島」なのかが
+ * 見えないと、地図の谷が2つあることに気付けない。
+ */
+function draw_rev_borders(ctx, rect) {
+  if (rev_mode !== "auto" || !grid || !grid.choice) return;
+  const g = grid;
+  const sx = (g.dep1 - g.dep0) / (g.cols - 1);
+  const sy = (g.arr1 - g.arr0) / (g.rows - 1);
+  const rev_at = (j, k) => {
+    const c = g.choice[k * g.cols + j];
+    return c < 0 ? -1 : g.combos[c].rev;
+  };
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(rect.x, rect.y, rect.w, rect.h);
+  ctx.clip();
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = "rgba(23,24,26,0.55)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+
+  for (let k = 0; k < g.rows; k++) {
+    for (let j = 0; j < g.cols; j++) {
+      const here = rev_at(j, k);
+      if (here < 0) continue;
+      // 右隣と周回数が違えば、その間に縦線
+      if (j + 1 < g.cols && rev_at(j + 1, k) >= 0 && rev_at(j + 1, k) !== here) {
+        const a = to_px(rect, g.dep0 + (j + 0.5) * sx, g.arr0 + (k - 0.5) * sy);
+        const b = to_px(rect, g.dep0 + (j + 0.5) * sx, g.arr0 + (k + 0.5) * sy);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+      }
+      // 上隣と違えば横線
+      if (k + 1 < g.rows && rev_at(j, k + 1) >= 0 && rev_at(j, k + 1) !== here) {
+        const a = to_px(rect, g.dep0 + (j - 0.5) * sx, g.arr0 + (k + 0.5) * sy);
+        const b = to_px(rect, g.dep0 + (j + 0.5) * sx, g.arr0 + (k + 0.5) * sy);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
       }
     }
   }
@@ -839,11 +1029,51 @@ function build_window() {
     "合計 V∞: 出発のV∞と到着のV∞の和 (行きと着きの両方を見るとき)";
   metric_sel.onchange = () => {
     metric = metric_sel.value;
-    ensure_color_range(true); // 量が変われば桁も変わるので測り直す
+    choose_solutions(grid); // 量が変われば、どの周回数が安いかも変わる
+    ensure_color_range(true); // 桁も変わるので測り直す
     draw();
     update_status();
   };
   bar.appendChild(metric_sel);
+
+  // 周回数。太陽を何周してから着く解を見るか
+  rev_sel = document.createElement("select");
+  [
+    ["auto", "周回 自動"],
+    ["0", "周回 直行"],
+    ["1", "周回 1周"],
+    ["2", "周回 2周"],
+  ].forEach(([v, t]) => {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = t;
+    rev_sel.appendChild(o);
+  });
+  rev_sel.value = "auto";
+  rev_sel.title =
+    "太陽を何周してから着く解を見るか。\n" +
+    "自動: 各点で一番安い周回数を採る (点線が周回数の境目)\n" +
+    "周回数を固定すると、その解だけの地図になる";
+  rev_sel.onchange = () => {
+    rev_mode = rev_sel.value === "auto" ? "auto" : Number(rev_sel.value);
+    // 多周回の解は飛行時間が長いところにしか無い。いまの範囲のままだと
+    // ほとんど空白になってしまうので、その周回数が成り立つ範囲へ移す
+    if (rev_mode !== "auto" && rev_mode > 0 && fit_view_for_revs(rev_mode)) {
+      sync_inputs();
+      recompute();
+      return;
+    }
+    // 手元の格子に、いま要る組み合わせが入っていなければ解き直す
+    if (!grid || !has_needed_combos(grid)) {
+      recompute();
+      return;
+    }
+    choose_solutions(grid);
+    ensure_color_range(true);
+    draw();
+    update_status();
+  };
+  bar.appendChild(rev_sel);
 
   const mk_span = (label, title) => {
     const wrap = el("label", "pc-span");
@@ -1026,7 +1256,15 @@ function hovered(e) {
 
   const d = to_date(rect, p.x, p.y);
   const s = solve_point(target.dep_num, target.arr_num, d.dep, d.arr);
-  return { dep: d.dep, arr: d.arr, c3: s ? s.c3 : NaN, vdep: s ? s.vdep : NaN, varr: s ? s.varr : NaN };
+  return {
+    dep: d.dep,
+    arr: d.arr,
+    c3: s ? s.c3 : NaN,
+    vdep: s ? s.vdep : NaN,
+    varr: s ? s.varr : NaN,
+    rev: s ? s.rev : 0,
+    low: s ? s.low : true,
+  };
 }
 
 function on_move(e) {
@@ -1044,7 +1282,9 @@ function on_move(e) {
       fmt_date(c.arr) +
       " (飛行 " +
       tof +
-      "日) / C3 " +
+      "日" +
+      (c.rev > 0 ? " ・ " + c.rev + "周" : "") +
+      ") / C3 " +
       c.c3.toFixed(1) +
       " km²/s² ・ 到着V∞ " +
       c.varr.toFixed(2) +
@@ -1060,7 +1300,9 @@ function on_click(e) {
   if (dragged) return; // 範囲を動かしただけのときは時刻を変えない
   const c = hovered(e);
   if (!c || !on_pick || !(c.c3 === c.c3)) return;
-  on_pick({ index: target.index, dep_date: c.dep, arr_date: c.arr });
+  // 日付だけでなく、その点で採っている周回数と分枝も渡す
+  // (同じ日付でも周回数が違えば別の軌道になる)
+  on_pick({ index: target.index, dep_date: c.dep, arr_date: c.arr, revs: c.rev, low_path: c.low });
 }
 
 /* ------------------------------------------------------------------
@@ -1289,6 +1531,8 @@ function update_status(extra) {
     " [" +
     m.unit +
     "] ・ " +
+    (rev_mode === "auto" ? "周回数は各点で最良 (点線が境目)" : rev_mode === 0 ? "直行のみ" : rev_mode + "周のみ") +
+    " ・ " +
     grid.cols +
     "×" +
     grid.rows +
@@ -1319,6 +1563,8 @@ async function recompute() {
     arr1: view.arr1,
     cols: n,
     rows: n,
+    // 周回数を固定しているなら、その分だけ解けばよい
+    combos: rev_mode === "auto" ? COMBOS : COMBOS.filter((c) => c.rev === rev_mode),
   };
 
   const generation = ++job;

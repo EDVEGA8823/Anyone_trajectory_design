@@ -963,9 +963,15 @@ function porkchop_target(i) {
  * 前へ動かすときは出発から動かす。逆にすると、まだ動いていない相手との
  * 最小間隔で切り詰められてしまう (チェックしたノードをまとめて動かすのと同じ理屈)。
  */
-function apply_porkchop_pick({ index, dep_date, arr_date }) {
+function apply_porkchop_pick({ index, dep_date, arr_date, revs, low_path }) {
   const mission = State.mission_sequence;
   if (!mission || index < 0 || index + 1 >= mission.count) return;
+
+  // 同じ日付でも周回数が違えば別の軌道になるので、図で見ていた解を持ち込む
+  if (revs != undefined) {
+    mission.set_leg_low_path(index, low_path !== false);
+    mission.set_leg_revs(index, revs);
+  }
 
   if (dep_date >= mission.date(index)) {
     mission.set_date(index + 1, arr_date);
