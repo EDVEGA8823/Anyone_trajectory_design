@@ -4,6 +4,7 @@ import {
   get_orbit,
   get_planets_pos,
   JulianToDate,
+  DateToJulian,
   Mission,
   AU,
   planet_radius,
@@ -33,7 +34,7 @@ import {
   getZScale,
   setZScale,
 } from './plot.js';
-import { initEvents, Update_time, delete_sequence, delete_checked } from './event.js';
+import { initEvents, Update_time, delete_sequence, delete_checked, updateAfterAdd } from './event.js';
 import { launcher_list, launcher_mass, launch_declination } from './launchers.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './bplane.js';
 import {
@@ -65,9 +66,18 @@ import {
   porkchopIndex,
   setPorkchopHandlers,
   porkchopNote,
+  closePorkchop,
 } from './porkchop.js';
 import { initTopbar, setTopbarHandlers } from './topbar.js';
-import { saveMissionFile, openMissionFile, initMissionFileDrop } from './mission_file.js';
+import {
+  saveMissionFile,
+  openMissionFile,
+  initMissionFileDrop,
+  confirmDiscard,
+  markMissionSaved,
+  missionHasUnsavedChanges,
+  DEFAULT_NAME,
+} from './mission_file.js';
 import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
 import {
   addSmallBody,
@@ -80,7 +90,7 @@ import {
   smallBodyBase,
 } from './small_bodies.js';
 import { bodyLabel } from './bodies.js';
-import { notify } from './topbar.js';
+import { notify, setMissionName } from './topbar.js';
 import {
   initEntryView,
   updateEntryView,
@@ -678,6 +688,36 @@ export function import_small_body(body) {
   change_sequence_propaty(); // 天体の選択肢に加える
   notify("「" + bodyLabel(body) + "」を天体に追加しました (シーケンスの天体欄から選べます)");
   return num;
+}
+
+/**
+ * ミッションを空にして最初からやり直す。
+ *
+ * 取り込んだ天体はそのまま残す。天体は「作業場に並べた道具」で、同じ天体へ
+ * 別の行き方を試すのが軌道設計のふつうの流れなので、ここで一緒に消すと
+ * 毎回入れ直すことになる。要らなくなった天体は「天体を追加」の画面から
+ * 個別に外せる (remove_small_body)。
+ */
+export async function new_mission() {
+  if (!(await confirmDiscard("新しく作り直す"))) return;
+
+  State.mission_sequence = new Mission();
+  State.selected_sequence = -1;
+  State.editing_sequence = -1;
+  State.checked.clear();
+  State.tmp_date = DateToJulian(new Date());
+  State.old_date = State.tmp_date;
+  setMissionName(DEFAULT_NAME);
+  closePorkchop();
+
+  // 弧の線は数が合わなくなるので、いったん全部捨てる
+  for (const arc of State.arcs) if (arc) disposeLine(arc);
+  State.arcs.length = 0;
+
+  update_plot();
+  updateAfterAdd(); // 一覧・操作パネル・時刻欄・マーカーをまとめて作り直す
+  markMissionSaved(); // 空なので、失うものはもう無い
+  notify("新しいミッションを始めました");
 }
 
 /**
@@ -2350,7 +2390,12 @@ function boot() {
   // 上部バーは並びだけ作ってある。中身のあるものをここで差し込む
   // (差し込まれていないボタンは「準備中」と出るだけ)
   initTopbar();
-  setTopbarHandlers({ save: saveMissionFile, load: openMissionFile, add_body: openBodyPicker });
+  setTopbarHandlers({
+    save: saveMissionFile,
+    load: openMissionFile,
+    add_body: openBodyPicker,
+    new: new_mission,
+  });
   setBodyPickerHandlers({
     onAdd: import_small_body,
     onRemove: remove_small_body,
@@ -2370,6 +2415,27 @@ function boot() {
   Update_time();
 
   install_redraw_safety_net();
+  install_unload_guard();
+}
+
+/**
+ * 保存していない設計を、ページを離れて失わないようにする。
+ *
+ * このアプリは1枚のページなので、戻るボタンを押すとアプリごと閉じてしまう。
+ * タブを閉じたときも同じ。beforeunload を立てておくと、ブラウザが
+ * 「このサイトを離れますか」と確かめてくれる。
+ *
+ * 出す文言はブラウザが決めていて、こちらからは指定できない (かつては
+ * 指定できたが、偽の警告文を出す手口に使われたため塞がれた)。
+ * また、ページに一度も触っていないと出ない決まりになっている。
+ * 設計を始めた時点で必ず触っているので、実害は無い。
+ */
+function install_unload_guard() {
+  window.addEventListener("beforeunload", (e) => {
+    if (!missionHasUnsavedChanges()) return;
+    e.preventDefault();
+    e.returnValue = ""; // 古いブラウザはこちらを見る
+  });
 }
 
 // 3つの3Dビューはどれも「変わったときだけ描く」方式にしてある(view3d.jsの

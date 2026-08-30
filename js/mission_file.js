@@ -5,6 +5,7 @@ import { update_plot, reload_small_bodies } from './main.js';
 import { updateAfterAdd } from './event.js';
 import { isSmallBody, smallBody, smallBodyNumber, smallBodiesForSave } from './small_bodies.js';
 import { normalizeBody } from './bodies.js';
+import { confirmDialog } from './dialog.js';
 
 // ミッションの保存と読込。
 //
@@ -17,7 +18,39 @@ import { normalizeBody } from './bodies.js';
 
 const FORMAT = "anyone-trajectory-design";
 const VERSION = 1;
-const DEFAULT_NAME = "無題のミッション";
+export const DEFAULT_NAME = "無題のミッション";
+
+/* ==================================================================
+   保存し忘れの見張り
+   ==================================================================
+   変更のたびに旗を立てて回るのではなく、最後に保存/読込/新規作成した時点の
+   中身を丸ごと覚えておいて、いまの中身と比べる。設計変数は小さいので比較は
+   一瞬で済むし、「どの操作で汚れるか」を数え漏らす心配が無い。 */
+
+let saved_snapshot = null;
+
+// 保存の中身から、比べる意味の無いもの (保存した時刻) を除いた文字列
+function snapshot() {
+  const data = missionData();
+  if (!data) return null;
+  const { saved_at, ...rest } = data;
+  return JSON.stringify(rest);
+}
+
+/** いまの中身を「保存済み」として覚える (保存・読込・新規作成のあとに呼ぶ) */
+export function markMissionSaved() {
+  saved_snapshot = snapshot();
+}
+
+/**
+ * 保存していない変更があるか。
+ * シーケンスが空のときは失うものが無いので、常に false。
+ */
+export function missionHasUnsavedChanges() {
+  const mission = State.mission_sequence;
+  if (!mission || mission.count === 0) return false;
+  return snapshot() !== saved_snapshot;
+}
 
 /** いまの状態を保存用のオブジェクトにまとめる */
 export function missionData() {
@@ -79,11 +112,31 @@ export function saveMissionFile() {
   // すぐ消すとダウンロードが始まらない環境があるので、少し置いてから片付ける
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 
+  markMissionSaved();
   notify("「" + a.download + "」を保存しました");
 }
 
+/**
+ * 消えたら戻せない操作の前に、保存し忘れが無いか尋ねる。
+ * @param {string} action 「読み込む」など、これから何をするか
+ * @returns {Promise<boolean>} 進めてよいか
+ */
+export async function confirmDiscard(action) {
+  if (!missionHasUnsavedChanges()) return true;
+  return confirmDialog({
+    title: "保存していない変更があります",
+    message:
+      "いまのミッション「" + (missionName() || DEFAULT_NAME) + "」はまだ保存されていません。\n" +
+      "このまま" + action + "と、ここまでの設計は失われます。",
+    ok: "保存せずに" + action,
+    cancel: "やめる",
+    danger: true,
+  });
+}
+
 /** ファイル選択のダイアログを出して読み込む */
-export function openMissionFile() {
+export async function openMissionFile() {
+  if (!(await confirmDiscard("読み込む"))) return;
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "application/json,.json";
@@ -163,6 +216,7 @@ export function loadMissionData(data, filename) {
   update_plot();
   updateAfterAdd(); // 一覧・操作パネル・時刻欄・マーカーをまとめて作り直す
 
+  markMissionSaved(); // 読み込んだ直後は、ファイルと画面の中身が同じ
   notify("「" + (filename ?? data.name ?? "ミッション") + "」を読み込みました");
   return true;
 }
@@ -187,11 +241,12 @@ export function initMissionFileDrop() {
     if (e.relatedTarget) return;
     document.body.classList.remove("file-drop");
   });
-  window.addEventListener("drop", (e) => {
+  window.addEventListener("drop", async (e) => {
     const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     document.body.classList.remove("file-drop");
     if (!file) return;
     stop(e);
+    if (!(await confirmDiscard("読み込む"))) return;
     readMissionFile(file);
   });
 }
