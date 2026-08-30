@@ -100,8 +100,9 @@ import {
   invalidateEntryView,
 } from './entry_view.js';
 
-// シーケンス一覧の1枚。ノードの数だけ縦に並ぶので、1行に収めて縦を詰める。
-//   [チェック] [1. 打上げ] [天体名] [日付] [ゴミ箱]
+// シーケンス一覧の1枚。ノードの数だけ縦に並ぶので2行に収める。
+//   1行目: [チェック] [1. 打上げ]            [ゴミ箱]
+//   2行目: 天体名                            日付
 export function add_sequence(id) {
   const mission = State.mission_sequence;
   const type = mission.type(id);
@@ -110,14 +111,17 @@ export function add_sequence(id) {
   sequence_elem.className = "sequence";
   sequence_elem.title = id + 1 + ".  " + type;
   if (id == State.selected_sequence) sequence_elem.classList.add("selected");
-
   if (State.checked.has(id)) sequence_elem.classList.add("checked");
-  sequence_elem.appendChild(make_check_box(id));
 
-  // 連番と種別。以前は枠の上に飛び出す形だったが、行の中に入れて縦を詰める
+  const head = document.createElement("div");
+  head.className = "seq-head";
+  head.appendChild(make_check_box(id));
+
+  // 連番と種別。以前は枠の上に飛び出していたが、中に入れて縦を詰める
   const badge = document.createElement("span");
   badge.className = "seq-badge";
   badge.textContent = id + 1 + ". " + type;
+  head.appendChild(badge);
 
   const span1 = document.createElement("span");
   span1.className = "seq-name";
@@ -147,25 +151,18 @@ export function add_sequence(id) {
   span2.className = "seq-date";
   span2.textContent = JulianToDate(mission.date(id)).toLocaleDateString();
 
-  // 枠の中のどこを押してもそのシーケンスを選べるように、番号を持たせる
-  badge.id = id;
-  span1.id = id;
-  span2.id = id;
-  sequence_elem.appendChild(badge);
-  sequence_elem.appendChild(span1);
-  sequence_elem.appendChild(span2);
-  sequence_elem.id = id;
-
   // 自動マヌーバ(DSM)は手動モードに付随して出し入れするノードなので個別には
   // 消せない (前のノードを自動に戻すと消える)。手で足した手動マヌーバは消せる。
-  // 消せないノードでも場所は空けておく (行ごとに幅がずれないように)
-  if (mission.can_remove(id)) {
-    sequence_elem.appendChild(make_delete_button(id));
-  } else {
-    const spacer = document.createElement("span");
-    spacer.className = "seq-delete-spacer";
-    sequence_elem.appendChild(spacer);
-  }
+  if (mission.can_remove(id)) head.appendChild(make_delete_button(id));
+
+  const body = document.createElement("div");
+  body.className = "seq-body";
+  body.appendChild(span1);
+  body.appendChild(span2);
+
+  sequence_elem.appendChild(head);
+  sequence_elem.appendChild(body);
+  sequence_elem.id = id;
 
   const sequence = document.getElementById("sequence");
   sequence.appendChild(sequence_elem);

@@ -463,12 +463,11 @@ body.file-drop::after {
    Cards / panels
    ================================================================== */
 .sequence-panel-wrapper {
-  /* 1枚を1行に収めているので、番号・種別・天体名・日付・ゴミ箱が並ぶだけの
-     幅は要る。操作パネル(2.2)との配分をここで決めている */
-  flex: 1.45 1 0;
+  flex: 1 1 0;
   display: flex;
   max-width: 1000px;
-  min-width: 200px;
+  /* B面プレビューを大きく取るため、シーケンス一覧側の下限を詰めている */
+  min-width: 170px;
   flex-flow: column;
   gap: 10px;
 }
@@ -848,21 +847,21 @@ body.file-drop::after {
   color: var(--accent-strong);
 }
 
-/* ノードの数だけ縦に並ぶので、1枚を1行に収めて縦を詰める。
-   [チェック] [1. 打上げ] [天体名] [日付] [ゴミ箱] */
+/* ノードの数だけ縦に並ぶので2枚組の2行に収める。
+     1行目: [チェック] [1. 打上げ]  …  [ゴミ箱]
+     2行目: 天体名                      日付 */
 .sequence {
   display: flex;
+  flex-direction: column;
   width: 100%;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 6px;
+  gap: 3px;
   flex: 1;
   position: relative;
   box-sizing: border-box;
   margin: 0 0 5px 0;
   max-width: 500px;
   background: var(--surface);
-  padding: 5px 6px;
+  padding: 6px 8px 7px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   font-weight: 600;
@@ -873,28 +872,46 @@ body.file-drop::after {
 .sequence span {
   white-space: nowrap;
 }
-/* 連番と種別。行の左寄りに置く */
+.seq-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  /* 消せないノード (自動マヌーバ) にはゴミ箱が無いので、
+     高さを揃えておかないとその枚だけ背が低くなる */
+  min-height: 20px;
+}
+/* 中身は1行。天体名を左、日付を右に振り分ける */
+.seq-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 2px;
+}
+/* 連番と種別 */
 .seq-badge {
   flex: 0 0 auto;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: var(--gray-800);
   color: #ffffff;
   font-size: 11px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 .sequence.selected .seq-badge {
   background: var(--accent);
 }
 /* 天体名。幅が足りないときはここだけ縮めて、日付は最後まで読めるようにする */
 .seq-name {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
-  font-size: 12px;
+  font-size: 13px;
 }
 .seq-date {
   flex: 0 0 auto;
@@ -993,15 +1010,13 @@ body.file-drop::after {
   pointer-events: none;
 }
 
-/* 削除ボタン。行の右端に置く。普段は薄く、枠に触れたときだけはっきり出す
+/* 削除ボタン。1行目の右端に置く。普段は薄く、枠に触れたときだけはっきり出す
    (常に濃いと、並んだゴミ箱ばかりが目に付いてしまう) */
-.seq-delete,
-.seq-delete-spacer {
+.seq-delete {
   flex: 0 0 auto;
   width: 20px;
   height: 20px;
-}
-.seq-delete {
+  margin-left: auto;
   padding: 0;
   display: flex;
   align-items: center;

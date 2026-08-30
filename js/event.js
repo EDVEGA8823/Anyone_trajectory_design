@@ -89,12 +89,13 @@ function handleSequencePanelClick(event) {
     clear_checks(); // ノードが増えて添字がずれるため
     updateAfterAdd();
     return;
-  } else if (event.target.className == "sequence-panel") {
-    State.selected_sequence = -1;
-  } else {
-    State.selected_sequence = Number(event.target.id);
   }
-  
+
+  // 枠の中は何段かに分かれているので、押された要素そのものではなく
+  // それが属する枠を探す (枠の外を押したら選択を外す)
+  const card = event.target.closest(".sequence");
+  State.selected_sequence = card ? Number(card.id) : -1;
+
   if (isNaN(State.selected_sequence)) State.selected_sequence = -1;
   updateAfterAdd();
 }
