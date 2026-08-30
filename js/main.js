@@ -1223,6 +1223,21 @@ function pin_node_to_event(i, type) {
 // 選べる周回数だけを押せるようにして、無理なものは理由 (最短日数) を添える。
 const MAX_LEG_REVS = 3;
 
+// 分かりにくい設定なので既定では畳んでおく。一度開いたらその状態を覚える
+let leg_box_open = false;
+
+export function toggle_leg_box() {
+  leg_box_open = !leg_box_open;
+  const box = document.getElementById("leg_box");
+  if (box) box.classList.toggle("closed", !leg_box_open);
+  // 開閉で高さが変わるので、3Dビューの実サイズを取り直す
+  invalidateLaunchView();
+  invalidateBPlane();
+  invalidateOrbitView();
+  invalidateEntryView();
+  invalidateDsmView();
+}
+
 export function renderLegControls() {
   const revs_row = document.getElementById("leg_revs");
   const branch_row = document.getElementById("leg_branch");
@@ -1235,6 +1250,9 @@ export function renderLegControls() {
   const info = mission.get_leg_info(i);
   const wanted = mission.leg_revs(i);
   const tof_days = mission.date(i + 1) - mission.date(i);
+
+  const box = document.getElementById("leg_box");
+  if (box) box.classList.toggle("closed", !leg_box_open);
 
   // 周回数ごとの最短飛行時間。押せるかどうかと、押せない理由に使う
   const min_days = [0];
@@ -1287,16 +1305,17 @@ export function renderLegControls() {
     });
   }
 
-  const rows = [["飛行時間", tof_days.toFixed(1) + " 日"]];
+  // 縦を詰めたいので横一列に並べる
+  const rows = [["飛行時間", tof_days.toFixed(0) + " 日"]];
   if (info && info.aphelion != undefined) {
-    rows.push(["いまの軌道の遠日点", (info.aphelion / AU).toFixed(3) + " AU"]);
+    rows.push(["遠日点", (info.aphelion / AU).toFixed(2) + " AU"]);
   }
   const next_need = min_days[Math.min(wanted + 1, MAX_LEG_REVS)];
   if (next_need != undefined && wanted < MAX_LEG_REVS) {
     rows.push([wanted + 1 + "周にするには", next_need.toFixed(0) + " 日以上"]);
   }
   readout.innerHTML = "";
-  readout.appendChild(makeReadout(rows));
+  readout.appendChild(makeReadout(rows, { inline: true }));
 
   if (info && info.fallback) {
     // 指定した周回数では解けず、落として解いた
@@ -2091,9 +2110,9 @@ function makeParamField(key, label, input, handle = SWINGBY_HANDLE) {
 
 // [項目名, 値, 段階?] の並びを、幅の狭い1カラムに積んで表示する。
 // 段階 ("good"|"ok"|"warn"|"bad") を渡すと、統計バーと同じ色で値を塗る。
-function makeReadout(rows) {
+function makeReadout(rows, { inline = false } = {}) {
   const readout = document.createElement("div");
-  readout.className = "swingby-readout";
+  readout.className = "swingby-readout" + (inline ? " swingby-readout--inline" : "");
   rows.forEach(([label, value, level, hint]) => {
     const row = document.createElement("div");
     row.className = "row swingby-readout-row";
@@ -2284,6 +2303,9 @@ function boot() {
   setTopbarHandlers({ save: saveMissionFile, load: openMissionFile, add_body: openBodyPicker });
   setBodyPickerHandlers({ onAdd: import_small_body });
   initMissionFileDrop();
+
+  const leg_fold = document.getElementById("leg_fold");
+  if (leg_fold) leg_fold.addEventListener("click", toggle_leg_box);
 
   const z_btn = document.getElementById("z_zoom");
   if (z_btn) z_btn.addEventListener("click", toggle_z_zoom);

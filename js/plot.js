@@ -19,6 +19,8 @@ const LEG_IDLE_OPACITY = 0.4;
 // css/elements.css の --header-height / --canvas-padding と一致させること
 const HEADER_HEIGHT = 64;
 const CANVAS_PADDING = 24;
+// canvasと、その下の統計バーとの間隔 (css/elements.css の #graph-panel > .stat-bar と揃える)
+const STAT_BAR_GAP = 10;
 
 // --- Z軸(黄道面からの高さ)の拡大 ---
 // 太陽系は極端に平たいので、等倍だと軌道傾斜がほとんど読み取れない。
@@ -510,14 +512,18 @@ export function updateLayout() {
   // (UI-panel側の内容量次第で幅の配分は50:50から変わり得るため、
   //  window.innerWidth/2 という固定の仮定だとcanvasがはみ出す/UIパネルを隠すことがあった)
   let w = plot_area.clientWidth - CANVAS_PADDING * 2;
+  // canvasの下に置いてある数値のまとめ (統計バー) のぶんを引く
+  const stat_bar = plot_area.querySelector(".stat-bar");
+  const below = stat_bar ? stat_bar.getBoundingClientRect().height + STAT_BAR_GAP : 0;
+
   let h;
   // CSS側のメディアクエリ (max-aspect-ratio: 1/1) と同じ閾値 (幅<=高さ) に揃える
   if (window.innerWidth <= window.innerHeight) {
     // 縦長ウィンドウ: #main_area は縦積みになるので、
     // 正方形に近い形にしつつ縦の使用可能量を超えないようにする
-    h = Math.min(w, window.innerHeight - HEADER_HEIGHT - CANVAS_PADDING * 2);
+    h = Math.min(w, window.innerHeight - HEADER_HEIGHT - CANVAS_PADDING * 2 - below);
   } else {
-    h = plot_area.clientHeight - CANVAS_PADDING * 2;
+    h = plot_area.clientHeight - CANVAS_PADDING * 2 - below;
   }
   w = Math.max(w, 50);
   h = Math.max(h, 50);

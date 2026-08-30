@@ -370,9 +370,19 @@ body.file-drop::after {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* 上から canvas → 統計バー。canvasを上端に置くことで、絶対配置している
+     ラベルの層 (CSS2DRenderer) とのずれが出ない */
+  justify-content: flex-start;
   align-items: center;
   padding: var(--canvas-padding);
+}
+
+/* 数値のまとめは太陽系ビューの下に置く。操作パネル側の縦を空けるため
+   (3Dビューはマウスで触る図なので、そちらに高さを回したい) */
+#graph-panel > .stat-bar {
+  width: 100%;
+  margin-top: 10px;
+  flex: 0 0 auto;
 }
 
 /* 太陽系ビューの上に浮かせる小さな道具ボタン。CSS2DRendererの層(ラベル)が
@@ -1124,7 +1134,9 @@ input:focus {
 .view-3d {
   flex: 1 1 150px;
   min-width: 0;
-  min-height: 130px;
+  /* マウスで触る図なので、これ以上は縮めない。画面が低いときは
+     パネル側をスクロールさせる (小さすぎる図は操作できない) */
+  min-height: 200px;
   position: relative;
 }
 
@@ -2073,4 +2085,55 @@ button {
   background: var(--surface-muted);
   border-color: var(--border);
   cursor: default;
+}
+
+/* ==================================================================
+   折りたためる箱
+   ==================================================================
+   分かりにくい設定 (多周回など) は既定で畳んでおき、見出しを押すと開く。
+   畳んだ状態でも、見出しの右のバッジで今の設定が読めるようにする。 */
+.fold > .fold-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fold > .fold-head label {
+  cursor: pointer;
+}
+.fold > .fold-head .orbit-badge {
+  margin-left: auto;
+}
+.fold-mark {
+  display: flex;
+  align-items: center;
+  color: var(--gray-400);
+  transition: transform 0.15s ease;
+}
+.fold:not(.closed) > .fold-head .fold-mark {
+  transform: rotate(90deg);
+}
+.fold.closed > .fold-body {
+  display: none;
+}
+.fold > .fold-body {
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* 読み取りを横に並べる版 (縦を詰めたいとき) */
+.swingby-readout--inline {
+  flex-flow: row wrap;
+  column-gap: 16px;
+  row-gap: 2px;
+}
+.swingby-readout--inline .swingby-readout-row {
+  width: auto;
 }

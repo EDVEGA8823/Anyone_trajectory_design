@@ -61,6 +61,35 @@
         </svg>
         <span class="view-tool-label" id="z_zoom_factor">Z拡大</span>
       </button>
+      <div class="row bold_box stat-bar">
+        <div class="row stat-group">
+          <div class="value_box" title="地球を離れるときの双曲線余剰速度。&#10;色の目安 (C3): 10未満=楽 / 30未満=普通 / 60未満=苦しい / それ以上=かなり苦しい">
+              <div class="title">脱出速度</div>
+              <div class="value" id="v_inf">0</div>
+              <div class="unit">km/s</div>
+          </div>
+          <div class="value_box" title="打上げエネルギー (脱出速度の2乗)。&#10;色の目安: 10未満=楽 / 30未満=普通 / 60未満=苦しい / それ以上=かなり苦しい">
+              <div class="title">C<sub>3</sub></div>
+              <div class="value" id="C3">0</div>
+              <div class="unit">km<sup>2</sup>/s<sup>2</sup></div>
+          </div>
+        </div>
+        <div class="value_box" title="ミッション中に探査機が出す速度変化の合計 (DSMと近点ΔV)。&#10;色の目安: 300未満=楽 / 1000未満=普通 / 2500未満=苦しい / それ以上=かなり苦しい">
+          <div class="title">総ΔV</div>
+          <div class="value" id="total_dv">0</div>
+          <div class="unit">m/s</div>
+        </div>
+        <div class="row stat-group launcher-group">
+          <select id="launcher" title="打上げに使うロケット"></select>
+          <div class="value_box mass-box">
+            <div class="title" title="色の目安 (残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">質量<span class="sub">燃料込み → 燃料抜き</span></div>
+            <div class="value">
+              <span id="wet_mass">-</span><span class="mass-arrow" id="mass_arrow"> → </span><span id="dry_mass">-</span>
+            </div>
+            <div class="unit">kg</div>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="UI-panel">
       <div class="sequence-panel-wrapper">
@@ -133,15 +162,23 @@
             </div>
           </div>
 
-          <div class="column box leg-only" id="leg_box">
-            <div class="row swingby-head"
+          <div class="column box leg-only fold closed" id="leg_box">
+            <button type="button" class="fold-head" id="leg_fold"
               title="次の目的地までの区間。太陽を何周してから着くかを選べる。&#10;同じ2点・同じ飛行時間でも、1周まわってから着く解は直行とはまったく別の軌道になり、&#10;遠い目的地へはそちらの方がずっと安いことが多い。&#10;周回数ごとに必要な最短飛行時間が決まっていて、それより短いと解が無い。">
+              <span class="fold-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
               <label>この区間</label>
               <span class="orbit-badge" id="leg_badge"></span>
+            </button>
+            <div class="column fold-body">
+              <div class="row leg-revs" id="leg_revs"></div>
+              <div class="row leg-branch" id="leg_branch"></div>
+              <div class="orbit-readout" id="leg_readout"></div>
             </div>
-            <div class="row leg-revs" id="leg_revs"></div>
-            <div class="row leg-branch" id="leg_branch"></div>
-            <div class="orbit-readout" id="leg_readout"></div>
           </div>
 
           <div class="column box encounter-only" id="encounter_box">
@@ -254,35 +291,7 @@
             </div>
           </div>
         </div>
-        <div class="row bold_box stat-bar">
-          <div class="row stat-group">
-            <div class="value_box" title="地球を離れるときの双曲線余剰速度。&#10;色の目安 (C3): 10未満=楽 / 30未満=普通 / 60未満=苦しい / それ以上=かなり苦しい">
-                <div class="title">脱出速度</div>
-                <div class="value" id="v_inf">0</div>
-                <div class="unit">km/s</div>
-            </div>
-            <div class="value_box" title="打上げエネルギー (脱出速度の2乗)。&#10;色の目安: 10未満=楽 / 30未満=普通 / 60未満=苦しい / それ以上=かなり苦しい">
-                <div class="title">C<sub>3</sub></div>
-                <div class="value" id="C3">0</div>
-                <div class="unit">km<sup>2</sup>/s<sup>2</sup></div>
-            </div>
-          </div>
-          <div class="value_box" title="ミッション中に探査機が出す速度変化の合計 (DSMと近点ΔV)。&#10;色の目安: 300未満=楽 / 1000未満=普通 / 2500未満=苦しい / それ以上=かなり苦しい">
-            <div class="title">総ΔV</div>
-            <div class="value" id="total_dv">0</div>
-            <div class="unit">m/s</div>
-          </div>
-          <div class="row stat-group launcher-group">
-            <select id="launcher" title="打上げに使うロケット"></select>
-            <div class="value_box mass-box">
-              <div class="title" title="色の目安 (残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">質量<span class="sub">燃料込み → 燃料抜き</span></div>
-              <div class="value">
-                <span id="wet_mass">-</span><span class="mass-arrow" id="mass_arrow"> → </span><span id="dry_mass">-</span>
-              </div>
-              <div class="unit">kg</div>
-            </div>
-          </div>
-        </div>
+
       </div>
     </div>
   </div>
