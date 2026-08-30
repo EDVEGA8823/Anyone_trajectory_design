@@ -3,6 +3,9 @@ import {
   makeLine,
   makeDashedLine,
   setLinePoints,
+  makeArrowTrail,
+  setArrowTrail,
+  scaleArrowTrail,
   makeHandle,
   scaleHandleToScreen,
   makeSquareResizer,
@@ -120,12 +123,8 @@ export function initOrbitView() {
   orbitLine.name = "parking_orbit";
   root.add(orbitLine);
 
-  travelArrowhead = new THREE.Mesh(
-    new THREE.ConeGeometry(1, 1, 16),
-    new THREE.MeshBasicMaterial({ color: 0x5b6472 })
-  );
-  travelArrowhead.material.depthTest = false;
-  travelArrowhead.renderOrder = 2;
+  // 進行方向の矢じるし。双曲線はグリッドの端まで引くので、途中に何個か置く
+  travelArrowhead = makeArrowTrail(0x5b6472, 3);
   root.add(travelArrowhead);
 
   rpLine = makeLine([new THREE.Vector3()], COLOR_RP, 1);
@@ -305,23 +304,43 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   const orbitPts = conicPoints(p_e, e_e, -Math.PI, Math.PI, 240);
   setLinePoints(orbitLine, orbitPts);
 
-  // --- 双曲線 ---
-  // 楕円と同じくらいの広さまで描くと、2つの軌道の関係が読み取りやすい
-  const r_max = Math.max(ra_n * 1.05, rp_n * 6);
+  // --- 画面の広さと中心 ---
+  // 天体は楕円の焦点なので、楕円の中心 (=近点から -X に a*e) を原点へ寄せる
+  const center_x = -a_n * e_e;
+  root.position.set(-center_x, 0, 0);
+
+  // 画角に合わせる広さ。双曲線は「楕円と同じくらいの広さ」までで測る
+  // (実際にはグリッドの端まで引くが、そこまで画角に入れると楕円が小さくなる)
+  const r_fit = Math.max(ra_n * 1.05, rp_n * 6);
+  let extent = a_n;
+  const span = (pts) => {
+    for (const p of pts) {
+      extent = Math.max(extent, Math.hypot(p.x - center_x, p.y, p.z));
+    }
+  };
+  span(orbitPts);
   const e_h = vinf > 0 ? 1 + (rp * vinf * vinf) / mu : undefined;
+  const hyperbolic = e_h != undefined && e_h > 1;
+  if (hyperbolic) extent = Math.max(extent, r_fit + Math.abs(center_x));
+
+
+  // --- 双曲線 ---
+  // 途中でぷつりと終わると「ここで止まる軌道」に見えるので、軌道面グリッドの
+  // 端まで引く (画角の外まで伸びるぶんは、引けば見える)
+  const r_max = extent * GRID_SPAN;
   let hyperPts = null;
   let coastPts = null;
-  if (e_h != undefined && e_h > 1) {
+  if (hyperbolic) {
     const p_h = rp_n * (1 + e_h);
     // 漸近線に達する真近点角。数値的にちょうど乗らないよう少し内側で止める
     const nu_inf = Math.acos(-1 / e_h);
     const c = (p_h / r_max - 1) / e_h;
-    const nu_max = Math.min(nu_inf - 1e-3, Math.acos(Math.max(-1, Math.min(1, c))));
+    const nu_max = Math.min(nu_inf - 1e-4, Math.acos(Math.max(-1, Math.min(1, c))));
     // 実際に飛ぶ側を実線で描く。投入は入ってくる側 (ν<0)、脱出は出ていく側 (ν>0)。
     hyperPts =
       kind === "escape"
-        ? conicPoints(p_h, e_h, 0, nu_max, 160)
-        : conicPoints(p_h, e_h, -nu_max, 0, 160);
+        ? conicPoints(p_h, e_h, 0, nu_max, 200)
+        : conicPoints(p_h, e_h, -nu_max, 0, 200);
     setLinePoints(hyperbolaLine, hyperPts);
     hyperbolaLine.visible = true;
 
@@ -330,30 +349,13 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
     if (kind === "escape") {
       coastHyperbola.visible = false;
     } else {
-      coastPts = conicPoints(p_h, e_h, 0, nu_max, 160);
+      coastPts = conicPoints(p_h, e_h, 0, nu_max, 200);
       coastHyperbola.visible = true;
     }
   } else {
     hyperbolaLine.visible = false;
     coastHyperbola.visible = false;
   }
-
-  // --- 画面の広さと中心 ---
-  // 天体は楕円の焦点なので、楕円の中心 (=近点から -X に a*e) を原点へ寄せる
-  const center_x = -a_n * e_e;
-  root.position.set(-center_x, 0, 0);
-
-  let extent = a_n;
-  const span = (pts) => {
-    for (const p of pts) {
-      extent = Math.max(extent, Math.hypot(p.x - center_x, p.y, p.z));
-    }
-  };
-  span(orbitPts);
-  if (hyperPts) span(hyperPts);
-  if (coastPts) span(coastPts);
-
-  const head = extent * 0.04;
 
   if (coastPts) {
     // 破線の目の粗さは軌道の規模に合わせる (固定だと大きい軌道でほぼ実線に見える)
@@ -374,18 +376,12 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
 
   // --- 進行方向 ---
   // 探査機は真近点角が増える向きに進むので、点列の順方向がそのまま進行方向。
-  // 近点にはΔVの矢印が出るので、矢じるしは遠い側に寄せて重ならないようにする。
+  // 線はグリッドの端まで伸びているので、先端ではなく途中に何個か置く。
+  // 近点にはΔVの矢印が出るので、そこは避ける (投入なら末尾、脱出なら先頭が近点)。
   if (hyperPts && hyperPts.length > 6) {
-    const last = hyperPts.length - 1;
-    // 近点は投入なら配列の末尾、脱出なら先頭。双曲線は近点の手前で大きく曲がる
-    // ため、弧に沿って測るとまだΔVの矢印に近い。十分離れる遠い側に置く。
-    const raw = kind === "escape" ? last * 0.92 : last * 0.08;
-    const mid = Math.max(2, Math.min(last - 2, Math.round(raw)));
-    const tangent = new THREE.Vector3().subVectors(hyperPts[mid + 2], hyperPts[mid - 2]).normalize();
-    travelArrowhead.position.copy(hyperPts[mid]);
-    travelArrowhead.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
-    travelArrowhead.scale.set(head * 0.55, head, head * 0.55);
     travelArrowhead.visible = true;
+    // 端も近点も避けて、弧を4等分する位置に置く
+    setArrowTrail(travelArrowhead, hyperPts, [0.25, 0.5, 0.75]);
   } else {
     travelArrowhead.visible = false;
   }
@@ -515,6 +511,8 @@ const loop = makeRenderLoop(() => {
   if (controls) controls.update();
   scaleHandleToScreen(rpHandle, camera, renderer);
   scaleHandleToScreen(raHandle, camera, renderer);
+  // 矢じるしは画面上の大きさを保つ (view3d.js の scaleArrowTrail を参照)
+  scaleArrowTrail(travelArrowhead, camera, renderer, 10);
   renderer.render(scene, camera);
 });
 

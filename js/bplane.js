@@ -4,8 +4,10 @@ import {
   makeLine,
   makeDashedLine,
   setLinePoints,
-  makeArrow,
   setArrow,
+  makeArrowTrail,
+  setArrowTrail,
+  scaleArrowTrail,
   makeHandle,
   scaleHandleToScreen,
   makeSquareResizer,
@@ -27,7 +29,8 @@ import {
 
 export let renderer, scene, camera, controls;
 
-let planetMesh, keepOutSphere, eclipticPlane, bplaneGroup, hyperbolaLine, asymptoteArrow, travelArrowhead;
+let planetMesh, keepOutSphere, eclipticPlane, bplaneGroup, hyperbolaLine;
+let asymptoteLine, asymptoteArrowhead, travelArrowhead;
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine, coastHyperbola;
 let orbitArc, orbitArrowhead, dvArrow;
 let root, sunLight;
@@ -188,19 +191,18 @@ export function initBPlane() {
   coastHyperbola.name = "coast_hyperbola";
   root.add(coastHyperbola);
 
-  // 探査機の進行方向 (双曲線の出射側先端に付ける矢じるし)。
-  // 軌道本体(COLOR_ORBIT=ほぼ黒)と同じ色だと重なって見分けがつかないため、
-  // はっきり明るい色にする。
-  travelArrowhead = new THREE.Mesh(
-    new THREE.ConeGeometry(1, 1, 16),
-    new THREE.MeshBasicMaterial({ color: 0x5b6472 })
-  );
-  travelArrowhead.material.depthTest = false;
-  travelArrowhead.renderOrder = 2;
+  // 探査機の進行方向。双曲線はグリッドの端まで引いてあるので、先端ではなく
+  // 線の途中に置く。軌道本体(COLOR_ORBIT=ほぼ黒)と同じ色だと重なって
+  // 見分けがつかないため、はっきり明るい色にする。
+  travelArrowhead = makeArrowTrail(0x5b6472, 2);
   root.add(travelArrowhead);
 
-  asymptoteArrow = makeArrow(COLOR_ASYMPTOTE, 0.55);
-  root.add(asymptoteArrow);
+  // 入射漸近線 (重力が無ければ通っていた道筋)。こちらも端まで引くので
+  // 矢じるしは途中に置く
+  asymptoteLine = makeLine([new THREE.Vector3()], COLOR_ASYMPTOTE, 0.55);
+  root.add(asymptoteLine);
+  asymptoteArrowhead = makeArrowTrail(COLOR_ASYMPTOTE, 2, 0.55);
+  root.add(asymptoteArrowhead);
 
   periapsisMarker = new THREE.Mesh(
     new THREE.SphereGeometry(0.07, 16, 16),
@@ -211,15 +213,10 @@ export function initBPlane() {
   rpLine = makeLine([new THREE.Vector3()], COLOR_RP, 1);
   root.add(rpLine);
 
-  // 天体の公転軌道 (弧) と、進行方向を示す先端の矢じるし
+  // 天体の公転軌道 (弧) と、進行方向を示す矢じるし
   orbitArc = makeLine([new THREE.Vector3()], COLOR_PLANET_ORBIT, 0.85);
   root.add(orbitArc);
-  orbitArrowhead = new THREE.Mesh(
-    new THREE.ConeGeometry(1, 1, 16),
-    new THREE.MeshBasicMaterial({ color: COLOR_PLANET_ORBIT })
-  );
-  orbitArrowhead.material.depthTest = false;
-  orbitArrowhead.renderOrder = 2;
+  orbitArrowhead = makeArrowTrail(COLOR_PLANET_ORBIT, 3);
   root.add(orbitArrowhead);
 
   // 太陽方向は陰影(平行光の向き)で示すので、線としては描画しない。
@@ -361,6 +358,11 @@ const loop = makeRenderLoop(() => {
   if (controls) controls.update();
   scaleHandleToScreen(rpHandle, camera, renderer);
   scaleHandleToScreen(betaHandle, camera, renderer);
+  // 矢じるしは画面上の大きさを保つ (線が画角の外まで伸びていて、カメラも
+  // 大きく引けるので、世界座標で固定にするとどこかの縮尺で必ず破綻する)
+  scaleArrowTrail(travelArrowhead, camera, renderer, 10);
+  scaleArrowTrail(asymptoteArrowhead, camera, renderer, 8);
+  scaleArrowTrail(orbitArrowhead, camera, renderer, 9);
   renderer.render(scene, camera);
 });
 
@@ -509,25 +511,18 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
   }
   coastHyperbola.visible = powered;
 
-  // 探査機の進行方向を示す矢じるし。双曲線は曲がっているのでArrowHelperではなく、
-  // 出射側の末尾2点から接線方向を取り、そこに小さな円錐を向けて置く。
-  const tail = pts[pts.length - 1];
-  const tangent = new THREE.Vector3().subVectors(tail, pts[pts.length - 2]).normalize();
-  const headLen = Math.min(rp_n * 0.5, halfSize * 0.12);
-  travelArrowhead.position.copy(tail);
-  travelArrowhead.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
-  travelArrowhead.scale.set(headLen * 0.55, headLen, headLen * 0.55);
-  travelArrowhead.visible = true;
+  // 探査機の進行方向を示す矢じるし。線は画角の外まで伸びているので、
+  // 入る側と出る側の途中に1つずつ置く (先端に置くと画面の外になる)
+  setArrowTrail(travelArrowhead, pts, [0.3, 0.72]);
 
-  // --- 入射漸近線 (進行方向 = inHat の矢印) ---
+  // --- 入射漸近線 (重力が無ければ通っていた道筋) ---
   const pierce = bHat.clone().multiplyScalar(b_n);
-  const far = farEdge;
-  setArrow(
-    asymptoteArrow,
-    pierce.clone().addScaledVector(inHat, -far),
-    pierce.clone().addScaledVector(inHat, far * 0.3),
-    headLen
-  );
+  const asymPts = [
+    pierce.clone().addScaledVector(inHat, -farEdge),
+    pierce.clone().addScaledVector(inHat, farEdge * 0.3),
+  ];
+  setLinePoints(asymptoteLine, asymPts);
+  setArrowTrail(asymptoteArrowhead, asymPts, [0.45, 0.75]);
   bplaneGroup.getObjectByName("bplane_face").scale.setScalar(halfSize);
   bplaneGroup.getObjectByName("bplane_frame").scale.setScalar(halfSize);
   bplaneGroup.getObjectByName("bplane_grid").scale.setScalar(halfSize);
@@ -677,6 +672,14 @@ function fitCamera(extent) {
   // 追従させると、rpを変えた拍子に現在のカメラ位置が範囲外になって飛んでしまう。
   controls.minDistance = fitDist * 0.1;
   controls.maxDistance = fitDist * 30;
+  // 描く範囲も場面の規模に合わせる。固定 (0.05〜5000) のままだと、木星の
+  // スイングバイのように場面が天体半径の数百倍になったとき、引いた先で
+  // 遠くのものが far の外に出て消えてしまう。
+  // カメラは最大 30倍まで引けて、そこから見える一番遠い点は
+  // maxDistance + グリッドの半幅 (4*extent 程度) なので、100倍あれば足りる。
+  camera.near = Math.max(fitDist * 1e-3, 1e-4);
+  camera.far = fitDist * 100;
+  camera.updateProjectionMatrix();
 }
 
 /**
@@ -718,7 +721,8 @@ function setOrbitVisible(visible) {
   hyperbolaLine.visible = visible;
   if (!visible) coastHyperbola.visible = false;
   travelArrowhead.visible = visible;
-  asymptoteArrow.visible = visible;
+  asymptoteLine.visible = visible;
+  asymptoteArrowhead.visible = visible;
   pierceMarker.visible = visible;
   periapsisMarker.visible = visible;
   rpLine.visible = visible;
@@ -779,12 +783,8 @@ function drawOrbitArc(vHat, sHat, sunDist, reach, extent) {
   setLinePoints(orbitArc, pts);
   orbitArc.visible = true;
 
-  // 進行方向の先端に矢じるし
-  const tip = pts[pts.length - 1];
-  const tangent = new THREE.Vector3().subVectors(tip, pts[pts.length - 2]).normalize();
-  const headLen = extent * 0.22;
-  orbitArrowhead.position.copy(tip);
-  orbitArrowhead.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
-  orbitArrowhead.scale.set(headLen * 0.4, headLen, headLen * 0.4);
+  // 進行方向の矢じるし。線はグリッドの端まで伸びているので、先端ではなく
+  // 途中に何個か置く (天体のまわりは他の線が混むので、そこは空けておく)
   orbitArrowhead.visible = true;
+  setArrowTrail(orbitArrowhead, pts, [0.2, 0.7, 0.9]);
 }

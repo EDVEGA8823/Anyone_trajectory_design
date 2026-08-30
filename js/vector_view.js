@@ -450,8 +450,14 @@ export function createVectorView(config) {
 
   // 全体が画角に収まる距離にカメラを置き直す
   function fitCamera(extent) {
-    camera.position.setLength(fitDistanceFor(Math.min(extent, MAX_FIT_EXTENT)));
+    const fitDist = fitDistanceFor(Math.min(extent, MAX_FIT_EXTENT));
+    camera.position.setLength(fitDist);
     updateZoomRange(extent);
+    // 描く範囲も場面の規模に合わせる (固定のままだと、引いた先で遠くのものが
+    // far の外に出て消える)
+    camera.near = Math.max(fitDist * 1e-3, 1e-4);
+    camera.far = Math.max(fitDist, fitDistanceFor(GRID_HALF)) * 100;
+    camera.updateProjectionMatrix();
   }
 
   function setVisible(visible) {

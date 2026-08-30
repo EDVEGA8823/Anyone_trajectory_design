@@ -453,6 +453,11 @@ function fitCamera(extent) {
   camera.position.setLength(fitDist);
   controls.minDistance = fitDist * 0.05;
   controls.maxDistance = fitDist * 20;
+  // 描く範囲も場面の規模に合わせる (固定のままだと、引いた先で遠くのものが
+  // far の外に出て消える)
+  camera.near = Math.max(fitDist * 1e-3, 1e-4);
+  camera.far = fitDist * 100;
+  camera.updateProjectionMatrix();
 }
 
 function setVisible(visible) {

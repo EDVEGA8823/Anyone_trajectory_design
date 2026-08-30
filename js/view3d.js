@@ -107,6 +107,105 @@ export function setArrow(arrow, from, to, maxHead, headLenRatio = 0.22, headWidt
   arrow.setLength(len, headLength, headLength * headWidthRatio);
 }
 
+/**
+ * 折れ線の途中に並べる矢じるしを作る。
+ *
+ * 軌道や漸近線はグリッドの端まで引いてあるので、先端に1つ置いても画角の外に
+ * 出てしまって進行方向が読めない。線の途中に何個か置いて、どこを見ていても
+ * 向きが分かるようにするための部品。
+ *
+ * @param {number} color
+ * @param {number} count 置く数
+ * @param {number} opacity
+ * @returns {THREE.Group}
+ */
+export function makeArrowTrail(color, count = 2, opacity = 1) {
+  const group = new THREE.Group();
+  for (let i = 0; i < count; i++) {
+    const material = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity });
+    material.depthTest = false;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 16), material);
+    cone.renderOrder = 2;
+    group.add(cone);
+  }
+  return group;
+}
+
+/**
+ * 折れ線に沿って矢じるしを置き直す。位置は「弧の長さの何割か」で指定する。
+ * 点の間隔は場所によって大きく違う (双曲線は遠方ほど粗い) ので、
+ * 添字ではなく実際の長さで測らないと見た目が偏る。
+ *
+ * 大きさはここでは決めない。scaleArrowTrail が画面上の大きさで毎フレーム
+ * 決めるので、どこまで引いても同じ見え方になる。
+ *
+ * @param {THREE.Group} group makeArrowTrail の戻り値
+ * @param {THREE.Vector3[]} points 折れ線 (進行方向の順)
+ * @param {number[]} at 弧の長さに対する割合 (0〜1)
+ */
+export function setArrowTrail(group, points, at) {
+  const cones = group.children;
+  if (!points || points.length < 2) {
+    for (const c of cones) c.visible = false;
+    return;
+  }
+
+  // 各点までの累積の長さ
+  const acc = [0];
+  for (let i = 1; i < points.length; i++) {
+    acc[i] = acc[i - 1] + points[i].distanceTo(points[i - 1]);
+  }
+  const total = acc[acc.length - 1];
+  if (!(total > 0)) {
+    for (const c of cones) c.visible = false;
+    return;
+  }
+
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let k = 0; k < cones.length; k++) {
+    const frac = at[k];
+    if (frac == undefined) {
+      cones[k].visible = false;
+      continue;
+    }
+    const want = total * Math.max(0, Math.min(1, frac));
+    let i = 1;
+    while (i < acc.length - 1 && acc[i] < want) i++;
+    const seg = acc[i] - acc[i - 1];
+    const t = seg > 0 ? (want - acc[i - 1]) / seg : 0;
+    cones[k].position.lerpVectors(points[i - 1], points[i], t);
+    const dir = new THREE.Vector3().subVectors(points[i], points[i - 1]);
+    if (dir.lengthSq() < 1e-18) {
+      cones[k].visible = false;
+      continue;
+    }
+    cones[k].quaternion.setFromUnitVectors(up, dir.normalize());
+    cones[k].visible = true;
+  }
+}
+
+/**
+ * 矢じるしの大きさを、画面上で一定に保つ (ハンドルと同じ考え方)。
+ * 線は画角の外まで伸びていて、カメラも自由に引けるので、世界座標での
+ * 大きさを固定にするとどこかの縮尺で必ず大きすぎ/小さすぎになる。
+ *
+ * @param {THREE.Group} group makeArrowTrail の戻り値
+ * @param {number} px 画面上での長さ [px]
+ */
+export function scaleArrowTrail(group, camera, renderer, px = 9) {
+  if (!group || !group.visible || !camera || !renderer) return;
+  const h = renderer.domElement.clientHeight;
+  if (!h) return;
+  const halfFov = Math.tan((camera.fov * Math.PI) / 180 / 2);
+  const at = new THREE.Vector3();
+  for (const cone of group.children) {
+    if (!cone.visible) continue;
+    const dist = camera.position.distanceTo(cone.getWorldPosition(at));
+    const size = (px * 2 * dist * halfFov) / h;
+    cone.scale.set(size * 0.45, size, size * 0.45);
+  }
+}
+
 /** マウスで掴むハンドル (大きさは scaleHandleToScreen が毎フレーム決める) */
 export function makeHandle(color) {
   const handle = new THREE.Mesh(
