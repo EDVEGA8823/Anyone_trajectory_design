@@ -448,9 +448,14 @@ function color_at(t) {
 // それより高いところは灰色にして図から退かせる (ポークチョップ図の通例)。
 const COLOR_QUANTILE = 0.35;
 
+// 格子の点の数 (c3 などは組み合わせごとの面の配列なので、その長さではない)
+function cell_count(g) {
+  return g && g.value ? g.value.length : 0;
+}
+
 function measure_range(g) {
   const vals = [];
-  for (let i = 0; i < g.c3.length; i++) {
+  for (let i = 0; i < cell_count(g); i++) {
     const v = cell_value(g, i);
     if (v === v) vals.push(v);
   }
@@ -888,7 +893,7 @@ function draw_markers(ctx, rect, range) {
   if (range && g) {
     let best = -1;
     let bv = Infinity;
-    for (let i = 0; i < g.c3.length; i++) {
+    for (let i = 0; i < cell_count(g); i++) {
       const v = cell_value(g, i);
       if (v === v && v < bv) {
         bv = v;
