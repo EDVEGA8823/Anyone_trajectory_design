@@ -477,6 +477,15 @@ export function styleLeg(lineData, active) {
   invalidate();
 }
 
+/** 線を捨てる (点数が変わって作り直すとき用) */
+export function disposeLine(lineData) {
+  if (!lineData || !lineData.line) return;
+  scene.remove(lineData.line);
+  if (lineData.geometry) lineData.geometry.dispose();
+  if (lineData.line.material) lineData.line.material.dispose();
+  invalidate();
+}
+
 export function updateLine(lineData, newPoints) {
   const { positions, geometry } = lineData;
   if (newPoints.length > positions.length / 3) {

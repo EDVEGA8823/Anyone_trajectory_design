@@ -612,6 +612,72 @@ export function get_peariod(a, μ) {
   return 2 * Math.PI * Math.sqrt(Math.abs(a) ** 3 / μ);
 }
 
+/* ==================================================================
+   多周回のランベール問題
+   ==================================================================
+   出発と到着の間に太陽をM周してから着く解。同じ2点・同じ飛行時間でも
+   M=0 の直行解とはまったく別の軌道になり、外惑星や小惑星へは
+   「1周まわってから着く」方がずっと安いことが多い。
+
+   ライブラリ (Izzo法) は M と low_path を受け取れるので、こちら側は
+   「その飛行時間で何周まで可能か」と「その周回数に必要な最短飛行時間」を
+   用意して、選ばせる/はみ出しを防ぐ役に回る。
+   ================================================================== */
+
+// ランベール問題の無次元飛行時間 T。M周の解は T ≧ M*pi でしか存在しない
+function lambert_nondim_time(r1, r2, tof, mu = MU_SUN) {
+  const c = math.norm(math.subtract(r2, r1));
+  const s = (math.norm(r1) + math.norm(r2) + c) / 2;
+  return { T: Math.sqrt((2 * mu) / s ** 3) * tof, s };
+}
+
+/**
+ * その飛行時間で見込める周回数の上限。
+ * 境界のすぐ手前では1多く出ることがあるので (厳密な下限 T_min はライブラリの
+ * 内部にしかない)、実際に解けるかは呼び出し側で確かめること。
+ * ポークチョップのように何万回も解く場面で、無駄な例外を投げないための足切り。
+ */
+export function lambert_rev_limit(r1, r2, tof, mu = MU_SUN) {
+  if (!(tof > 0)) return 0;
+  const { T } = lambert_nondim_time(r1, r2, tof, mu);
+  return Math.max(0, Math.floor(T / Math.PI));
+}
+
+/**
+ * M周の解が成り立つ最短の飛行時間 [s]。
+ *
+ * 厳密な下限 T_min(M) はライブラリの内部で、外からは呼べない。飛行時間を
+ * 延ばせば必ず解けるようになる (単調) ので、実際に解かせて二分法で境界を挟む。
+ * 20回ほど解いても 0.5ms 程度なので、表示のために毎回求めても問題にならない。
+ *
+ * @returns {number|undefined} 見つからなければ undefined
+ */
+export function lambert_min_tof(r1, r2, revs, mu = MU_SUN, prograde = true) {
+  if (revs <= 0) return 0;
+  const solvable = (tof) => {
+    try {
+      const v = lambert_probrem(mu, r1, r2, tof, revs, prograde);
+      return !!(v && v[0] && isFinite(v[0][0]));
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // T ≧ M*pi が必要条件。ここから上へ広げて、解ける飛行時間を1つ見つける
+  const { s } = lambert_nondim_time(r1, r2, 1, mu);
+  let lo = revs * Math.PI * Math.sqrt(s ** 3 / (2 * mu));
+  let hi = lo * 1.5;
+  for (let k = 0; k < 40 && !solvable(hi); k++) hi *= 1.5;
+  if (!solvable(hi)) return undefined;
+
+  for (let k = 0; k < 40 && (hi - lo) / hi > 1e-6; k++) {
+    const mid = (lo + hi) / 2;
+    if (solvable(mid)) hi = mid;
+    else lo = mid;
+  }
+  return hi;
+}
+
 // MGA-1DSMでDSMを打つ既定の位置 (レグの時間割合)
 export const DEFAULT_DSM_ETA = 0.5;
 
@@ -875,6 +941,15 @@ export class Mission {
 
   // 小天体との出会い (フライバイ・ランデブー) の計算結果
   #m_encounter_info = [];
+
+  // レグ (ノードiから次のノードへの区間) をランベールで解くときの設定。
+  //   #m_leg_revs   太陽を何周してから着くか (0 = 直行)
+  //   #m_leg_low    同じ周回数にある2つの解のどちらを採るか (true = 小さい軌道)
+  // レグは出発側のノードが持つ。#m_leg_info には実際に使えた値を入れる
+  // (指定した周回数が飛行時間的に無理なら直行に落ちるので、その顛末も含む)。
+  #m_leg_revs = [];
+  #m_leg_low = [];
+  #m_leg_info = [];
 
   #m_swingby_info = []; // 直近に計算されたスイングバイ結果 (get_swingby_info用)
   #m_dsm_info = []; // 直近に計算されたDSM(マヌーバ)結果 (get_dsm_info用)
@@ -1344,7 +1419,7 @@ export class Mission {
 
     let v_lam;
     try {
-      v_lam = lambert_probrem(MU_SUN, arrived.r, r_target, dt2);
+      v_lam = this.#solve_leg(i, arrived.r, r_target, dt2);
     } catch (e) {
       return;
     }
@@ -1603,6 +1678,88 @@ export class Mission {
    *                (小天体には「軌道脱出」に当たる節が無いので、到着と出発を
    *                 この1つの節でまとめて持つ)
    */
+  /**
+   * レグ (ノードiから次まで) をランベールで解く。
+   *
+   * 指定された周回数で解けないときは直行 (0周) に落とす。日付を動かすだけで
+   * 簡単に「その周回数には短すぎる」側へ入るので、ここで落としておかないと
+   * 軌道が消えてミッションが壊れて見える。落としたことは #m_leg_info に残し、
+   * 操作パネルで断る。
+   *
+   * @returns {[number[], number[]]|undefined} [出発速度, 到着速度]
+   */
+  #solve_leg(i, r1, r2, tof) {
+    const wanted = this.#m_leg_revs[i] ?? 0;
+    const low = this.#m_leg_low[i] !== false;
+    const limit = lambert_rev_limit(r1, r2, tof);
+
+    const attempt = (revs) => {
+      try {
+        const v = lambert_probrem(MU_SUN, r1, r2, tof, revs, true, low);
+        return v && v[0] && isFinite(v[0][0]) ? v : undefined;
+      } catch (e) {
+        return undefined;
+      }
+    };
+
+    let used = Math.min(wanted, limit);
+    let v_lam = attempt(used);
+    // 境界のすぐ手前では上限が1多く出ることがあるので、落として解き直す
+    while (v_lam == undefined && used > 0) {
+      used -= 1;
+      v_lam = attempt(used);
+    }
+
+    // どんな軌道で行くことになったか (遠日点で大きさが分かる)
+    let aphelion;
+    if (v_lam != undefined) {
+      const par = ic2par(r1, v_lam[0], MU_SUN);
+      if (par != undefined && par[0] > 0 && par[1] < 1) aphelion = par[0] * (1 + par[1]);
+    }
+
+    this.#m_leg_info[i] = {
+      revs: used,
+      revs_wanted: wanted,
+      low_path: low,
+      max_revs: limit,
+      tof,
+      aphelion, // [km]
+      // 指定どおりに解けなかったか (パネルで断るため)
+      fallback: used !== wanted,
+    };
+    return v_lam;
+  }
+
+  /**
+   * 同じ周回数にある2つの解の下見。どちらを選ぶかは軌道の大きさで決めたいので、
+   * 両方を解いて遠日点を返す (1回20マイクロ秒程度なので、表示のたびに解いてよい)。
+   *
+   * @returns {{low: number|undefined, high: number|undefined}} 遠日点 [km]
+   */
+  leg_branch_preview(i) {
+    const out = { low: undefined, high: undefined };
+    if (!this.leg_is_lambert(i)) return out;
+    const revs = this.#m_leg_revs[i] ?? 0;
+    if (revs <= 0) return out;
+
+    const r1 = this.#m_s_c_pos[i];
+    const r2 = this.#m_s_c_pos[i + 1] ?? this.#m_planet_pos[i + 1];
+    const tof = (this.#m_dates[i + 1] - this.#m_dates[i]) * 86400;
+    if (r1 == undefined || r2 == undefined || !(tof > 0)) return out;
+
+    for (const low of [true, false]) {
+      try {
+        const v = lambert_probrem(MU_SUN, r1, r2, tof, revs, true, low);
+        if (!v || !v[0]) continue;
+        const par = ic2par(r1, v[0], MU_SUN);
+        if (par != undefined && par[0] > 0 && par[1] < 1) out[low ? "low" : "high"] = par[0] * (1 + par[1]);
+      } catch (e) {
+        // その分枝は無い
+      }
+    }
+    return out;
+  }
+
   #calc_encounter(i) {
     this.#m_encounter_info[i] = undefined;
     const type = this.#m_types[i];
@@ -1778,8 +1935,8 @@ export class Mission {
       if (this.#m_planet_pos[i + 1] != undefined && this.#m_dates[i] != undefined) {
         this.#m_s_c_pos[i + 1] = this.#m_planet_pos[i + 1];
         let time_diff = this.#m_dates[i + 1] - this.#m_dates[i];
-        let v_lam = lambert_probrem(MU_SUN, this.#m_s_c_pos[i], this.#m_s_c_pos[i + 1], time_diff * 86400);
-        this.#m_s_c_vel[i] = v_lam;
+        const v_lam = this.#solve_leg(i, this.#m_s_c_pos[i], this.#m_s_c_pos[i + 1], time_diff * 86400);
+        if (v_lam != undefined) this.#m_s_c_vel[i] = v_lam;
       }
       if (is_swingby) {
         // 自動スイングバイ: 軌道はランベール解のまま、rp/beta/近点ΔVを診断情報として計算する
@@ -1809,12 +1966,17 @@ export class Mission {
       let M_1 = M_0 + dM;
       let E_1 = solve_kepler(par[1], M_1);
 
+      // 多周回のレグは同じ楕円を何周もするので、点数も周回数ぶん増やす
+      // (100点のまま2周させると、1周あたり50点になって折れ線が目立つ)
+      const revs = this.#m_leg_info[i] != undefined ? this.#m_leg_info[i].revs : 0;
+      const N = 100 * (1 + revs);
+
       let p = [];
       let v_end;
-      for (let j = 0; j < 100; j++) {
-        let { r, v } = get_planets_pos_E(par, E_0 + ((E_1 - E_0) * j) / 99);
+      for (let j = 0; j < N; j++) {
+        let { r, v } = get_planets_pos_E(par, E_0 + ((E_1 - E_0) * j) / (N - 1));
         p.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
-        if (j === 99) v_end = v;
+        if (j === N - 1) v_end = v;
       }
       this.#m_trajectory_arcs[i] = p;
 
@@ -1950,6 +2112,61 @@ export class Mission {
   // Swingbyノードでない、または計算できていない場合はnull。
   get_swingby_info(i) {
     return this.#m_swingby_info[i] ?? null;
+  }
+
+  /* --- レグ (ノードiから次のノードまでの区間) --- */
+
+  /** そのレグをランベールで解いているか (＝周回数を選べるか) */
+  leg_is_lambert(i) {
+    if (i < 0 || i + 1 >= this.#m_count) return false;
+    if (this.#m_dates[i] == undefined || this.#m_dates[i + 1] == undefined) return false;
+    const t = this.#m_types[i];
+    if (t === Sequence_Type.Maneuver) return true; // DSMから次の天体まで
+    if (
+      t === Sequence_Type.Orbit ||
+      t === Sequence_Type.Entry ||
+      t === Sequence_Type.End ||
+      t === Sequence_Type.Flyby ||
+      t === Sequence_Type.Rendezvous
+    ) {
+      return false; // 天体に留まる / 無推力で通り過ぎる節は、次を狙っていない
+    }
+    return !!this.#m_is_auto_mode[i];
+  }
+
+  leg_revs(i) {
+    return this.#m_leg_revs[i] ?? 0;
+  }
+
+  set_leg_revs(i, revs) {
+    if (i < 0 || i >= this.#m_count) return;
+    this.#m_leg_revs[i] = Math.max(0, Math.round(revs) || 0);
+    this.#recompute_all();
+  }
+
+  leg_low_path(i) {
+    return this.#m_leg_low[i] !== false;
+  }
+
+  set_leg_low_path(i, low) {
+    if (i < 0 || i >= this.#m_count) return;
+    this.#m_leg_low[i] = !!low;
+    this.#recompute_all();
+  }
+
+  /** 直近に解いたレグの顛末 {revs, revs_wanted, low_path, max_revs, tof, fallback} */
+  get_leg_info(i) {
+    return this.#m_leg_info[i] ?? null;
+  }
+
+  /** そのレグで指定の周回数に必要な最短飛行時間 [日] (解けなければ undefined) */
+  leg_min_days(i, revs) {
+    if (revs <= 0) return 0;
+    const r1 = this.#m_s_c_pos[i];
+    const r2 = this.#m_s_c_pos[i + 1] ?? this.#m_planet_pos[i + 1];
+    if (r1 == undefined || r2 == undefined) return undefined;
+    const tof = lambert_min_tof(r1, r2, revs);
+    return tof == undefined ? undefined : tof / 86400;
   }
 
   planet_num(i) {
@@ -2222,6 +2439,9 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 0, undefined);
     this.#m_swingby_info.splice(idx, 0, undefined);
     this.#m_encounter_info.splice(idx, 0, undefined);
+    this.#m_leg_revs.splice(idx, 0, 0);
+    this.#m_leg_low.splice(idx, 0, true);
+    this.#m_leg_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
     this.#m_end_info.splice(idx, 0, undefined);
     this.#m_pinned_event.splice(idx, 0, undefined);
@@ -2251,6 +2471,9 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 1);
     this.#m_swingby_info.splice(idx, 1);
     this.#m_encounter_info.splice(idx, 1);
+    this.#m_leg_revs.splice(idx, 1);
+    this.#m_leg_low.splice(idx, 1);
+    this.#m_leg_info.splice(idx, 1);
     this.#m_dsm_info.splice(idx, 1);
     this.#m_end_info.splice(idx, 1);
     this.#m_pinned_event.splice(idx, 1);
@@ -2296,6 +2519,9 @@ export class Mission {
     this.#m_s_c_vel.splice(idx, 0, undefined);
     this.#m_swingby_info.splice(idx, 0, undefined);
     this.#m_encounter_info.splice(idx, 0, undefined);
+    this.#m_leg_revs.splice(idx, 0, 0);
+    this.#m_leg_low.splice(idx, 0, true);
+    this.#m_leg_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
     this.#m_end_info.splice(idx, 0, undefined);
     this.#m_pinned_event.splice(idx, 0, undefined);
@@ -2378,6 +2604,11 @@ export class Mission {
         n.dsm = { dv: this.#m_dsm_dv[i], alpha: this.#m_dsm_alpha[i] ?? 0, delta: this.#m_dsm_delta[i] ?? 0 };
       }
       if (this.#m_pinned_event[i] != undefined) n.pinned = this.#m_pinned_event[i];
+      // レグの周回数 (既定は直行なので、指定があるときだけ書く)
+      if (this.#m_leg_revs[i]) {
+        n.rev = this.#m_leg_revs[i];
+        if (this.#m_leg_low[i] === false) n.branch = "high";
+      }
       nodes.push(n);
     }
 
@@ -2424,6 +2655,8 @@ export class Mission {
     this.#m_pinned_event = nodes.map((n) =>
       Object.values(Leg_Event).includes(n.pinned) ? n.pinned : undefined
     );
+    this.#m_leg_revs = nodes.map((n) => Math.max(0, Math.round(num(n.rev, 0))));
+    this.#m_leg_low = nodes.map((n) => n.branch !== "high");
 
     // 日付は必ず前から順に、最小間隔を空けて並ぶようにする
     for (let i = 1; i < this.#m_count; i++) {
@@ -2446,6 +2679,7 @@ export class Mission {
     this.#m_entry_info = blank();
     this.#m_swingby_info = blank();
     this.#m_encounter_info = blank();
+    this.#m_leg_info = blank();
     this.#m_dsm_info = blank();
     this.#m_end_info = blank();
     this.#m_trajectory_arcs = blank();

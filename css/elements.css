@@ -2051,3 +2051,26 @@ button {
     display: none;
   }
 }
+
+/* 区間 (レグ) の周回数を選ぶ行 */
+.leg-revs,
+.leg-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.leg-branch {
+  margin-top: 2px;
+}
+.leg-branch-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-right: 2px;
+}
+.leg-revs .mode-btn:disabled {
+  color: var(--gray-400);
+  background: var(--surface-muted);
+  border-color: var(--border);
+  cursor: default;
+}

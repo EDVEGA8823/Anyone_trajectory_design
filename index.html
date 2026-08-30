@@ -133,6 +133,17 @@
             </div>
           </div>
 
+          <div class="column box leg-only" id="leg_box">
+            <div class="row swingby-head"
+              title="次の目的地までの区間。太陽を何周してから着くかを選べる。&#10;同じ2点・同じ飛行時間でも、1周まわってから着く解は直行とはまったく別の軌道になり、&#10;遠い目的地へはそちらの方がずっと安いことが多い。&#10;周回数ごとに必要な最短飛行時間が決まっていて、それより短いと解が無い。">
+              <label>この区間</label>
+              <span class="orbit-badge" id="leg_badge"></span>
+            </div>
+            <div class="row leg-revs" id="leg_revs"></div>
+            <div class="row leg-branch" id="leg_branch"></div>
+            <div class="orbit-readout" id="leg_readout"></div>
+          </div>
+
           <div class="column box encounter-only" id="encounter_box">
             <div class="row swingby-head"
               title="小天体の重力はスイングバイに使えるほどではない (ケレスでさえ曲げ角は1度に満たない)。&#10;そのため速度を変えるぶんは全部自前のΔVになる。&#10;フライバイ: 通り過ぎるだけ。入ってきた速度と出ていく速度の差を払う&#10;ランデブー: 天体に速度を合わせる。先へ向かうなら出発ぶんも要る">

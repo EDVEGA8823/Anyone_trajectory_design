@@ -13,6 +13,7 @@ import {
   update_planets,
   updateLine,
   createLine,
+  disposeLine,
   createDashedLine,
   updateDashedLine,
   createPlanets,
@@ -579,9 +580,11 @@ export function update_plot() {
       if (State.arcs[i]) State.arcs[i].line.visible = false;
       continue;
     }
-    if (State.arcs[i] == undefined) {
-      const blank = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
-      State.arcs[i] = createLine(blank, COLOR_LEG_ACTIVE);
+    // 多周回のレグは点数が増える (周回数ぶん)。線は確保した頂点数を超えて
+    // 書き込めないので、点数が変わったら作り直す
+    if (State.arcs[i] == undefined || State.arcs[i].positions.length !== points.length * 3) {
+      if (State.arcs[i]) disposeLine(State.arcs[i]);
+      State.arcs[i] = createLine(points, COLOR_LEG_ACTIVE);
     }
     updateLine(State.arcs[i], points);
     // レグ i はノード i と i+1 を繋ぐので、選択中ノードに繋がるのは
@@ -858,6 +861,16 @@ export function updateControlPanelDisplay() {
     entry_only[i].style.display = is_entry ? "flex" : "none";
   }
 
+  // この区間 (レグ) の設定。ランベールで解いている区間にだけ出す
+  const is_lambert_leg =
+    State.selected_sequence != -1 &&
+    State.mission_sequence &&
+    State.mission_sequence.leg_is_lambert(State.selected_sequence);
+  const leg_only = document.getElementsByClassName("leg-only");
+  for (let i = 0; i < leg_only.length; i++) {
+    leg_only[i].style.display = is_lambert_leg ? "flex" : "none";
+  }
+
   // 小天体との出会い (フライバイ・ランデブー・再出発)
   const is_encounter =
     sel_type === Sequence_Type.Flyby ||
@@ -885,6 +898,7 @@ export function updateControlPanelDisplay() {
   if (is_entry) renderEntryControls();
   else if (State.entry_handle) setEntryHandle(null);
   if (is_encounter) renderEncounterControls();
+  if (is_lambert_leg) renderLegControls();
   if (is_launch) renderLaunchControls();
   // 打上げ以外に移ったらハンドルの選択は解除しておく
   else if (State.launch_handle) setLaunchHandle(null);
@@ -1199,6 +1213,101 @@ function pin_node_to_event(i, type) {
   change_sequence();
   toggle_planet();
   Update_time(); // 時刻欄・節目一覧・操作パネル・軌道の描画をまとめて更新
+}
+
+// この区間 (レグ) の周回数を選ばせる。
+//
+// 多周回のランベール解は「同じ2点を、太陽をM周してから結ぶ」軌道で、直行とは
+// まったく別物になる。遠い目的地へはそちらが安いことが多いが、周回数ごとに
+// 必要な最短飛行時間があり、それより短いと解が無い。
+// 選べる周回数だけを押せるようにして、無理なものは理由 (最短日数) を添える。
+const MAX_LEG_REVS = 3;
+
+export function renderLegControls() {
+  const revs_row = document.getElementById("leg_revs");
+  const branch_row = document.getElementById("leg_branch");
+  const readout = document.getElementById("leg_readout");
+  const badge = document.getElementById("leg_badge");
+  const i = State.selected_sequence;
+  if (!revs_row || i == -1 || !State.mission_sequence) return;
+
+  const mission = State.mission_sequence;
+  const info = mission.get_leg_info(i);
+  const wanted = mission.leg_revs(i);
+  const tof_days = mission.date(i + 1) - mission.date(i);
+
+  // 周回数ごとの最短飛行時間。押せるかどうかと、押せない理由に使う
+  const min_days = [0];
+  for (let m = 1; m <= MAX_LEG_REVS; m++) min_days.push(mission.leg_min_days(i, m));
+
+  revs_row.innerHTML = "";
+  for (let m = 0; m <= MAX_LEG_REVS; m++) {
+    const need = min_days[m];
+    const ok = m === 0 || (need != undefined && tof_days >= need);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = m === 0 ? "直行" : m + "周";
+    btn.className = "mode-btn" + (wanted === m ? " active" : "");
+    btn.disabled = !ok && wanted !== m;
+    btn.title =
+      m === 0
+        ? "太陽をまわらずに直接向かう"
+        : need == undefined
+        ? "この区間では" + m + "周する解が見つかりません"
+        : m + "周するには最短 " + need.toFixed(0) + " 日 (いまは " + tof_days.toFixed(0) + " 日)";
+    btn.onclick = () => {
+      mission.set_leg_revs(i, m);
+      refresh_after_swingby_change();
+    };
+    revs_row.appendChild(btn);
+  }
+
+  // 同じ周回数には解が2つある。「low path」のような内部の呼び名ではなく、
+  // その解で実際に飛ぶ軌道の大きさ (遠日点) をそのままボタンに出して選ばせる
+  branch_row.innerHTML = "";
+  if (wanted > 0) {
+    const preview = mission.leg_branch_preview(i);
+    const label = document.createElement("span");
+    label.className = "leg-branch-label";
+    label.textContent = "軌道の取り方";
+    branch_row.appendChild(label);
+    [true, false].forEach((low) => {
+      const ap = low ? preview.low : preview.high;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = ap == undefined ? "もう一方" : "遠日点 " + (ap / AU).toFixed(2) + " AU";
+      btn.className = "mode-btn" + (mission.leg_low_path(i) === low ? " active" : "");
+      btn.disabled = ap == undefined && mission.leg_low_path(i) !== low;
+      btn.title = "同じ周回数にある2つの解のうち、こちらの軌道で行く";
+      btn.onclick = () => {
+        mission.set_leg_low_path(i, low);
+        refresh_after_swingby_change();
+      };
+      branch_row.appendChild(btn);
+    });
+  }
+
+  const rows = [["飛行時間", tof_days.toFixed(1) + " 日"]];
+  if (info && info.aphelion != undefined) {
+    rows.push(["いまの軌道の遠日点", (info.aphelion / AU).toFixed(3) + " AU"]);
+  }
+  const next_need = min_days[Math.min(wanted + 1, MAX_LEG_REVS)];
+  if (next_need != undefined && wanted < MAX_LEG_REVS) {
+    rows.push([wanted + 1 + "周にするには", next_need.toFixed(0) + " 日以上"]);
+  }
+  readout.innerHTML = "";
+  readout.appendChild(makeReadout(rows));
+
+  if (info && info.fallback) {
+    // 指定した周回数では解けず、落として解いた
+    badge.textContent = info.revs + "周に変更";
+    badge.className = "orbit-badge caution";
+    badge.title = wanted + "周では飛行時間が足りないので " + info.revs + "周で解いています";
+  } else {
+    badge.textContent = wanted === 0 ? "直行" : wanted + "周";
+    badge.className = "orbit-badge" + (wanted > 0 ? " safe" : "");
+    badge.title = "";
+  }
 }
 
 // 小天体との出会い (フライバイ・ランデブー) の結果を出す。
