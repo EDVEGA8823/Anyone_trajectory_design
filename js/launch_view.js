@@ -71,7 +71,9 @@ export function setLaunchActiveHandle(which) {
  * @param {number[]} [params.planetVel] 天体の太陽中心速度 [km/s]
  */
 export function updateLaunchView({ planetNum, key, vinf, alpha = 0, delta = 0, planetPos, planetVel }) {
-  const ready = planetNum != undefined && planetNum != -1 && vinf != undefined && vinf > 0;
+  // V∞が0でも隠さない。手動モードでは0まで絞れてしまうので、消すと
+  // 矢印を引き伸ばして戻すことができなくなる (向きはα・δが持っている)
+  const ready = planetNum != undefined && planetNum != -1 && vinf != undefined && vinf >= 0;
 
   // 太陽は天体から見て -r_pla の向き。矢印では描かず、平行光の向きに反映する。
   let sunDir;

@@ -1042,6 +1042,17 @@ export class Mission {
   // 手動モードでは設定値そのものになるが、自動モードでもランベール解から
   // 逆算できるので、どちらのモードでも打上げビューに同じ形で表示できる。
   get_launch_angles() {
+    // 手動モードでは、この3つがそのまま設計変数。ベクトルから逆算せずに
+    // 持っている値を返す。V∞を0まで絞ると速度ベクトルからは向きが取り出せず、
+    // 逆算に頼ると打上げビューが消えて、引き伸ばして戻せなくなってしまう。
+    if (this.#m_count > 0 && this.#m_is_auto_mode[0] === false) {
+      return { vinf: this.#m_launch_vinf, alpha: this.#m_launch_alpha, delta: this.#m_launch_delta };
+    }
+    return this.#launch_angles_from_velocity();
+  }
+
+  // 出発速度から |V∞| と2つの角度を逆算する (自動モードの表示用)
+  #launch_angles_from_velocity() {
     const v_inf = this.get_launch_v_inf_vec();
     const r_pla = this.#m_planet_pos[0];
     const v_pla = this.#m_planet_vel[0];
@@ -1403,7 +1414,8 @@ export class Mission {
   // 自動モードでの出発速度から、手動モードの初期値(|V∞|と2つの角度)を取る。
   // 手動に切り替えた瞬間に軌道が飛ばないようにするため。
   #init_launch_manual_from_auto() {
-    const angles = this.get_launch_angles();
+    // まだ自動モードの状態で呼ばれるが、順番に頼らないよう逆算の側を直に使う
+    const angles = this.#launch_angles_from_velocity();
     if (angles == undefined) return;
     this.#m_launch_vinf = angles.vinf;
     this.#m_launch_delta = angles.delta;

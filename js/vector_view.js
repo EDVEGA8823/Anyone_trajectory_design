@@ -64,6 +64,10 @@ export function createVectorView(config) {
   const CANVAS_MAX = 460;
   const CANVAS_BORDER = 1;
   const HALF = cells / 2; // グリッドの半幅 [目盛]
+  // カメラを合わせる広さの上限 [目盛]。これを超えると矢印は画面からはみ出すが、
+  // 天体とグリッドが見える状態を保つほうが「桁違いに大きい」ことは伝わる
+  // (無理な日付では V∞ が数百km/sになることがある)
+  const MAX_FIT_EXTENT = HALF * 6;
 
   let renderer, scene, camera, controls, sunLight;
   let centerMesh, planeGrid, referenceArrow, referenceLine;
@@ -267,12 +271,16 @@ export function createVectorView(config) {
     const extent = Math.max(HALF, shown * 1.2);
     const head = Math.min(Math.max(shown * 0.16, 0.25), 0.8);
 
-    setArrow(vectorArrow, new THREE.Vector3(), tip, head, 0.2, 0.5);
+    // 大きさが0のときは矢印の向きが決まらない (setArrowが何もせずに戻るので、
+    // 描いたままにすると前の矢印が残る)。線は消して、ハンドルと補助線だけ残す
+    const has_vector = shown > 1e-6;
+    vectorArrow.visible = has_vector;
+    if (has_vector) setArrow(vectorArrow, new THREE.Vector3(), tip, head, 0.2, 0.5);
 
     setLinePoints(shadowLine, [new THREE.Vector3(), shadow]);
     setLinePoints(riseLine, [shadow, tip]);
     // 仰角がほぼ0のときは影と本体が重なるだけなので描かない
-    const tilted = Math.abs(delta) > 1e-3;
+    const tilted = Math.abs(delta) > 1e-3 && has_vector;
     shadowLine.visible = tilted;
     riseLine.visible = tilted;
 
@@ -315,9 +323,13 @@ export function createVectorView(config) {
 
     // 画角を取り直すのは表示するノードが変わったときだけ。
     // 大きさや角度を変えるたびにカメラが動くと操作しづらいので動かさない。
+    // 拡大縮小の「範囲」のほうは毎回引き直す (中身に対して古い範囲が残ると、
+    // 寄れない・引けないという行き止まりができる)。
     if (key_changed) {
       lastViewKey = key;
       fitCamera(extent);
+    } else {
+      updateZoomRange(extent);
     }
     invalidate();
   }
@@ -408,12 +420,31 @@ export function createVectorView(config) {
     if (handlers.onDelta) handlers.onDelta(Math.max(-lim, Math.min(lim, d)));
   }
 
+  // 広さ extent [目盛] が画角に収まるカメラ距離
+  function fitDistanceFor(extent) {
+    return (extent * 1.15) / Math.tan((camera.fov * Math.PI) / 180 / 2);
+  }
+
+  /**
+   * 拡大縮小の範囲を決める。
+   *
+   * 近づける側はグリッドの広さだけで決める。矢印の長さで決めてしまうと、
+   * 日付の組み合わせが無理でV∞が桁違いになったときに下限まで一緒に大きくなり、
+   * そのあと現実的な値に戻しても近づけないまま (天体もグリッドも点のまま) に
+   * なってしまう。グリッドの広さは動かないので、いつでも同じところまで寄れる。
+   */
+  function updateZoomRange(extent) {
+    if (!controls || !camera) return;
+    const grid = fitDistanceFor(HALF);
+    const now = fitDistanceFor(Math.min(extent, MAX_FIT_EXTENT));
+    controls.minDistance = grid * 0.15;
+    controls.maxDistance = Math.max(now, grid) * 6;
+  }
+
   // 全体が画角に収まる距離にカメラを置き直す
   function fitCamera(extent) {
-    const fitDist = (extent * 1.15) / Math.tan((camera.fov * Math.PI) / 180 / 2);
-    camera.position.setLength(fitDist);
-    controls.minDistance = fitDist * 0.15;
-    controls.maxDistance = fitDist * 6;
+    camera.position.setLength(fitDistanceFor(Math.min(extent, MAX_FIT_EXTENT)));
+    updateZoomRange(extent);
   }
 
   function setVisible(visible) {
