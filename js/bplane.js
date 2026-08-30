@@ -44,14 +44,21 @@ let drag = null; // view3d.js のドラッグ下回り
 let handlers = {}; // { onRp(rp[km]), onBeta(beta[rad]) }
 let geom = null; // 直近の描画スケール (ハンドルの配置とドラッグの換算に使う)
 
-// 黄道面グリッドは空間の基準なので、目の粗さを最初から最後まで変えない。
-// シーンの規模に合わせて張り直すと、rpのドラッグを離した瞬間などに
-// グリッドだけ急に伸び縮みして直感に反する。
-// 単位は天体半径 (このビューは天体半径=1で描いている)。
-// 広く敷きすぎると、縮尺が小さいときに遠くの線が地平線のように詰まって
-// 帯に見えてしまうので、広さも初期の見え方のまま固定する。
-const ECLIPTIC_CELL = 2.5; // 一目の大きさ
-const ECLIPTIC_CELLS = 20; // 一辺の目の数
+// 黄道面グリッドは「軌道の傾きを読むための背景」なので、どの縮尺でも画面を
+// 覆えていないと役に立たない。単位は天体半径 (このビューは天体半径=1で描く)。
+//
+// 以前は広さを固定 (天体半径25個ぶん) していた。地球のスイングバイなら十分だが、
+// 木星のように接近距離が天体半径の何十倍にもなると、中身のほうがはるかに大きく
+// なってグリッドは中央の小さな敷物にしか見えなくなる (近点20半径で、中身の
+// 12%しか覆えていなかった)。
+//
+// そこで、目の数は固定したまま目の大きさだけをきりの良い値から選び、中身の
+// ECLIPTIC_MARGIN 倍を覆うようにする。目の数が変わらないので、どの天体でも
+// 同じ粗さの背景になる。
+const ECLIPTIC_CELLS = 28; // 一辺の目の数 (見た目の粗さはこれで一定になる)
+const ECLIPTIC_MARGIN = 4; // 描いた中身の何倍まで敷くか (引いても端が見えないように)
+const ECLIPTIC_CELL_STEPS = [0.25, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+let eclipticCell = 0; // いま張ってある目の大きさ
 
 // キャンバスは操作パネルの空きに合わせて伸縮する正方形。大きさは
 // 下の resizeToDisplaySize が毎フレーム決める。
@@ -104,9 +111,9 @@ export function initBPlane() {
 
   // 黄道面 (天の北極方向に垂直な、太陽系全体の基準面)。ごく薄いグレーの
   // グリッドとして、B面や近点のスケールに比べてずっと広く描く。
-  // 大きさは固定で、向きだけ毎回のupdateBPlaneでnorthHatに合わせて更新する。
+  // 広さは fitEcliptic が決め、向きは毎回のupdateBPlaneでnorthHatに合わせる。
   eclipticPlane = new THREE.LineSegments(
-    squareGridGeometry((ECLIPTIC_CELL * ECLIPTIC_CELLS) / 2, ECLIPTIC_CELLS),
+    squareGridGeometry(1, ECLIPTIC_CELLS),
     new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.16, depthWrite: false })
   );
   eclipticPlane.name = "ecliptic";
@@ -600,7 +607,7 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
   if (haveFrame) {
     // 黄道面の法線(=天の北極方向)。太陽系全体で共通の固定ベクトル[0,0,1]。
     northHat = toDrawing([0, 0, 1], iHat, jHat, kHat);
-    // 黄道面は向きだけ合わせる (大きさは固定。ECLIPTIC_CELL の説明を参照)
+    // 黄道面は向きだけここで合わせる (広さは fitEcliptic が決める)
     eclipticPlane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), northHat);
     eclipticPlane.visible = true;
   } else {
@@ -609,15 +616,39 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
 
   applyOrientation(vHat, sHat, northHat);
 
+  const view_changed = key !== lastViewKey;
+  // 黄道面グリッドは中身より広く保つ (ノードを選び直したときは合わせ直す)
+  fitEcliptic(extent, view_changed);
+
   // 画角を取り直すのは表示するノードが変わったときだけ。
   // rpやβを変えるたびにカメラが動くと、見ている大きさの感覚が崩れて
   // 操作しづらいので、パラメータの変更ではズームを一切動かさない。
-  if (key !== lastViewKey) {
+  if (view_changed) {
     lastViewKey = key;
     fitCamera(extent);
   }
 
   invalidateBPlane();
+}
+
+/**
+ * 黄道面グリッドを、いまの縮尺に合わせて敷き直す。
+ * 目の数は変えず、目の大きさだけをきりの良い値から選ぶので、どの天体でも
+ * 同じ粗さの背景になる。
+ *
+ * rpを大きく動かすと中身だけがグリッドを追い越してしまうので、広げる側は
+ * 毎回追従する。逆に縮める側はノードを選び直したときだけにしてある
+ * (ドラッグの途中でグリッドが縮むと、目の大きさが変わってちらつくため)。
+ *
+ * @param {boolean} reset 縮める向きにも合わせ直すか
+ */
+function fitEcliptic(extent, reset) {
+  const want = (extent * ECLIPTIC_MARGIN * 2) / ECLIPTIC_CELLS;
+  const cell = ECLIPTIC_CELL_STEPS.find((s) => s >= want) ?? ECLIPTIC_CELL_STEPS[ECLIPTIC_CELL_STEPS.length - 1];
+  if (cell === eclipticCell || (!reset && cell < eclipticCell)) return;
+  eclipticCell = cell;
+  eclipticPlane.geometry.dispose();
+  eclipticPlane.geometry = squareGridGeometry((cell * ECLIPTIC_CELLS) / 2, ECLIPTIC_CELLS);
 }
 
 // 全体が画角に収まる距離にカメラを置き直す

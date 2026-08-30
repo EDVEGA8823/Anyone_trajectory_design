@@ -91,6 +91,7 @@ import {
 } from './small_bodies.js';
 import { bodyLabel } from './bodies.js';
 import { notify, setMissionName } from './topbar.js';
+import { confirmDialog } from './dialog.js';
 import {
   initEntryView,
   updateEntryView,
@@ -99,48 +100,71 @@ import {
   invalidateEntryView,
 } from './entry_view.js';
 
+// シーケンス一覧の1枚。ノードの数だけ縦に並ぶので、1行に収めて縦を詰める。
+//   [チェック] [1. 打上げ] [天体名] [日付] [ゴミ箱]
 export function add_sequence(id) {
+  const mission = State.mission_sequence;
+  const type = mission.type(id);
+
   let sequence_elem = document.createElement("div");
   sequence_elem.className = "sequence";
-  sequence_elem.title = id + 1 + ".  " + State.mission_sequence.type(id);
+  sequence_elem.title = id + 1 + ".  " + type;
   if (id == State.selected_sequence) sequence_elem.classList.add("selected");
-  
+
   if (State.checked.has(id)) sequence_elem.classList.add("checked");
   sequence_elem.appendChild(make_check_box(id));
 
+  // 連番と種別。以前は枠の上に飛び出す形だったが、行の中に入れて縦を詰める
+  const badge = document.createElement("span");
+  badge.className = "seq-badge";
+  badge.textContent = id + 1 + ". " + type;
+
   const span1 = document.createElement("span");
-  if (State.mission_sequence.type(id) === Sequence_Type.Maneuver) {
+  span1.className = "seq-name";
+  if (type === Sequence_Type.Maneuver) {
     // マヌーバ(DSM)は天体ではなく深宇宙の一点なので、天体名の代わりにΔVを出す。
     // 並びの最後の自動マヌーバだけが次の目的地へ繋ぐ役目を持つので、
     // 手で足した手動マヌーバとは見分けが付くようにする。
-    const dsm = State.mission_sequence.get_dsm_info(id);
-    if (!State.mission_sequence.is_auto_mode(id)) {
+    // (単位のm/sで速度変化と分かるので「ΔV」の文字は省いて幅を空ける)
+    const dsm = mission.get_dsm_info(id);
+    if (!mission.is_auto_mode(id)) {
       span1.textContent = "深宇宙 (手動)";
     } else {
-      span1.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+      span1.textContent = dsm ? (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
     }
-  } else if (State.mission_sequence.type(id) === Sequence_Type.End) {
+  } else if (type === Sequence_Type.End) {
     // 最終軌道も天体を持たないので、到達した軌道の種類を出す
-    span1.textContent = end_orbit_label(State.mission_sequence.get_end_info(id));
-  } else if (State.mission_sequence.planet_num(id) == -1) {
+    span1.textContent = end_orbit_label(mission.get_end_info(id));
+  } else if (mission.planet_num(id) == -1) {
     span1.textContent = "---";
   } else {
-    span1.textContent = State.planet_list[State.mission_sequence.planet_num(id)];
+    span1.textContent = State.planet_list[mission.planet_num(id)];
   }
+  // 幅が足りないと省略されるので、全体は吹き出しで読めるようにしておく
+  span1.title = span1.textContent;
 
   const span2 = document.createElement("span");
-  span2.textContent = JulianToDate(State.mission_sequence.date(id)).toLocaleDateString();
+  span2.className = "seq-date";
+  span2.textContent = JulianToDate(mission.date(id)).toLocaleDateString();
 
+  // 枠の中のどこを押してもそのシーケンスを選べるように、番号を持たせる
+  badge.id = id;
   span1.id = id;
   span2.id = id;
+  sequence_elem.appendChild(badge);
   sequence_elem.appendChild(span1);
   sequence_elem.appendChild(span2);
   sequence_elem.id = id;
 
   // 自動マヌーバ(DSM)は手動モードに付随して出し入れするノードなので個別には
   // 消せない (前のノードを自動に戻すと消える)。手で足した手動マヌーバは消せる。
-  if (State.mission_sequence.can_remove(id)) {
+  // 消せないノードでも場所は空けておく (行ごとに幅がずれないように)
+  if (mission.can_remove(id)) {
     sequence_elem.appendChild(make_delete_button(id));
+  } else {
+    const spacer = document.createElement("span");
+    spacer.className = "seq-delete-spacer";
+    sequence_elem.appendChild(spacer);
   }
 
   const sequence = document.getElementById("sequence");
@@ -203,13 +227,6 @@ export function renderBulkBar() {
   const actions = document.createElement("div");
   actions.className = "row bulk-actions";
 
-  const del = document.createElement("button");
-  del.type = "button";
-  del.className = "bulk-btn danger";
-  del.textContent = "まとめて削除";
-  del.onclick = () => delete_checked();
-  actions.appendChild(del);
-
   const clear = document.createElement("button");
   clear.type = "button";
   clear.className = "bulk-btn";
@@ -220,7 +237,35 @@ export function renderBulkBar() {
   };
   actions.appendChild(clear);
 
+  // 消すほうは右端に置き、アイコンだけにして「選択解除」と押し間違えにくくする
+  const del = document.createElement("button");
+  del.type = "button";
+  del.className = "bulk-btn bulk-btn--icon danger";
+  del.title = "選んだシーケンスをまとめて削除";
+  del.setAttribute("aria-label", "選んだシーケンスをまとめて削除");
+  del.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
+    ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M3 6h18M9 6V4h6v2M6 6l1 14h10l1-14M10 11v5M14 11v5"/></svg>';
+  del.onclick = () => confirm_delete_checked();
+  actions.appendChild(del);
+
   bar.appendChild(actions);
+}
+
+// まとめて削除は一度に何件も消えるので、消す前に確かめる
+async function confirm_delete_checked() {
+  const names = Array.from(State.checked)
+    .sort((a, b) => a - b)
+    .map((i) => i + 1 + ". " + State.mission_sequence.type(i));
+  const ok = await confirmDialog({
+    title: State.checked.size + "件のシーケンスを削除します",
+    message: names.join("\n") + "\n\nこの操作は取り消せません。",
+    ok: "削除",
+    cancel: "やめる",
+    danger: true,
+  });
+  if (ok) delete_checked();
 }
 
 // ノードの増減で添字がずれるので、構成が変わったときは選択を解除する
@@ -332,7 +377,28 @@ export function update_stat_bar() {
   dv_el.textContent = (dv * 1000).toFixed(0);
   paint(dv_el, mission.count > 0 ? level_low(dv * 1000, DV_LEVELS) : null);
 
+  update_duration();
   update_launch_mass(v, dv);
+}
+
+// 打上げから最後のシーケンスまでの日数。運用費も観測機会も期間で効くので、
+// ΔVと並べて「どれだけ長い旅になるか」が一目で分かるようにしておく。
+function update_duration() {
+  const el = document.getElementById("duration");
+  const box = document.getElementById("duration_box");
+  if (!el) return;
+
+  const mission = State.mission_sequence;
+  const n = mission.count;
+  const days = n >= 2 ? mission.date(n - 1) - mission.date(0) : undefined;
+  const ok = days != undefined && isFinite(days);
+  el.textContent = ok ? days.toFixed(0) : "-";
+  el.classList.toggle("as-text", !ok);
+  if (box) {
+    box.title = ok
+      ? "打上げから最後のシーケンスまでの日数 (およそ " + (days / 365.25).toFixed(1) + " 年)"
+      : "シーケンスが2つ以上あると出ます";
+  }
 }
 
 // 選んだロケットで打ち上げられる質量と、総ΔVを出し切った後に残る質量。
@@ -344,8 +410,7 @@ function update_launch_mass(vinf, dv_kms) {
 
   const mission = State.mission_sequence;
   const arrow = document.getElementById("mass_arrow");
-  const wet_box = document.getElementById("wet_box");
-  const dry_box = document.getElementById("dry_box");
+  const box = document.getElementById("mass_box");
   const show = (wet, dry, note, level, approx = false) => {
     wet_el.textContent = wet;
     dry_el.textContent = dry;
@@ -354,20 +419,18 @@ function update_launch_mass(vinf, dv_kms) {
     const numeric = /^[\d.]+$/.test(wet);
     wet_el.classList.toggle("as-text", !numeric);
     if (arrow) arrow.style.display = numeric ? "" : "none";
-    if (dry_box) dry_box.style.display = numeric ? "" : "none";
+    dry_el.style.display = numeric ? "" : "none";
     if (group) group.title = note;
     // 色は「燃料を使った後にどれだけ残るか」で決める。打上げ質量そのものは
     // 機種で桁が変わるので色を付けず、既定の文字色のままにする。
     paint(wet_el, numeric ? null : level, false);
     paint(dry_el, level, false);
-    // 段階の色は「残る質量」の枠だけに乗せる。打上げ質量の枠まで染めると
-    // 2つとも同じ色になって、どちらの話なのかが読めなくなる。
-    if (dry_box) {
-      LEVELS.forEach((l) => dry_box.classList.remove("lvl-" + l));
-      if (numeric && level) dry_box.classList.add("lvl-" + level);
+    if (box) {
+      LEVELS.forEach((l) => box.classList.remove("lvl-" + l));
+      if (level) box.classList.add("lvl-" + level);
+      // 表の値そのものでない (外挿・近似) ときは枠を破線にする
+      box.classList.toggle("approx", approx);
     }
-    // 表の値そのものでない (外挿・近似) ときは枠を破線にする
-    [wet_box, dry_box].forEach((b) => b && b.classList.toggle("approx", approx));
   };
 
   // 打上げ能力の表・式はいずれも地球からの打上げのもの

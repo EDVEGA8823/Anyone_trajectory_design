@@ -463,11 +463,12 @@ body.file-drop::after {
    Cards / panels
    ================================================================== */
 .sequence-panel-wrapper {
-  flex: 1 1 0;
+  /* 1枚を1行に収めているので、番号・種別・天体名・日付・ゴミ箱が並ぶだけの
+     幅は要る。操作パネル(2.2)との配分をここで決めている */
+  flex: 1.45 1 0;
   display: flex;
   max-width: 1000px;
-  /* B面プレビューを大きく取るため、シーケンス一覧側の下限を詰めている */
-  min-width: 180px;
+  min-width: 200px;
   flex-flow: column;
   gap: 10px;
 }
@@ -698,23 +699,25 @@ body.file-drop::after {
   color: var(--text-muted);
 }
 
-/* 数値ではなく「打ち上げ不可」などの文字を出すとき */
-.value_box .value.as-text {
+/* 数値ではなく「打ち上げ不可」などの文字を出すとき
+   (値そのものの場合と、質量のように .value の中の span の場合がある) */
+.value_box .value.as-text,
+.value_box .value .as-text {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
 }
 /* 「打ち上げ不可」のような文字にも段階の色を効かせる (後述の lvl-* より前に
    置くと色が上書きされてしまうので、ここでは色を指定し直さない) */
-.value_box .value.as-text.lvl-bad {
+.value_box .value.as-text.lvl-bad,
+.value_box .value .as-text.lvl-bad {
   color: var(--danger);
 }
 
 /* 打上げ質量 → 残る質量 をつなぐ矢印 */
-.stat-bar .mass-arrow {
-  flex: 0 0 auto;
+.mass-box .mass-arrow {
   color: var(--gray-400);
-  font-size: 13px;
+  font-weight: 500;
 }
 
 /* 値の大きさによる色分け。数字は常に色を付け、注意すべき側 (warn/bad) だけ
@@ -755,22 +758,22 @@ body.file-drop::after {
 /* 幅が足りなくなったら、意味が薄いものから順に落として1段を守る。
    (捨てる順: 補足の文字 → 打上げエネルギー → バーの見出し → 余白と文字の大きさ)
    閾値は「太陽系ビューの幅 ≒ ウィンドウの半分」から決めている */
-@media (max-width: 1580px) {
+@media (max-width: 1700px) {
   .stat-bar .value_box .title .sub {
     display: none;
   }
 }
-@media (max-width: 1450px) {
+@media (max-width: 1540px) {
   .stat-cell--sub {
     display: none;
   }
 }
-@media (max-width: 1260px) {
+@media (max-width: 1300px) {
   .stat-bar-title {
     display: none;
   }
 }
-@media (max-width: 1010px) {
+@media (max-width: 1060px) {
   .row.stat-bar {
     gap: 8px;
     padding: 6px 8px;
@@ -782,7 +785,14 @@ body.file-drop::after {
     width: 92px;
   }
 }
-@media (max-width: 950px) {
+/* ここまで詰めても入らない幅では、いちばん新しい項目 (期間) を落とす */
+@media (max-width: 940px) {
+  #duration_box {
+    display: none;
+  }
+}
+
+@media (max-width: 1060px) {
   .row.stat-bar {
     gap: 4px;
     padding: 6px;
@@ -816,6 +826,7 @@ body.file-drop::after {
 /* ==================================================================
    Mission sequence cards
    ================================================================== */
+/* カードの間の「+ シーケンスを追加」。数が増えるほど縦を食うので薄く低くする */
 .add_sequence {
   display: block;
   background: var(--surface-muted);
@@ -824,10 +835,10 @@ body.file-drop::after {
   text-align: center;
   color: var(--text-muted);
   user-select: none;
-  padding: 8px;
-  margin: 8px 0;
+  padding: 4px;
+  margin: 0 0 5px 0;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
@@ -837,21 +848,21 @@ body.file-drop::after {
   color: var(--accent-strong);
 }
 
+/* ノードの数だけ縦に並ぶので、1枚を1行に収めて縦を詰める。
+   [チェック] [1. 打上げ] [天体名] [日付] [ゴミ箱] */
 .sequence {
   display: flex;
   width: 100%;
-  justify-content: space-between;
   align-items: center;
-  /* 幅が足りないときは値の途中ではなく天体名/日付の間で折り返す */
-  flex-wrap: wrap;
-  gap: 4px 10px;
+  flex-wrap: nowrap;
+  gap: 6px;
   flex: 1;
   position: relative;
   box-sizing: border-box;
-  margin: 22px 0 6px 0;
+  margin: 0 0 5px 0;
   max-width: 500px;
   background: var(--surface);
-  padding: 16px 18px 14px 18px;
+  padding: 5px 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   font-weight: 600;
@@ -862,10 +873,35 @@ body.file-drop::after {
 .sequence span {
   white-space: nowrap;
 }
-/* 天体名はチェックボックスの隣に置く (幅が足りず日付が折り返しても左寄せのまま) */
-.sequence > span:first-of-type {
+/* 連番と種別。行の左寄りに置く */
+.seq-badge {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--gray-800);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.sequence.selected .seq-badge {
+  background: var(--accent);
+}
+/* 天体名。幅が足りないときはここだけ縮めて、日付は最後まで読めるようにする */
+.seq-name {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-align: left;
+  font-size: 12px;
+}
+.seq-date {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .sequence:hover {
   box-shadow: var(--shadow-sm);
@@ -937,64 +973,60 @@ body.file-drop::after {
   border-color: var(--gray-300);
 }
 .bulk-btn.danger:hover {
-  color: #d6543f;
-  border-color: #d6543f;
-  background: #fdeeeb;
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
 }
-
-/* タイトル部分（連番 + シーケンス種別） */
-.sequence::before {
-  position: absolute;
-  display: inline-block;
-  box-sizing: border-box;
-  line-height: 1;
-  background: var(--gray-800);
-  color: #ffffff;
-  content: attr(title);
-  font-weight: 600;
-  padding: 6px 12px;
-  top: -14px;
-  left: 14px;
-  border-radius: 999px;
-  font-size: 12px;
-}
-.sequence.selected::before {
-  background: var(--accent);
-}
-
-/* 削除ボタン。タイトルのバッジと同じ高さで枠の右上に出す。
-   普段は控えめに、ホバーで赤くして「消える」ことが分かるようにする */
-.seq-delete {
-  position: absolute;
-  top: -13px;
-  right: 12px;
+/* アイコンだけのボタン (まとめて削除)。丸のまま中身をアイコンに置き換える */
+.bulk-btn--icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 26px;
-  height: 26px;
+  height: 22px;
+  padding: 0;
+}
+.bulk-btn--icon svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+  pointer-events: none;
+}
+
+/* 削除ボタン。行の右端に置く。普段は薄く、枠に触れたときだけはっきり出す
+   (常に濃いと、並んだゴミ箱ばかりが目に付いてしまう) */
+.seq-delete,
+.seq-delete-spacer {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+}
+.seq-delete {
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: var(--surface);
+  background: transparent;
   color: var(--text-muted);
-  opacity: 0.7;
+  opacity: 0.25;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 .sequence:hover .seq-delete {
-  opacity: 1;
+  opacity: 0.8;
 }
 .seq-delete:hover {
   opacity: 1;
-  color: #d6543f;
-  border-color: #d6543f;
-  background: #fdeeeb;
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
 }
 .seq-delete svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   display: block;
   pointer-events: none; /* 押されたのはボタン、として扱う */
 }
