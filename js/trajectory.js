@@ -383,27 +383,44 @@ export function change_coordinate(v) {
 // 開いた軌道を描く範囲。近日点距離の何倍まで伸ばすか (これ以上は画面外)
 const OPEN_ORBIT_SPAN = 30;
 
-export function get_orbit(elements) {
+/**
+ * 軌道を折れ線で描くときの、点を取る離心近点角(双曲線なら双曲線近点角)の並び。
+ *
+ * 描画 (get_orbit) と、マウスで軌道を掴むときの当たり判定 (js/orbit_pick.js) で
+ * 同じ並びを使うために切り出してある。両者がずれると「線の上を指しているのに
+ * 掴めない」ことになるので、範囲と刻みは必ずここ1か所で決める。
+ *
+ * @param {number[]} elements 軌道要素 [a, e, i, W, w, E]
+ * @param {number} n 点の数
+ * @returns {Float64Array} 近点角の並び (楕円は0→2πの一周、双曲線は前後対称)
+ */
+export function orbit_anomalies(elements, n = 100) {
+  const a = elements[0];
   const e = elements[1];
-  let pos = [100];
+  const out = new Float64Array(n);
 
   if (e >= 1) {
     // 双曲線は一周しない。近点をはさんで、太陽から離れすぎない範囲だけ描く。
     // 中央ほど点が詰まるように取る (一番速く曲がるのが近点のまわり)
-    const a = elements[0];
     const q = a * (1 - e);
     const far = Math.max(q * OPEN_ORBIT_SPAN, 5 * AU);
     const H_max = Math.acosh(Math.max(1, (1 - far / a) / e));
-    for (let i = 0; i < 100; i++) {
-      const u = (2 * i) / 99 - 1;
-      const { r } = get_planets_pos_E(elements, H_max * u * Math.abs(u));
-      pos[i] = new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU);
+    for (let i = 0; i < n; i++) {
+      const u = (2 * i) / (n - 1) - 1;
+      out[i] = H_max * u * Math.abs(u);
     }
-    return pos;
+    return out;
   }
 
-  for (let i = 0; i < 100; i++) {
-    let { r, v } = get_planets_pos_E(elements, (2 * Math.PI * i) / 99);
+  for (let i = 0; i < n; i++) out[i] = (2 * Math.PI * i) / (n - 1);
+  return out;
+}
+
+export function get_orbit(elements) {
+  const anomalies = orbit_anomalies(elements, 100);
+  const pos = new Array(anomalies.length);
+  for (let i = 0; i < anomalies.length; i++) {
+    const { r } = get_planets_pos_E(elements, anomalies[i]);
     pos[i] = new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU);
   }
   return pos;

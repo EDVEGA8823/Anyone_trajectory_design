@@ -29,15 +29,12 @@ export const Sequence_Type = {
 
 export const State = {
   is_change_time: false,
-  is_change_maneuver: false, // マヌーバ(DSM)マーカーをドラッグ中か
-  maneuver_conic: null, // ドラッグ中のマヌーバが乗っている軌道 {par, epoch}
   raycaster: new THREE.Raycaster(),
   mouse: new THREE.Vector2(),
 
-  old_time: 0,
-  old_E: 0,
-  old_nu: 0,
-  rev_count: 1,
+  // ドラッグ中に掴んでいる軌道。掴んだ瞬間に固定して、離すまで使い回す。
+  // { elements, base_date, t_base, samples, E_prev } (js/orbit_pick.js)
+  drag_orbit: null,
 
   tmp_date: DateToJulian(new Date()),
   old_date: 0, // will be initialized to tmp_date next

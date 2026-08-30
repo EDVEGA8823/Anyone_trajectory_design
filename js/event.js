@@ -9,8 +9,9 @@ import {
   updateControlPanelDisplay,
   update_plot,
 } from './main.js';
-import { camera, controls, createLine } from './plot.js';
-import { get_W_hat, get_P_hat, get_peariod, kepler_equation, nu2E, MU_SUN } from './trajectory.js';
+import { camera, controls, createLine, getZScale } from './plot.js';
+import { kepler_equation, MU_SUN } from './trajectory.js';
+import { buildOrbitSamples, pickAnomaly } from './orbit_pick.js';
 import { JulianToDate, DateToJulian } from './trajectory.js';
 
 let date_time, sequence, confirm_time, cancel_time, v_inf, C3, total_dv, sequence_panel, plot_area, edit_target;
@@ -181,9 +182,8 @@ function set_edit_target(n) {
   const date = State.mission_sequence.date(n);
   const moved = State.tmp_date !== date;
   State.tmp_date = date;
-  State.old_time = State.tmp_date;
   // 表示時刻が動いたら惑星の軌道要素(State.planet_elements)を取り直す。
-  // ドラッグ開始時の離心近点角はこの時刻基準で読むため、ここで揃えておく。
+  // ドラッグで掴む軌道はこの時刻基準の要素から作るので、ここで揃えておく。
   if (moved) update_plot();
 }
 
@@ -257,7 +257,6 @@ export function Update_time() {
 
 function handleTouchStart(event) {
   if (event.touches.length != 1) return;
-  State.old_time = State.tmp_date;
   if (!setMouseFromEvent(event.touches[0].clientX, event.touches[0].clientY)) return;
   Select_planet();
 }
@@ -303,15 +302,13 @@ function endDrag() {
   if (controls) controls.enableRotate = true;
   const was_dragging = State.is_change_time;
   State.is_change_time = false;
-  State.is_change_maneuver = false;
-  State.maneuver_conic = null;
+  State.drag_orbit = null;
   // 選択中以外のノードも動かせるので、どのノードがいつになったかを一覧に反映する
   if (was_dragging) change_sequence();
 }
 
 function handleMouseDown(event) {
   if (event.button != 0) return;
-  State.old_time = State.tmp_date;
   if (!setMouseFromEvent(event.clientX, event.clientY)) return;
   Select_planet();
 }
@@ -366,15 +363,13 @@ function Select_planet() {
     // クリックすると時刻変更が発動せずカメラ回転にフォールスルーしてしまう
     // 不具合の原因だったため撤去し、惑星をクリックしたら常に時刻変更モードに
     // 入る元の挙動に戻す。
+    if (!set_drag_orbit(State.planet_elements[State.selected_planet], State.tmp_date)) {
+      State.is_selected = false;
+      return;
+    }
     PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "red";
-    State.old_E = State.planet_elements[State.selected_planet][5];
     if(controls) controls.enableRotate = false;
-    State.is_change_maneuver = false;
-    State.maneuver_conic = null;
     State.is_change_time = true;
-    get_nu();
-    State.old_nu = 0;
-    State.rev_count = 0;
     update_edit_target_label();
   }
 }
@@ -401,6 +396,33 @@ function Select_marker(v, x_0) {
   return false;
 }
 
+/**
+ * 掴んだ軌道をドラッグ中ずっと使う形にまとめる。
+ *
+ * 時刻は「近点通過からの時間の差」で決めるので、基準になる日付と、その日付での
+ * 近点通過からの時間をここで固定しておく。以降は画面上でカーソルに一番近い点の
+ * 近点角を拾い (js/orbit_pick.js)、その差を日付に直すだけでよい。
+ *
+ * @param {number[]} elements 軌道要素 [a, e, i, W, w, E]
+ * @param {number} base_date elements[5] に対応する日付 [JD]
+ */
+function set_drag_orbit(elements, base_date) {
+  const a = elements[0];
+  const e = elements[1];
+  const E_base = elements[5];
+  const t_base = kepler_equation(a, e, E_base, MU_SUN);
+  if (!isFinite(t_base)) return false;
+
+  State.drag_orbit = {
+    elements: elements.slice(),
+    base_date,
+    t_base,
+    samples: buildOrbitSamples(elements),
+    E_prev: E_base,
+  };
+  return true;
+}
+
 // ノードnの時刻ドラッグを開始する。
 // マヌーバ(DSM)は天体を持たないので入ってくる軌道に沿って、天体を持つノードは
 // その天体の公転軌道に沿って動かす。
@@ -413,15 +435,11 @@ function start_drag_node(n) {
     if (conic == null) return false;
 
     set_edit_target(n);
-    State.maneuver_conic = conic;
-    State.is_change_maneuver = true;
+    // 軌道要素の epoch は前のノードの日付 (そこでの近点角が par[5])
+    if (!set_drag_orbit(conic.par, conic.epoch)) return false;
     State.is_change_time = true;
     State.is_selected = true;
     if (controls) controls.enableRotate = false;
-
-    // 掴んだ瞬間の真近点角を基準にする(以降の相対移動で日付を決める)
-    State.old_nu = get_nu_on(conic.par);
-    State.rev_count = 0;
     update_edit_target_label();
     return true;
   }
@@ -429,112 +447,44 @@ function start_drag_node(n) {
   const p = mission.planet_num(n);
   if (p == -1 || !State.planet_elements[p]) return false;
 
+  // 先に表示時刻をそのノードに揃える (set_edit_target が planet_elements を
+  // 取り直すので、掴む軌道要素はそのあとで読む)
   set_edit_target(n);
+  if (!set_drag_orbit(State.planet_elements[p], State.tmp_date)) return false;
   State.selected_planet = p;
   if (PlotState.planet_speres[p]) {
     PlotState.planet_speres[p].children[0].element.style.color = "red";
   }
-  State.old_E = State.planet_elements[p][5];
-  State.is_change_maneuver = false;
-  State.maneuver_conic = null;
   State.is_change_time = true;
   State.is_selected = true;
   if (controls) controls.enableRotate = false;
-  get_nu();
-  State.old_nu = 0;
-  State.rev_count = 0;
   update_edit_target_label();
   return true;
 }
 
-// マヌーバを、入ってくる軌道に沿ってドラッグして日付を変える。
-function Drag_maneuver() {
-  const conic = State.maneuver_conic;
-  if (conic == null) return;
+/**
+ * 掴んでいる軌道の上を、カーソルに追わせて時刻を動かす。
+ *
+ * 画面上で軌道の線に一番近い点を探し (js/orbit_pick.js)、その点の近点角から
+ * 「近点通過からの時間」を出して、基準日との差を日付にする。
+ * 近点角は前フレームから連続になるよう選ぶので、何周したかを数える必要はない。
+ */
+function Dlag_planet() {
+  const drag = State.drag_orbit;
+  if (drag == null) return;
 
-  State.raycaster.setFromCamera(State.mouse, camera);
-  const par = conic.par;
-  const a = par[0];
-  const e = par[1];
-  const nu = get_nu_on(par);
+  const E = pickAnomaly(drag.samples, State.mouse, camera, getZScale(), drag.E_prev);
+  // 軌道が画面の外に出ているなど、掴める点が見つからないときは動かさない
+  if (E == null) return;
 
-  // 真近点角の折り返しをまたいだら周回数を増減する(惑星ドラッグと同じ考え方)
-  if (State.old_nu > 2 && nu < -2) State.rev_count += 1;
-  if (State.old_nu < -2 && nu > 2) State.rev_count -= 1;
-  State.old_nu = nu;
-
-  // 基準時刻(前ノードの日付)からの経過時間 = 近点通過からの時間の差
-  const E_epoch = par[5];
-  const t_epoch = kepler_equation(a, e, E_epoch, MU_SUN);
-  const t_now = kepler_equation(a, e, nu2E(nu, e), MU_SUN);
-  let dt = t_now - t_epoch;
-  if (e < 1) dt += get_peariod(a, MU_SUN) * State.rev_count;
+  const dt = kepler_equation(drag.elements[0], drag.elements[1], E, MU_SUN) - drag.t_base;
   if (!isFinite(dt)) return;
+  drag.E_prev = E;
 
   // 前後のノードの間に収めるクランプは Mission.set_date が行う
   // (Update_time が set_date を呼ぶので、ここでは希望日付を渡すだけでよい)
-  State.tmp_date = conic.epoch + dt / 86400;
+  State.tmp_date = drag.base_date + dt / 86400;
   Update_time();
   // マーカー位置と「マヌーバ未実行時の軌道」をドラッグに追従させる
   toggle_planet();
-}
-
-// 指定した軌道要素の軌道面上で、マウスレイが指す真近点角を求める。
-function get_nu_on(par) {
-  const vec1 = get_W_hat(par);
-  const W_hat = new THREE.Vector3(vec1[0], vec1[2], -vec1[1]);
-  const vec2 = get_P_hat(par);
-  const P_hat = new THREE.Vector3(vec2[0], vec2[2], -vec2[1]);
-
-  const u = State.raycaster.ray.direction.clone();
-  const x_0 = State.raycaster.ray.origin;
-  const p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
-  return -P_hat.angleTo(p) * -Math.sign(P_hat.cross(p).dot(W_hat));
-}
-
-function Dlag_planet() {
-  // マヌーバを掴んでいるときはそちらを動かす
-  if (State.is_change_maneuver) {
-    Drag_maneuver();
-    return;
-  }
-
-  State.raycaster.setFromCamera(State.mouse, camera);
-  let nu = get_nu();
-
-  if (State.old_nu > 2 && nu < -2) State.rev_count += 1;
-  if (State.old_nu < -2 && nu > 2) State.rev_count -= 1;
-  
-  let a = State.planet_elements[State.selected_planet][0];
-  let e = State.planet_elements[State.selected_planet][1];
-
-  let old_dE = State.old_E - Math.round(State.old_E / 2 / Math.PI) * 2 * Math.PI;
-
-  let pre_time = State.tmp_date;
-  State.tmp_date = State.old_time + (kepler_equation(a, e, nu2E(nu, e), MU_SUN) - kepler_equation(a, e, old_dE, MU_SUN) + get_peariod(a, MU_SUN) * State.rev_count) / 86400;
-  
-  if (State.tmp_date - pre_time > get_peariod(a, MU_SUN) / 86400) {
-    State.tmp_date = State.tmp_date - get_peariod(a, MU_SUN) / 86400;
-  }
-  if (pre_time - State.tmp_date > get_peariod(a, MU_SUN) / 86400) {
-    State.tmp_date = State.tmp_date + get_peariod(a, MU_SUN) / 86400;
-  }
-  
-  Update_time();
-  // マーカー(前後ノードを含む探査機位置)をドラッグに追従させる
-  toggle_planet();
-  State.old_nu = nu;
-}
-
-function get_nu() {
-  let vec1 = get_W_hat(State.planet_elements[State.selected_planet]);
-  let W_hat = new THREE.Vector3(vec1[0], vec1[2], -vec1[1]);
-  
-  let vec2 = get_P_hat(State.planet_elements[State.selected_planet]);
-  let P_hat = new THREE.Vector3(vec2[0], vec2[2], -vec2[1]);
-
-  let u = State.raycaster.ray.direction;
-  let x_0 = State.raycaster.ray.origin;
-  let p = new THREE.Vector3().copy(x_0).sub(u.multiplyScalar(W_hat.dot(x_0) / W_hat.dot(u)));
-  return -P_hat.angleTo(p) * -Math.sign(P_hat.cross(p).dot(W_hat));
 }
