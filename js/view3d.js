@@ -290,21 +290,41 @@ export function updateSunCompass(el, dir, camera, renderer) {
   el.classList.toggle("edge-on", inPlane < 0.2);
 }
 
-/** マウスで掴むハンドル (大きさは scaleHandleToScreen が毎フレーム決める) */
+/**
+ * マウスで掴むハンドル (大きさは scaleHandleToScreen が毎フレーム決める)。
+ * 球だけだと天体位置などの据え置きの印と見分けが付かず、掴めることが
+ * 伝わりにくいので、掴める範囲 (HANDLE_HIT_PX) をなぞる輪を薄く添える。
+ * 輪はビルボード (常にカメラの方を向く) で、それも scaleHandleToScreen が
+ * 毎フレーム合わせる。
+ */
 export function makeHandle(color) {
-  const handle = new THREE.Mesh(
+  const group = new THREE.Group();
+
+  const ringOuter = HANDLE_HIT_PX / HANDLE_PX;
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(ringOuter * 0.7, ringOuter, 32),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+  );
+  ring.material.depthTest = false;
+  ring.renderOrder = 3;
+  group.add(ring);
+
+  const ball = new THREE.Mesh(
     new THREE.SphereGeometry(1, 20, 20),
     new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
   );
-  handle.material.depthTest = false;
-  handle.renderOrder = 4;
-  handle.visible = false;
-  return handle;
+  ball.material.depthTest = false;
+  ball.renderOrder = 4;
+  group.add(ball);
+
+  group.visible = false;
+  return group;
 }
 
 // ハンドルは掴む対象なので、遠近やズームによらず画面上の大きさを一定に保つ。
 // 透視投影では見かけの大きさが (世界での大きさ / カメラからの距離) に比例するので、
 // 距離に比例させた大きさを毎フレーム与える。
+const _handleParentInv = new THREE.Quaternion();
 export function scaleHandleToScreen(handle, camera, renderer) {
   if (!handle || !handle.visible || !camera || !renderer) return;
   const h = renderer.domElement.clientHeight;
@@ -312,6 +332,16 @@ export function scaleHandleToScreen(handle, camera, renderer) {
   const dist = camera.position.distanceTo(handle.getWorldPosition(new THREE.Vector3()));
   const halfFov = Math.tan((camera.fov * Math.PI) / 180 / 2);
   handle.scale.setScalar((HANDLE_PX * 2 * dist * halfFov) / h);
+
+  // 輪をビルボードする。ハンドルは向きを持つ親 (B面ビューなどのroot) の下に
+  // ぶら下がることがあるので、その回転を打ち消してからカメラの向きを与える。
+  // 球は向きに依らず同じ見た目なので、一緒に回っても問題ない
+  if (handle.parent) {
+    _handleParentInv.copy(handle.parent.quaternion).invert();
+    handle.quaternion.copy(_handleParentInv).multiply(camera.quaternion);
+  } else {
+    handle.quaternion.copy(camera.quaternion);
+  }
 }
 
 /**

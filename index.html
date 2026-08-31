@@ -116,7 +116,16 @@
       </div>
       <div class="right_panel column">
         <div class="control-panel bold_box">
-          <div class="panel-head">操作パネル</div>
+          <div class="panel-head">
+            <span>操作パネル</span>
+            <button type="button" class="panel-close alway" id="deselect_sequence" title="選択を外す (一覧の何もないところを押しても外せる)"
+              aria-label="選択を外す">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
           <div class="row box alway">
             <div class="column">
               <label>シーケンス</label>
@@ -191,8 +200,10 @@
               <div class="leg-btns" id="leg_revs"></div>
             </div>
             <div class="column fold-body">
-              <div class="row leg-branch" id="leg_branch"></div>
-              <div class="orbit-readout" id="leg_readout"></div>
+              <div class="row leg-body">
+                <div class="column leg-branch" id="leg_branch"></div>
+                <div class="orbit-readout" id="leg_readout"></div>
+              </div>
             </div>
           </div>
 

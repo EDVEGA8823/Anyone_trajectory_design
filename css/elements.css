@@ -487,11 +487,35 @@ body.file-drop::after {
   top: 0;
   z-index: 3;
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 0 calc(-1 * var(--panel-pad));
   padding: 9px var(--panel-pad);
   background: var(--surface);
   font-size: 12px;
   font-weight: 700;
+  color: var(--text);
+}
+/* 選択解除ボタン。押せることが伝わるよう普段からうっすら枠を見せておく */
+.panel-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.panel-close:hover {
+  background: var(--surface-muted);
+  border-color: var(--gray-300);
   color: var(--text);
 }
 /* 仕切り線は枠の端まで伸ばさず、中身の左右に揃える。
@@ -1609,17 +1633,20 @@ input:focus {
   background: var(--danger-soft);
 }
 
-/* rp / β の欄。クリックするとB面ビューにマウス用のハンドルが出る */
+/* rp / β の欄。クリックすると3Dビューにマウス用のハンドルが出る。
+   その場で押せると伝わるよう、常時うっすら枠を見せ、動かし方の矢印も
+   薄く出しておく (選択中はどちらも濃くなる) */
 .param-field {
   gap: 2px;
   padding: 4px 6px;
   margin: 0 -6px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .param-field:hover {
   background: var(--surface-muted);
+  border-color: var(--gray-300);
 }
 .param-field.active {
   border-color: var(--accent);
@@ -1628,32 +1655,37 @@ input:focus {
 .param-field.active label {
   color: var(--accent-strong);
 }
-/* ハンドルで「どう動かせるか」をラベルの脇に示す */
-.param-field.active label::after {
+/* ハンドルで「どう動かせるか」をラベルの脇に示す。選択前は薄く出して
+   「ここは掴める」ことに気付きやすくし、選択中ははっきり見せる */
+.param-field label::after {
   margin-left: 4px;
   font-weight: 700;
+  opacity: 0.55; /* 選択中は下の .active label で文字色ごと濃くなる */
 }
-.param-field--rp.active label::after {
+.param-field.active label::after {
+  opacity: 1;
+}
+.param-field--rp label::after {
   content: "\2195"; /* 上下矢印 = 半径方向に伸び縮み */
 }
-.param-field--beta.active label::after {
+.param-field--beta label::after {
   content: "\21BB"; /* 回転矢印 = B面内で回す */
 }
-.param-field--vinf.active label::after {
+.param-field--vinf label::after {
   content: "\2195"; /* 上下矢印 = V∞の向きに伸び縮み */
 }
-.param-field--alpha.active label::after,
-.param-field--delta.active label::after {
+.param-field--alpha label::after,
+.param-field--delta label::after {
   content: "\21BB"; /* 回転矢印 = 向きを回す */
 }
-.param-field--orbit_rp.active label::after,
-.param-field--orbit_ra.active label::after {
+.param-field--orbit_rp label::after,
+.param-field--orbit_ra label::after {
   content: "\2195"; /* 上下矢印 = 近点/遠点の向きに伸び縮み */
 }
-.param-field--gamma.active label::after {
+.param-field--gamma label::after {
   content: "\21BB"; /* 回転矢印 = 突入点まわりに入射方向を回す */
 }
-.param-field--dv.active label::after {
+.param-field--dv label::after {
   content: "\2195"; /* 上下矢印 = ΔVの向きに伸び縮み */
 }
 /* rp や β を大文字化すると別の記号に見えてしまうのでそのまま出す */
@@ -2417,8 +2449,7 @@ button {
 /* 区間 (レグ) の周回数を選ぶ行。
    見出しを左、ボタンを右に寄せて「打上げ (脱出速度)」などの行と同じ並びに揃える。
    .row の space-between のままだとボタンが横いっぱいに散ってスカスカに見える */
-.leg-head,
-.leg-branch {
+.leg-head {
   gap: 8px;
   flex-wrap: nowrap;
 }
@@ -2429,15 +2460,35 @@ button {
 .leg-btns {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 4px;
   flex: 0 1 auto;
   flex-wrap: wrap;
+}
+.leg-head .leg-btns {
+  justify-content: flex-end;
 }
 .leg-branch-label {
   color: var(--text-muted);
   font-size: 11px;
   flex: 0 0 auto;
+}
+
+/* 「軌道の取り方」と読み取りを1行に。左は見出し+ボタンを縦に積み、
+   右にその他の読み取りを並べる (幅が余っているぶんを使って詰める) */
+.leg-body {
+  align-items: flex-start;
+  gap: 16px;
+}
+.leg-branch {
+  flex: 0 0 auto;
+  gap: 4px;
+}
+.leg-branch:empty {
+  display: none;
+}
+.leg-body .orbit-readout {
+  flex: 1 1 auto;
+  padding-top: 1px; /* 「軌道の取り方」の文字と高さを揃える */
 }
 #leg_revs .mode-btn:disabled {
   color: var(--gray-400);

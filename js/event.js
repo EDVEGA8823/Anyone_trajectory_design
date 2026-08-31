@@ -64,6 +64,9 @@ export function initEvents() {
 
   sequence_panel.addEventListener("click", handleSequencePanelClick);
 
+  const deselect_btn = document.getElementById("deselect_sequence");
+  if (deselect_btn) deselect_btn.addEventListener("click", deselectSequence);
+
   date_time.addEventListener("change", function () {
     State.tmp_date = DateToJulian(new Date(date_time.value));
     Update_time();
@@ -97,6 +100,13 @@ function handleSequencePanelClick(event) {
   State.selected_sequence = card ? Number(card.id) : -1;
 
   if (isNaN(State.selected_sequence)) State.selected_sequence = -1;
+  updateAfterAdd();
+}
+
+// 操作パネルの閉じるボタン。一覧の何もないところを押すのと同じ選択解除だが、
+// 「押せば選択が外れる」ことがそちらより分かりやすい入口として置いている。
+export function deselectSequence() {
+  State.selected_sequence = -1;
   updateAfterAdd();
 }
 
