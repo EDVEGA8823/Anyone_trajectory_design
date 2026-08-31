@@ -116,9 +116,14 @@ function longitude(num, date) {
  * 実際の最適解は離心率と軌道傾斜のぶんだけずれるが、図に窓を収めるには十分な精度。
  * 現在の設定日が窓から離れている場合は、印が図から消えないように範囲を広げる
  * (ただし際限なく広げると肝心の谷が潰れるので、基準の2倍まで)。
+ *
+ * 再出発 (dep_min_date が入っているとき) は、見積もった窓がまるごと「まだ着いて
+ * いない日付」に落ちることがある (ホーマン遷移の見積もりは天体に留まっている
+ * 期間を知らないため)。その場合は窓の形はそのまま、出発・到着の両方をまとめて
+ * 後ろへずらし、到着日より前が見えなくなるようにする。
  */
 function auto_view(info) {
-  const { dep_num, arr_num, dep_date, arr_date } = info;
+  const { dep_num, arr_num, dep_date, arr_date, dep_min_date } = info;
   const a1 = get_planet_elements(dep_date, dep_num)[0];
   const a2 = get_planet_elements(dep_date, arr_num)[0];
 
@@ -151,12 +156,20 @@ function auto_view(info) {
   const dep_span = clamp(Math.max(dep_base, Math.min(Math.abs(dep_date - dep_c) + 30, dep_base * 2)), 20, 6000);
   const arr_span = clamp(Math.max(arr_base, Math.min(Math.abs(arr_date - arr_c) + 30, arr_base * 2)), 20, 6000);
 
-  return {
-    dep0: dep_c - dep_span,
-    dep1: dep_c + dep_span,
-    arr0: arr_c - arr_span,
-    arr1: arr_c + arr_span,
-  };
+  let dep0 = dep_c - dep_span;
+  let dep1 = dep_c + dep_span;
+  let arr0 = arr_c - arr_span;
+  let arr1 = arr_c + arr_span;
+
+  if (dep_min_date != undefined && dep1 < dep_min_date) {
+    const shift = dep_min_date - dep0; // 窓の左端が到着日に来るところまで、両軸まとめてずらす
+    dep0 += shift;
+    dep1 += shift;
+    arr0 += shift;
+    arr1 += shift;
+  }
+
+  return { dep0, dep1, arr0, arr1 };
 }
 
 /**
@@ -220,6 +233,8 @@ async function compute_grid(spec, on_progress, generation) {
     for (let j = 0; j < cols; j++) {
       const tof = (arr_t[k] - dep_t[j]) * DAY;
       if (tof < MIN_TOF_DAYS * DAY) continue; // 到着が出発より前 / 短すぎる区間
+      // 再出発 (dep_min_date あり): 実際に着いた日より前には出発できない
+      if (spec.dep_min_date != undefined && dep_t[j] < spec.dep_min_date) continue;
 
       r1[0] = dep_r[j * 3];
       r1[1] = dep_r[j * 3 + 1];
@@ -573,6 +588,7 @@ function draw() {
     draw_rev_borders(ctx, rect);
     draw_colorbar(ctx, rect, range);
   }
+  draw_dep_min(ctx, rect);
   draw_tof_lines(ctx, rect);
   draw_axes(ctx, rect);
   draw_markers(ctx, rect, range);
@@ -738,6 +754,58 @@ function draw_rev_borders(ctx, rect) {
     }
   }
   ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * 再出発の図だけに出る、出発日の下限 (=その天体に実際に着いた日) の境界。
+ * 左側 (それより前) は物理的に選べないので、斜線で塗って一目で区別できるように
+ * する ("解が無い" とは違う理由であることを、灰色の無効域と見分けさせるため)。
+ */
+function draw_dep_min(ctx, rect) {
+  if (!target || target.dep_min_date == undefined || !view) return;
+  const t = target.dep_min_date;
+  if (t <= view.dep0) return; // 窓がまるごと到着後 (境界は窓の外・左)
+
+  const xAt = to_px(rect, Math.min(t, view.dep1), view.arr0).x;
+  const x = clamp(xAt, rect.x, rect.x + rect.w);
+  const w = x - rect.x;
+  if (w <= 0) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(rect.x, rect.y, w, rect.h);
+  ctx.clip();
+  ctx.strokeStyle = "rgba(23,24,26,0.14)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const step = 7;
+  for (let sx = rect.x - rect.h; sx < x; sx += step) {
+    ctx.moveTo(sx, rect.y + rect.h);
+    ctx.lineTo(sx + rect.h, rect.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  if (t > view.dep1) return; // 境界そのものは窓の外 (右)。斜線だけで済ませる
+
+  ctx.save();
+  ctx.strokeStyle = "#b5341f";
+  ctx.setLineDash([5, 3]);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(x, rect.y);
+  ctx.lineTo(x, rect.y + rect.h);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = "10px " + FONT;
+  ctx.fillStyle = "#b5341f";
+  const near_right = x > rect.x + rect.w - 70;
+  ctx.textAlign = near_right ? "right" : "left";
+  ctx.textBaseline = "top";
+  ctx.fillText("到着 " + fmt_date(t, true), x + (near_right ? -4 : 4), rect.y + 3);
   ctx.restore();
 }
 
@@ -1260,6 +1328,10 @@ function hovered(e) {
   if (p.x < rect.x || p.x > rect.x + rect.w || p.y < rect.y || p.y > rect.y + rect.h) return null;
 
   const d = to_date(rect, p.x, p.y);
+  // 再出発: 実際に着いた日より前は物理的にありえないので、解かずに弾く
+  if (target.dep_min_date != undefined && d.dep < target.dep_min_date) {
+    return { dep: d.dep, arr: d.arr, before_arrival: true, c3: NaN, vdep: NaN, varr: NaN, rev: 0, low: true };
+  }
   const s = solve_point(target.dep_num, target.arr_num, d.dep, d.arr);
   return {
     dep: d.dep,
@@ -1277,6 +1349,8 @@ function on_move(e) {
   hover_cell = c;
   if (!c) {
     hover_el.textContent = HOVER_HINT;
+  } else if (c.before_arrival) {
+    hover_el.textContent = fmt_date(c.dep) + " : まだ到着していません (到着 " + fmt_date(target.dep_min_date) + ")";
   } else if (!(c.c3 === c.c3)) {
     hover_el.textContent = fmt_date(c.dep) + " → " + fmt_date(c.arr) + " : 解なし";
   } else {
@@ -1543,7 +1617,8 @@ function update_status(extra) {
     grid.rows +
     " 点中 " +
     (grid.solved ?? 0) +
-    " 点で解あり ・ ◇最小 / 破線が現在 / 灰色は高すぎる領域";
+    " 点で解あり ・ ◇最小 / 破線が現在 / 灰色は高すぎる領域" +
+    (target && target.dep_min_date != undefined ? " / 斜線は到着前でまだ出発できない領域" : "");
 }
 
 /* ==================================================================
@@ -1568,6 +1643,7 @@ async function recompute() {
     arr1: view.arr1,
     cols: n,
     rows: n,
+    dep_min_date: target.dep_min_date,
     // 周回数を固定しているなら、その分だけ解けばよい
     combos: rev_mode === "auto" ? COMBOS : COMBOS.filter((c) => c.rev === rev_mode),
   };

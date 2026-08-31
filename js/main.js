@@ -1109,12 +1109,17 @@ export function updateLaunchViewFromMission() {
   });
 }
 
-// ノードiがポークチョップ図を描けるレグ (自動打上げ + 次に天体がある) かを調べ、
-// 描けるなら図に渡す情報を返す。描けなければ null。
+// ノードiがポークチョップ図を描けるレグ (自動で次の天体までランベール解いている
+// レグ: 打上げ、またはランデブー/周回軌道投入からの再出発) かを調べ、描けるなら
+// 図に渡す情報を返す。描けなければ null。
 function porkchop_target(i) {
   const mission = State.mission_sequence;
   if (!mission || i < 0 || i + 1 >= mission.count) return null;
-  if (mission.type(i) !== Sequence_Type.Launch || !mission.is_auto_mode(i)) return null;
+  const type = mission.type(i);
+  // 再出発 (ランデブー/周回軌道投入のあと) も打上げと同じ流儀 (次の天体までを
+  // ランベールで解く自動モード) なので、同じ図を使い回せる
+  const is_redeparture = type === Sequence_Type.Departure || type === Sequence_Type.Escape;
+  if ((type !== Sequence_Type.Launch && !is_redeparture) || !mission.is_auto_mode(i)) return null;
 
   const dep_num = mission.planet_num(i);
   const arr_num = mission.planet_num(i + 1);
@@ -1124,15 +1129,38 @@ function porkchop_target(i) {
   const arr_date = mission.date(i + 1);
   if (dep_date == undefined || arr_date == undefined) return null;
 
+  // 再出発は、実際にその天体へ着いた日 (直前のランデブー/周回軌道投入ノードの
+  // 日付) より前には出発できない。図の側で選べないようにするための下限。
+  const dep_min_date = is_redeparture && i > 0 ? mission.date(i - 1) : undefined;
+
   return {
     index: i,
     dep_num,
     arr_num,
     dep_date,
     arr_date,
+    dep_min_date,
     dep_name: State.planet_list[dep_num],
     arr_name: State.planet_list[arr_num],
   };
+}
+
+// 打上げ・再出発の「ポークチョップ図を開く」ボタン。対象レグが描けない状態
+// (次のノードに天体がまだ無いなど) では無効にして理由をツールチップに出す。
+function makePorkchopButton(i) {
+  const pc = porkchop_target(i);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "pc-open";
+  btn.textContent = "ポークチョップ図を開く";
+  if (pc) {
+    btn.title = "出発日と到着日を総当たりで解いて、打上げエネルギーの地図を出す";
+    btn.onclick = () => openPorkchop(pc);
+  } else {
+    btn.disabled = true;
+    btn.title = "次のノードに天体が決まると開けます";
+  }
+  return btn;
 }
 
 /**
@@ -1251,19 +1279,7 @@ export function renderLaunchControls() {
 
     // 自動モードは「出発日と到着日を決めればV∞が決まる」ので、その2つを総当たりした
     // 地図 (ポークチョップ図) を出せる。手動モードでは日付から一意に決まらないので出さない。
-    const pc = porkchop_target(i);
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "pc-open";
-    btn.textContent = "ポークチョップ図を開く";
-    if (pc) {
-      btn.title = "出発日と到着日を総当たりで解いて、打上げエネルギーの地図を出す";
-      btn.onclick = () => openPorkchop(pc);
-    } else {
-      btn.disabled = true;
-      btn.title = "次のノードに天体が決まると開けます";
-    }
-    container.appendChild(btn);
+    container.appendChild(makePorkchopButton(i));
     return;
   }
 
@@ -1534,6 +1550,12 @@ export function renderEncounterControls() {
   const type = mission.type(i);
   title.textContent = type;
   box.innerHTML = "";
+
+  // 再出発の先は打上げと同じ流儀 (次の天体までを自動でランベール解く) なので、
+  // 同じポークチョップ図が使える。フライバイ・ランデブーには次のレグという概念が無い。
+  if (type === Sequence_Type.Departure) {
+    box.appendChild(makePorkchopButton(i));
+  }
 
   if (info == null) {
     badge.textContent = "";
@@ -1808,6 +1830,12 @@ export function renderOrbitControls() {
 
   inputs.innerHTML = "";
   readout.innerHTML = "";
+
+  // 軌道脱出(再出発)の先は打上げと同じ流儀 (次の天体までを自動でランベール解く)
+  // なので、同じポークチョップ図が使える。周回軌道投入そのものには次のレグが無い。
+  if (!is_insert) {
+    readout.appendChild(makePorkchopButton(i));
+  }
 
   if (lim == undefined) {
     // 縦を使わないよう、説明は読み値の枠に1行だけ出す
