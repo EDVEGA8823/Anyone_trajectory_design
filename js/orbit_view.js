@@ -124,8 +124,9 @@ export function initOrbitView() {
   orbitLine.name = "parking_orbit";
   root.add(orbitLine);
 
-  // 進行方向の矢じるし。双曲線はグリッドの端まで引くので、途中に何個か置く
-  travelArrowhead = makeArrowTrail(0x5b6472, 2);
+  // 進行方向の矢じるし。双曲線はグリッドの端まで引くので、先端ではなく途中に
+  // 置く。ここに描くのは入る側か出る側の片方だけなので1つで足りる
+  travelArrowhead = makeArrowTrail(0x5b6472, 1);
   root.add(travelArrowhead);
 
   rpLine = makeLine([new THREE.Vector3()], COLOR_RP, 1);
@@ -393,12 +394,11 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   // 近点にはΔVの矢印が出るので、そこは避ける (投入なら末尾、脱出なら先頭が近点)。
   if (hyperPts && hyperPts.length > 6) {
     travelArrowhead.visible = true;
-    // 画角の中ほどに2つ並べる。距離は画面の中心 (楕円の中心) ではなく天体から
-    // 測る。双曲線は天体から遠ざかる一方なので、1つの距離で1か所しか横切らず、
-    // 狙った2か所に1つずつ収まる。楕円の中心から測ると、離心率が大きいときに
-    // 双曲線が中心の近くを通り抜けてしまい、同じ距離を2回横切って2つとも
-    // そこへ寄ってしまう (遠点20半径から先で実際にそうなっていた)。
-    setArrowTrailPath(travelArrowhead, hyperPts, [0.35, 0.6]);
+    // 画角の中ほどに置く。距離は画面の中心 (楕円の中心) ではなく天体から測る。
+    // 双曲線は天体から遠ざかる一方なので、1つの距離で1か所しか横切らない。
+    // 楕円の中心から測ると、離心率が大きいときに双曲線が中心の近くを通り抜けて
+    // しまい、同じ距離を2回横切って変なところに寄ってしまう。
+    setArrowTrailPath(travelArrowhead, hyperPts, [0.45]);
   } else {
     travelArrowhead.visible = false;
   }
