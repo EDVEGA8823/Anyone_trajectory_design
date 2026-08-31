@@ -185,6 +185,49 @@ export function setArrowTrail(group, points, at) {
 }
 
 /**
+ * 折れ線が「中心からの距離が radius の球」を横切るところに矢じるしを置く。
+ *
+ * 弧の長さの割合で置くと、線を伸ばした拍子に矢じるしが画角の外へ出てしまう。
+ * 距離で置けば、画角に対していつも同じあたり (中心と端の中間) に来る。
+ * 双曲線や公転軌道のように行きと帰りがある線では、1つの半径で2か所を横切る
+ * ので、それぞれに1つずつ置かれる。
+ *
+ * @param {THREE.Group} group makeArrowTrail の戻り値
+ * @param {THREE.Vector3[]} points 折れ線 (進行方向の順)
+ * @param {number[]} radii 置きたい距離 (近い順に埋めていく)
+ * @param {THREE.Vector3} [center] 距離を測る中心 (既定は原点)
+ */
+export function setArrowTrailOnCircles(group, points, radii, center) {
+  const cones = group.children;
+  for (const c of cones) c.visible = false;
+  if (!points || points.length < 2 || cones.length === 0) return;
+
+  const c0 = center || _origin;
+  const dist = points.map((p) => p.distanceTo(c0));
+  const up = new THREE.Vector3(0, 1, 0);
+  let k = 0;
+
+  for (const r of radii) {
+    for (let i = 1; i < points.length && k < cones.length; i++) {
+      const a = dist[i - 1] - r;
+      const b = dist[i] - r;
+      if ((a <= 0 && b <= 0) || (a > 0 && b > 0)) continue; // またいでいない
+      const t = a === b ? 0 : a / (a - b);
+      const dir = new THREE.Vector3().subVectors(points[i], points[i - 1]);
+      if (dir.lengthSq() < 1e-18) continue;
+      cones[k].position.lerpVectors(points[i - 1], points[i], t);
+      cones[k].quaternion.setFromUnitVectors(up, dir.normalize());
+      cones[k].visible = true;
+      k++;
+    }
+  }
+  // どの距離も横切らない (線が短すぎる/遠すぎる) ときは、弧の長さで置き直す
+  if (k === 0) setArrowTrail(group, points, [0.3, 0.7]);
+}
+
+const _origin = new THREE.Vector3();
+
+/**
  * 矢じるしの大きさを、画面上で一定に保つ (ハンドルと同じ考え方)。
  * 線は画角の外まで伸びていて、カメラも自由に引けるので、世界座標での
  * 大きさを固定にするとどこかの縮尺で必ず大きすぎ/小さすぎになる。

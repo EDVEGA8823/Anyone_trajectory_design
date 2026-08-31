@@ -4,7 +4,7 @@ import {
   makeDashedLine,
   setLinePoints,
   makeArrowTrail,
-  setArrowTrail,
+  setArrowTrailOnCircles,
   scaleArrowTrail,
   makeHandle,
   scaleHandleToScreen,
@@ -43,6 +43,7 @@ let drag = null;
 let handlers = {}; // { onRp(rp[km]), onRa(ra[km]) }
 let geom = null; // 直近の描画状態 (ハンドルの配置とドラッグの換算に使う)
 let lastViewKey;
+let gridHalf = 0; // いま張ってある軌道面グリッドの半幅 (双曲線もここまで引く)
 let resizeToDisplaySize;
 
 const CANVAS_MAX = 460;
@@ -124,7 +125,7 @@ export function initOrbitView() {
   root.add(orbitLine);
 
   // 進行方向の矢じるし。双曲線はグリッドの端まで引くので、途中に何個か置く
-  travelArrowhead = makeArrowTrail(0x5b6472, 3);
+  travelArrowhead = makeArrowTrail(0x5b6472, 2);
   root.add(travelArrowhead);
 
   rpLine = makeLine([new THREE.Vector3()], COLOR_RP, 1);
@@ -323,11 +324,23 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   const hyperbolic = e_h != undefined && e_h > 1;
   if (hyperbolic) extent = Math.max(extent, r_fit + Math.abs(center_x));
 
+  // 軌道面グリッドの広さ。画角と同じく、表示対象が変わったときだけ決め直す
+  const view_changed = key !== lastViewKey;
+  if (view_changed || !(gridHalf > 0)) {
+    gridHalf = extent * GRID_SPAN;
+    planeGrid.geometry.dispose();
+    planeGrid.geometry = planeGridGeometry(0, gridHalf, GRID_DIVISIONS);
+  }
 
   // --- 双曲線 ---
   // 途中でぷつりと終わると「ここで止まる軌道」に見えるので、軌道面グリッドの
-  // 端まで引く (画角の外まで伸びるぶんは、引けば見える)
-  const r_max = extent * GRID_SPAN;
+  // 端まで引く (画角の外まで伸びるぶんは、引けば見える)。
+  //
+  // 長さの基準をグリッドにするのが肝心で、そのときの extent にすると
+  // 遠点を縮めたときに双曲線まで一緒に縮んでしまう。双曲線の形は近点とV∞だけで
+  // 決まり、遠点とは何の関係も無いので、遠点をいじって長さが変わるのはおかしい。
+  // (遠点を広げて楕円がグリッドを追い越した場合だけは、双曲線もそれに合わせる)
+  const r_max = Math.max(gridHalf, extent * 1.6);
   let hyperPts = null;
   let coastPts = null;
   if (hyperbolic) {
@@ -380,8 +393,14 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   // 近点にはΔVの矢印が出るので、そこは避ける (投入なら末尾、脱出なら先頭が近点)。
   if (hyperPts && hyperPts.length > 6) {
     travelArrowhead.visible = true;
-    // 端も近点も避けて、弧を4等分する位置に置く
-    setArrowTrail(travelArrowhead, hyperPts, [0.25, 0.5, 0.75]);
+    // 画面の中心と端のあいだあたりに置く (画角の半幅 ≒ extent*1.3)。
+    // 双曲線はここでは片側だけなので、その帯の中に2つ並べる
+    setArrowTrailOnCircles(
+      travelArrowhead,
+      hyperPts,
+      [extent * 0.5, extent * 0.85],
+      new THREE.Vector3(center_x, 0, 0)
+    );
   } else {
     travelArrowhead.visible = false;
   }
@@ -468,10 +487,8 @@ function applyDrag(key, raycaster) {
 
 // 全体が画角に収まる距離にカメラを置き直す
 function fitCamera(extent) {
-  // グリッドも画角と一緒にここで決める (以後 rp/ra を動かしても張り替えない)
-  planeGrid.geometry.dispose();
-  planeGrid.geometry = planeGridGeometry(0, extent * GRID_SPAN, GRID_DIVISIONS);
-
+  // グリッドの張り替えは updateOrbitView 側で行う (双曲線の長さもそこで
+  // グリッドに合わせるので、順番が要る)
   const fitDist = (extent * 1.3) / Math.tan((camera.fov * Math.PI) / 180 / 2);
   camera.position.setLength(fitDist);
   // 画角は以後取り直さないので、ズームで自力で追えるよう範囲を広く取る

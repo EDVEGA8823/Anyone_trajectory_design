@@ -6,7 +6,7 @@ import {
   setLinePoints,
   setArrow,
   makeArrowTrail,
-  setArrowTrail,
+  setArrowTrailOnCircles,
   scaleArrowTrail,
   makeHandle,
   scaleHandleToScreen,
@@ -30,7 +30,7 @@ import {
 export let renderer, scene, camera, controls;
 
 let planetMesh, keepOutSphere, eclipticPlane, bplaneGroup, hyperbolaLine;
-let asymptoteLine, asymptoteArrowhead, travelArrowhead;
+let asymptoteLine, travelArrowhead;
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine, coastHyperbola;
 let orbitArc, orbitArrowhead, dvArrow;
 let root, sunLight;
@@ -197,12 +197,9 @@ export function initBPlane() {
   travelArrowhead = makeArrowTrail(0x5b6472, 2);
   root.add(travelArrowhead);
 
-  // 入射漸近線 (重力が無ければ通っていた道筋)。こちらも端まで引くので
-  // 矢じるしは途中に置く
+  // 入射漸近線 (重力が無ければ通っていた道筋)。参照線なので矢じるしは付けない
   asymptoteLine = makeLine([new THREE.Vector3()], COLOR_ASYMPTOTE, 0.55);
   root.add(asymptoteLine);
-  asymptoteArrowhead = makeArrowTrail(COLOR_ASYMPTOTE, 2, 0.55);
-  root.add(asymptoteArrowhead);
 
   periapsisMarker = new THREE.Mesh(
     new THREE.SphereGeometry(0.07, 16, 16),
@@ -216,7 +213,7 @@ export function initBPlane() {
   // 天体の公転軌道 (弧) と、進行方向を示す矢じるし
   orbitArc = makeLine([new THREE.Vector3()], COLOR_PLANET_ORBIT, 0.85);
   root.add(orbitArc);
-  orbitArrowhead = makeArrowTrail(COLOR_PLANET_ORBIT, 3);
+  orbitArrowhead = makeArrowTrail(COLOR_PLANET_ORBIT, 2);
   root.add(orbitArrowhead);
 
   // 太陽方向は陰影(平行光の向き)で示すので、線としては描画しない。
@@ -361,7 +358,6 @@ const loop = makeRenderLoop(() => {
   // 矢じるしは画面上の大きさを保つ (線が画角の外まで伸びていて、カメラも
   // 大きく引けるので、世界座標で固定にするとどこかの縮尺で必ず破綻する)
   scaleArrowTrail(travelArrowhead, camera, renderer, 10);
-  scaleArrowTrail(asymptoteArrowhead, camera, renderer, 8);
   scaleArrowTrail(orbitArrowhead, camera, renderer, 9);
   renderer.render(scene, camera);
 });
@@ -513,16 +509,18 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
 
   // 探査機の進行方向を示す矢じるし。線は画角の外まで伸びているので、
   // 入る側と出る側の途中に1つずつ置く (先端に置くと画面の外になる)
-  setArrowTrail(travelArrowhead, pts, [0.3, 0.72]);
+  // 画面の中心と端のあいだあたりに置く (画角の半幅 ≒ extent*1.25)。
+  // 行きと帰りで1つずつになる
+  setArrowTrailOnCircles(travelArrowhead, pts, [extent * 0.62]);
 
   // --- 入射漸近線 (重力が無ければ通っていた道筋) ---
+  // これは「重力が無ければこう進んでいた」という参照線で、進む向きは実線の
+  // 双曲線が示しているので、矢じるしは付けない
   const pierce = bHat.clone().multiplyScalar(b_n);
-  const asymPts = [
+  setLinePoints(asymptoteLine, [
     pierce.clone().addScaledVector(inHat, -farEdge),
     pierce.clone().addScaledVector(inHat, farEdge * 0.3),
-  ];
-  setLinePoints(asymptoteLine, asymPts);
-  setArrowTrail(asymptoteArrowhead, asymPts, [0.45, 0.75]);
+  ]);
   bplaneGroup.getObjectByName("bplane_face").scale.setScalar(halfSize);
   bplaneGroup.getObjectByName("bplane_frame").scale.setScalar(halfSize);
   bplaneGroup.getObjectByName("bplane_grid").scale.setScalar(halfSize);
@@ -722,7 +720,6 @@ function setOrbitVisible(visible) {
   if (!visible) coastHyperbola.visible = false;
   travelArrowhead.visible = visible;
   asymptoteLine.visible = visible;
-  asymptoteArrowhead.visible = visible;
   pierceMarker.visible = visible;
   periapsisMarker.visible = visible;
   rpLine.visible = visible;
@@ -786,5 +783,5 @@ function drawOrbitArc(vHat, sHat, sunDist, reach, extent) {
   // 進行方向の矢じるし。線はグリッドの端まで伸びているので、先端ではなく
   // 途中に何個か置く (天体のまわりは他の線が混むので、そこは空けておく)
   orbitArrowhead.visible = true;
-  setArrowTrail(orbitArrowhead, pts, [0.2, 0.7, 0.9]);
+  setArrowTrailOnCircles(orbitArrowhead, pts, [extent * 0.62]);
 }
