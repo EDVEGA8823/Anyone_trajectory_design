@@ -1885,12 +1885,10 @@ export function renderOrbitControls() {
   if (lim == undefined) {
     // 縦を使わないよう、説明は読み値の枠に1行だけ出す
     readout.appendChild(
-      makeReadout([
-        [
-          "",
-          is_insert ? "天体を選ぶと計算されます" : "直前の「周回軌道投入」と同じ天体からのみ",
-        ],
-      ])
+      makeReadout(
+        [["", is_insert ? "天体を選ぶと計算されます" : "直前の「周回軌道投入」と同じ天体からのみ"]],
+        { inline: true }
+      )
     );
     // 打上げと並び順を揃えるため、読み値の下にボタンを置く
     if (!is_insert) readout.appendChild(makePorkchopButton(i));
@@ -1993,14 +1991,14 @@ export function renderOrbitControls() {
       rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°"]);
       rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°"]);
     }
-    readout.appendChild(makeReadout(rows));
+    readout.appendChild(makeReadout(rows, { inline: true }));
     readout.appendChild(makePorkchopButton(i));
     return;
   }
 
   if (info == null) {
     readout.appendChild(
-      makeReadout([["", is_insert ? "前のレグが決まると計算" : "次の目的地が決まると計算"]])
+      makeReadout([["", is_insert ? "前のレグが決まると計算" : "次の目的地が決まると計算"]], { inline: true })
     );
     if (!is_insert) readout.appendChild(makePorkchopButton(i));
     return;
@@ -2018,7 +2016,7 @@ export function renderOrbitControls() {
   ];
   // 遠点がヒル半径の上限に張り付いていることは、値の脇に短く添えるだけにする
   if (info.ra_clamped) rows[3][1] += " (上限)";
-  readout.appendChild(makeReadout(rows));
+  readout.appendChild(makeReadout(rows, { inline: true }));
   // 打上げと並び順を揃えるため、読み値の下にボタンを置く
   if (!is_insert) readout.appendChild(makePorkchopButton(i));
 }
