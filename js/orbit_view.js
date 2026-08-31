@@ -4,8 +4,8 @@ import {
   makeDashedLine,
   setLinePoints,
   makeArrowTrail,
-  setArrowTrailOnCircles,
-  scaleArrowTrail,
+  setArrowTrailPath,
+  updateArrowTrail,
   makeHandle,
   scaleHandleToScreen,
   makeSquareResizer,
@@ -393,14 +393,9 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   // 近点にはΔVの矢印が出るので、そこは避ける (投入なら末尾、脱出なら先頭が近点)。
   if (hyperPts && hyperPts.length > 6) {
     travelArrowhead.visible = true;
-    // 画面の中心と端のあいだあたりに置く (画角の半幅 ≒ extent*1.3)。
-    // 双曲線はここでは片側だけなので、その帯の中に2つ並べる
-    setArrowTrailOnCircles(
-      travelArrowhead,
-      hyperPts,
-      [extent * 0.5, extent * 0.85],
-      new THREE.Vector3(center_x, 0, 0)
-    );
+    // 画面の中心と端のあいだあたりに置く。双曲線はここでは片側だけなので、
+    // その帯の中に2つ並べる (画角の半幅に対する割合で指定する)
+    setArrowTrailPath(travelArrowhead, hyperPts, [0.4, 0.7], new THREE.Vector3(center_x, 0, 0));
   } else {
     travelArrowhead.visible = false;
   }
@@ -528,8 +523,8 @@ const loop = makeRenderLoop(() => {
   if (controls) controls.update();
   scaleHandleToScreen(rpHandle, camera, renderer);
   scaleHandleToScreen(raHandle, camera, renderer);
-  // 矢じるしは画面上の大きさを保つ (view3d.js の scaleArrowTrail を参照)
-  scaleArrowTrail(travelArrowhead, camera, renderer, 10);
+  // 矢じるしの位置と大きさは画角しだいなので毎フレーム決める (view3d.js)
+  updateArrowTrail(travelArrowhead, camera, renderer, 10);
   renderer.render(scene, camera);
 });
 

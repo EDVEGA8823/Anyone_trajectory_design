@@ -132,78 +132,78 @@ export function makeArrowTrail(color, count = 2, opacity = 1) {
 }
 
 /**
- * 折れ線に沿って矢じるしを置き直す。位置は「弧の長さの何割か」で指定する。
- * 点の間隔は場所によって大きく違う (双曲線は遠方ほど粗い) ので、
- * 添字ではなく実際の長さで測らないと見た目が偏る。
+ * 矢じるしを置く経路を覚えさせる。
  *
- * 大きさはここでは決めない。scaleArrowTrail が画面上の大きさで毎フレーム
- * 決めるので、どこまで引いても同じ見え方になる。
+ * 置く場所は「画角の半幅の何割の距離か」で指定する。距離で置くと、線をどれだけ
+ * 伸ばしても、カメラをどれだけ引き寄せても、画角の中の同じあたり (中心と端の
+ * 中間など) に来る。双曲線や公転軌道のように行きと帰りがある線では、1つの距離で
+ * 2か所を横切るので、それぞれに1つずつ置かれる。
+ *
+ * 実際の配置と大きさは updateArrowTrail が毎フレーム決める (カメラを動かすと
+ * 画角が変わり、置く距離も変わるため)。
  *
  * @param {THREE.Group} group makeArrowTrail の戻り値
  * @param {THREE.Vector3[]} points 折れ線 (進行方向の順)
- * @param {number[]} at 弧の長さに対する割合 (0〜1)
+ * @param {number[]} fractions 画角の半幅に対する割合 (近い順に埋めていく)
+ * @param {THREE.Vector3} [center] 距離を測る中心 = 画面の中心 (既定は原点)
  */
-export function setArrowTrail(group, points, at) {
-  const cones = group.children;
-  if (!points || points.length < 2) {
-    for (const c of cones) c.visible = false;
-    return;
+export function setArrowTrailPath(group, points, fractions, center) {
+  const d = group.userData;
+  d.path = points && points.length >= 2 ? points : null;
+  d.fractions = fractions;
+  d.center = center ? center.clone() : new THREE.Vector3();
+  d.minR = Infinity;
+  d.maxR = 0;
+  for (const p of d.path || []) {
+    const r = p.distanceTo(d.center);
+    if (r < d.minR) d.minR = r;
+    if (r > d.maxR) d.maxR = r;
   }
-
-  // 各点までの累積の長さ
-  const acc = [0];
-  for (let i = 1; i < points.length; i++) {
-    acc[i] = acc[i - 1] + points[i].distanceTo(points[i - 1]);
-  }
-  const total = acc[acc.length - 1];
-  if (!(total > 0)) {
-    for (const c of cones) c.visible = false;
-    return;
-  }
-
-  const up = new THREE.Vector3(0, 1, 0);
-  for (let k = 0; k < cones.length; k++) {
-    const frac = at[k];
-    if (frac == undefined) {
-      cones[k].visible = false;
-      continue;
-    }
-    const want = total * Math.max(0, Math.min(1, frac));
-    let i = 1;
-    while (i < acc.length - 1 && acc[i] < want) i++;
-    const seg = acc[i] - acc[i - 1];
-    const t = seg > 0 ? (want - acc[i - 1]) / seg : 0;
-    cones[k].position.lerpVectors(points[i - 1], points[i], t);
-    const dir = new THREE.Vector3().subVectors(points[i], points[i - 1]);
-    if (dir.lengthSq() < 1e-18) {
-      cones[k].visible = false;
-      continue;
-    }
-    cones[k].quaternion.setFromUnitVectors(up, dir.normalize());
-    cones[k].visible = true;
-  }
+  if (!d.path) for (const c of group.children) c.visible = false;
 }
 
 /**
- * 折れ線が「中心からの距離が radius の球」を横切るところに矢じるしを置く。
+ * 矢じるしを、いまのカメラに合わせて置き直して大きさを決める。
  *
- * 弧の長さの割合で置くと、線を伸ばした拍子に矢じるしが画角の外へ出てしまう。
- * 距離で置けば、画角に対していつも同じあたり (中心と端の中間) に来る。
- * 双曲線や公転軌道のように行きと帰りがある線では、1つの半径で2か所を横切る
- * ので、それぞれに1つずつ置かれる。
+ * 位置は「画角の半幅の何割の距離か」、大きさは「画面上で何画素か」。どちらも
+ * カメラ次第なので毎フレーム決める。世界座標で固定にすると、線が画角の外まで
+ * 伸びていてカメラも大きく引ける以上、どこかの縮尺で必ず破綻する。
  *
  * @param {THREE.Group} group makeArrowTrail の戻り値
- * @param {THREE.Vector3[]} points 折れ線 (進行方向の順)
- * @param {number[]} radii 置きたい距離 (近い順に埋めていく)
- * @param {THREE.Vector3} [center] 距離を測る中心 (既定は原点)
+ * @param {number} px 画面上での矢じるしの長さ [px]
  */
-export function setArrowTrailOnCircles(group, points, radii, center) {
+export function updateArrowTrail(group, camera, renderer, px = 10) {
+  if (!group || !group.visible || !camera || !renderer) return;
+  const d = group.userData;
+  if (!d.path) return;
+  const h = renderer.domElement.clientHeight;
+  if (!h) return;
+
+  const halfFov = Math.tan((camera.fov * Math.PI) / 180 / 2);
+  // カメラは原点 (=画面の中心) を回るので、そこまでの距離で画角の広さが決まる
+  const viewHalf = camera.position.length() * halfFov;
+  // 経路の外側を指してしまうと1つも置けないので、経路が届く範囲に寄せる
+  const radii = d.fractions.map((f) =>
+    Math.min(Math.max(viewHalf * f, d.minR * 1.05), d.maxR * 0.98)
+  );
+  placeOnCircles(group, d.path, radii, d.center);
+
+  const at = new THREE.Vector3();
+  for (const cone of group.children) {
+    if (!cone.visible) continue;
+    const dist = camera.position.distanceTo(cone.getWorldPosition(at));
+    const size = (px * 2 * dist * halfFov) / h;
+    cone.scale.set(size * 0.45, size, size * 0.45);
+  }
+}
+
+// 折れ線が「中心からの距離が radius の球」を横切るところに矢じるしを置く
+function placeOnCircles(group, points, radii, center) {
   const cones = group.children;
   for (const c of cones) c.visible = false;
-  if (!points || points.length < 2 || cones.length === 0) return;
+  if (cones.length === 0) return;
 
-  const c0 = center || _origin;
-  const dist = points.map((p) => p.distanceTo(c0));
+  const dist = points.map((p) => p.distanceTo(center));
   const up = new THREE.Vector3(0, 1, 0);
   let k = 0;
 
@@ -221,32 +221,73 @@ export function setArrowTrailOnCircles(group, points, radii, center) {
       k++;
     }
   }
-  // どの距離も横切らない (線が短すぎる/遠すぎる) ときは、弧の長さで置き直す
-  if (k === 0) setArrowTrail(group, points, [0.3, 0.7]);
 }
 
-const _origin = new THREE.Vector3();
+/**
+ * 太陽の方向を示す小さな矢印を、ビューの隅に出す。
+ *
+ * 3Dの中に線として描くと軌道や漸近線と紛れるので、画面に貼り付けた目印として
+ * 出す。陰影 (どちら側が照らされているか) だけでは、天体の裏に回っているのか
+ * 手前なのかが読み取りにくいため。
+ *
+ * @param {HTMLCanvasElement} canvas 貼り付ける先のcanvas (その親に置く)
+ * @returns {HTMLElement|null}
+ */
+export function makeSunCompass(canvas) {
+  const host = canvas && canvas.parentElement;
+  if (!host) return null;
+  const el = document.createElement("div");
+  el.className = "sun-compass";
+  el.innerHTML =
+    '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">' +
+    '<path d="M12 22V4M5.5 10.5 12 3.5l6.5 7" fill="none" stroke="currentColor"' +
+    ' stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    "<span>太陽方向</span>";
+  host.appendChild(el);
+  return el;
+}
+
+const _camRight = new THREE.Vector3();
+const _camUp = new THREE.Vector3();
 
 /**
- * 矢じるしの大きさを、画面上で一定に保つ (ハンドルと同じ考え方)。
- * 線は画角の外まで伸びていて、カメラも自由に引けるので、世界座標での
- * 大きさを固定にするとどこかの縮尺で必ず大きすぎ/小さすぎになる。
+ * 太陽方向の矢印を、いまのカメラから見た向きに回す。
  *
- * @param {THREE.Group} group makeArrowTrail の戻り値
- * @param {number} px 画面上での長さ [px]
+ * @param {HTMLElement} el makeSunCompass の戻り値
+ * @param {THREE.Vector3} dir 世界座標での太陽の方向 (無ければ隠す)
  */
-export function scaleArrowTrail(group, camera, renderer, px = 9) {
-  if (!group || !group.visible || !camera || !renderer) return;
-  const h = renderer.domElement.clientHeight;
-  if (!h) return;
-  const halfFov = Math.tan((camera.fov * Math.PI) / 180 / 2);
-  const at = new THREE.Vector3();
-  for (const cone of group.children) {
-    if (!cone.visible) continue;
-    const dist = camera.position.distanceTo(cone.getWorldPosition(at));
-    const size = (px * 2 * dist * halfFov) / h;
-    cone.scale.set(size * 0.45, size, size * 0.45);
+export function updateSunCompass(el, dir, camera, renderer) {
+  if (!el) return;
+  const canvas = renderer && renderer.domElement;
+  if (!dir || !camera || !canvas) {
+    el.style.display = "none";
+    return;
   }
+  el.style.display = "";
+
+  // canvasは枠の中で中央に置かれるので、その左下に合わせる
+  const host = canvas.parentElement;
+  if (host) {
+    const c = canvas.getBoundingClientRect();
+    const h = host.getBoundingClientRect();
+    if (c.width > 0) {
+      el.style.left = c.left - h.left + 8 + "px";
+      el.style.top = c.bottom - h.top - 6 + "px";
+    }
+  }
+
+  // 画面上での向き = カメラの右方向・上方向への成分
+  _camRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+  _camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+  const x = dir.dot(_camRight);
+  const y = dir.dot(_camUp);
+  const inPlane = Math.hypot(x, y);
+  const svg = el.querySelector("svg");
+  if (svg && inPlane > 1e-6) {
+    svg.style.transform = "rotate(" + (Math.atan2(x, y) * 180) / Math.PI + "deg)";
+  }
+  // 視線とほぼ同じ向き (画面の奥/手前) では矢印の向きに意味が無いので薄くする
+  el.classList.toggle("edge-on", inPlane < 0.2);
 }
 
 /** マウスで掴むハンドル (大きさは scaleHandleToScreen が毎フレーム決める) */

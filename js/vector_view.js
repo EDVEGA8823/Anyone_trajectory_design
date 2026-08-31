@@ -7,6 +7,8 @@ import {
   makeHandle,
   scaleHandleToScreen,
   makeSquareResizer,
+  makeSunCompass,
+  updateSunCompass,
   attachHandleDrag,
   closestOnAxis,
   intersectPlane,
@@ -85,6 +87,8 @@ export function createVectorView(config) {
   let handlers = {}; // { onMagnitude(km/s), onAlpha(rad), onDelta(rad) }
   let geom = null;
   let lastViewKey;
+  let sunCompass = null; // 画面の隅に出す太陽方向の目印
+  let sunWorldDir = null; // その向き (このビューは中身を回さないので描画座標のまま)
   let scale = 1; // 1目盛あたりの大きさ [km/s]
   let resizeToDisplaySize;
 
@@ -170,6 +174,9 @@ export function createVectorView(config) {
     controls.minDistance = 3;
     controls.maxDistance = 200;
 
+    // 太陽で陰影を付けるビュー (打上げ) だけ、太陽方向の目印も出す
+    if (useSunLight) sunCompass = makeSunCompass(canvas);
+
     resizeToDisplaySize = makeSquareResizer(renderer, camera, CANVAS_MAX, CANVAS_BORDER);
     drag = attachHandleDrag({
       getRenderer: () => renderer,
@@ -254,6 +261,7 @@ export function createVectorView(config) {
     setVisible(!!ready);
     if (!ready) {
       geom = null;
+      sunWorldDir = null;
       updateHandles();
       invalidate();
       return;
@@ -323,6 +331,7 @@ export function createVectorView(config) {
     if (useSunLight && sunDir) {
       sunLight.position.set(sunDir[0], sunDir[1], sunDir[2]).setLength(50);
       sunLight.target.position.set(0, 0, 0);
+      sunWorldDir = new THREE.Vector3(sunDir[0], sunDir[1], sunDir[2]).normalize();
     }
 
     geom = { magnitude, alpha, delta, dir, flat, tip, extent, shown };
@@ -482,6 +491,7 @@ export function createVectorView(config) {
     scaleHandleToScreen(vectorHandle, camera, renderer);
     scaleHandleToScreen(alphaHandle, camera, renderer);
     scaleHandleToScreen(deltaHandle, camera, renderer);
+    updateSunCompass(sunCompass, sunWorldDir, camera, renderer);
     renderer.render(scene, camera);
   });
 

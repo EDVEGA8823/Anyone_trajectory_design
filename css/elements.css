@@ -1367,6 +1367,36 @@ input:focus {
   cursor: grabbing;
 }
 
+/* 3Dビューの隅に出す太陽方向の目印 (js/view3d.js の makeSunCompass)。
+   矢印の向きは毎フレーム回すので、位置と見た目だけをここで決める。
+   位置はJS側が canvas の左下に合わせて入れる */
+.sun-compass {
+  position: absolute;
+  transform: translateY(-100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  color: #e0a800; /* 太陽の黄色。他の線 (β・遠点の橙) より黄色寄りにする */
+  pointer-events: none;
+  user-select: none;
+}
+.sun-compass svg {
+  display: block;
+  /* 回転はJSが style.transform で与える */
+}
+.sun-compass span {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* 太陽が視線とほぼ同じ向き (画面の奥/手前) のときは、矢印の向きに意味が無い */
+.sun-compass.edge-on {
+  opacity: 0.4;
+}
+
 /* 凡例はプレビューの下に横一列で並べる */
 .view-legend {
   display: flex;

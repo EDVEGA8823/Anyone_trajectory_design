@@ -6,8 +6,10 @@ import {
   setLinePoints,
   setArrow,
   makeArrowTrail,
-  setArrowTrailOnCircles,
-  scaleArrowTrail,
+  setArrowTrailPath,
+  updateArrowTrail,
+  makeSunCompass,
+  updateSunCompass,
   makeHandle,
   scaleHandleToScreen,
   makeSquareResizer,
@@ -34,6 +36,8 @@ let asymptoteLine, travelArrowhead;
 let pierceMarker, periapsisMarker, rpLine, betaArc, betaRefLine, bVectorLine, coastHyperbola;
 let orbitArc, orbitArrowhead, dvArrow;
 let root, sunLight;
+let sunCompass = null; // 画面の隅に出す太陽方向の目印
+let sunWorldDir = null; // 世界座標での太陽の方向 (目印の向きに使う)
 let lastViewKey; // いま表示しているノード。切り替わったときだけ画角を取り直す
 
 // --- マウスで掴んで rp / β を変えるためのハンドル ---
@@ -258,6 +262,8 @@ export function initBPlane() {
     onDrag: applyDrag,
   });
 
+  sunCompass = makeSunCompass(canvas);
+
   controls.addEventListener("change", () => invalidateBPlane());
   window.addEventListener("resize", () => invalidateBPlane());
   invalidateBPlane();
@@ -355,10 +361,10 @@ const loop = makeRenderLoop(() => {
   if (controls) controls.update();
   scaleHandleToScreen(rpHandle, camera, renderer);
   scaleHandleToScreen(betaHandle, camera, renderer);
-  // 矢じるしは画面上の大きさを保つ (線が画角の外まで伸びていて、カメラも
-  // 大きく引けるので、世界座標で固定にするとどこかの縮尺で必ず破綻する)
-  scaleArrowTrail(travelArrowhead, camera, renderer, 10);
-  scaleArrowTrail(orbitArrowhead, camera, renderer, 9);
+  // 矢じるしの位置と大きさは画角しだいなので毎フレーム決める (view3d.js)
+  updateArrowTrail(travelArrowhead, camera, renderer, 10);
+  updateArrowTrail(orbitArrowhead, camera, renderer, 9);
+  updateSunCompass(sunCompass, sunWorldDir, camera, renderer);
   renderer.render(scene, camera);
 });
 
@@ -509,9 +515,8 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
 
   // 探査機の進行方向を示す矢じるし。線は画角の外まで伸びているので、
   // 入る側と出る側の途中に1つずつ置く (先端に置くと画面の外になる)
-  // 画面の中心と端のあいだあたりに置く (画角の半幅 ≒ extent*1.25)。
-  // 行きと帰りで1つずつになる
-  setArrowTrailOnCircles(travelArrowhead, pts, [extent * 0.62]);
+  // 画面の中心と端のあいだあたりに置く。行きと帰りで1つずつになる
+  setArrowTrailPath(travelArrowhead, pts, [0.5]);
 
   // --- 入射漸近線 (重力が無ければ通っていた道筋) ---
   // これは「重力が無ければこう進んでいた」という参照線で、進む向きは実線の
@@ -627,6 +632,8 @@ export function updateBPlane({ planetNum, key, rp, beta = 0, vinf, vinfOut, turn
   }
 
   applyOrientation(vHat, sHat, northHat);
+  // 中身をまとめて回したあとの向きが、画面に対する実際の太陽の方向
+  sunWorldDir = sHat ? sHat.clone().applyQuaternion(root.quaternion) : null;
 
   // 画角を取り直すのは表示するノードが変わったときだけ。
   // rpやβを変えるたびにカメラが動くと、見ている大きさの感覚が崩れて
@@ -733,7 +740,10 @@ function setOrbitVisible(visible) {
 function setContextVisible(visible) {
   orbitArc.visible = visible;
   orbitArrowhead.visible = visible;
-  if (!visible) eclipticPlane.visible = false;
+  if (!visible) {
+    eclipticPlane.visible = false;
+    sunWorldDir = null; // 太陽方向の目印も隠す
+  }
 }
 
 /**
@@ -783,5 +793,5 @@ function drawOrbitArc(vHat, sHat, sunDist, reach, extent) {
   // 進行方向の矢じるし。線はグリッドの端まで伸びているので、先端ではなく
   // 途中に何個か置く (天体のまわりは他の線が混むので、そこは空けておく)
   orbitArrowhead.visible = true;
-  setArrowTrailOnCircles(orbitArrowhead, pts, [extent * 0.62]);
+  setArrowTrailPath(orbitArrowhead, pts, [0.5]);
 }
