@@ -1266,7 +1266,13 @@ function place(x, y) {
 // 操作パネルの3Dビューに重ねる位置を初期位置にする。
 // 図を開くきっかけになったボタンのすぐ近くに出るので、視線を動かさずに済む。
 function place_over_view() {
-  const view = document.querySelector("#launch_box .view-3d") || document.getElementById("launch_canvas");
+  // 図を開いたボタンと同じ箱の3Dビューに重ねる。打上げなら打上げビュー、
+  // 軌道脱出なら遠景ビュー。隠れている箱のビューは大きさ0の矩形を返すので、
+  // いま実際に画面に出ているものだけを見る (以前は打上げの箱だけを見ていて、
+  // 軌道脱出から開くと大きさ0を基準にしてしまい画面の左上隅に出ていた)。
+  const view = [...document.querySelectorAll(".view-3d")].find(
+    (el) => el.offsetParent !== null && el.getBoundingClientRect().width > 0
+  );
   if (!view) {
     place(window.innerWidth - win.offsetWidth - 24, 90);
     return;

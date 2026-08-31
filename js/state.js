@@ -65,6 +65,9 @@ export const State = {
   // 周回軌道ビューでマウスで動かせるようにしているパラメータ
   // (null | "rp" | "ra")。
   orbit_handle: null,
+  // 軌道脱出の遠景ビュー(手動モード)でマウスで動かせるようにしているパラメータ
+  // (null | "vinf" | "alpha" | "delta")。打上げビューと同じ流儀。
+  escape_handle: null,
   // 大気圏突入ビューでマウスで動かせるようにしているパラメータ (null | "gamma")。
   entry_handle: null,
   // マヌーバビューでマウスで動かせるようにしているパラメータ

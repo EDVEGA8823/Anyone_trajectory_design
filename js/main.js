@@ -51,7 +51,13 @@ import {
   setOrbitActiveHandle,
   invalidateOrbitView,
 } from './orbit_view.js';
-import { initEscapeView, updateEscapeView, invalidateEscapeView } from './escape_view.js';
+import {
+  initEscapeView,
+  updateEscapeView,
+  invalidateEscapeView,
+  setEscapeViewHandlers,
+  setEscapeActiveHandle,
+} from './escape_view.js';
 import {
   initDsmView,
   updateDsmView,
@@ -1074,7 +1080,10 @@ export function updateControlPanelDisplay() {
   else if (State.dsm_handle) setDsmHandle(null);
   if (is_end) renderEndControls();
   if (is_orbit) renderOrbitControls();
-  else if (State.orbit_handle) setOrbitHandle(null);
+  else {
+    if (State.orbit_handle) setOrbitHandle(null);
+    if (State.escape_handle) setEscapeHandle(null);
+  }
   if (is_entry) renderEntryControls();
   else if (State.entry_handle) setEntryHandle(null);
   if (is_encounter) renderEncounterControls();
@@ -1833,12 +1842,52 @@ export function renderOrbitControls() {
   const info = mission.get_orbit_info(i);
   const lim = mission.orbit_limits(i);
 
+  // 軌道脱出は打上げと同じく自動/手動を選べる。
+  //   自動 … 次の天体までをランベールで解く (V∞は結果)
+  //   手動 (MGA-1DSM) … |V∞|と2つの角度で飛び出し、直後に自動挿入される
+  //          マヌーバ(DSM)のΔVで次の天体へ到達させる
+  // 周回軌道投入は「入ってきた軌道に捕まる」節で自分では向きを選べないので、
+  // 自動/手動という分岐自体が無い。
+  const is_manual = !is_insert && !mission.is_auto_mode(i);
+
   // 別のノードに移ったらマウスハンドルは引っ込める
   if (State.orbit_handle && orbit_handle_seq !== i) setOrbitHandle(null);
+  if (State.escape_handle && (is_insert || !is_manual || escape_handle_seq !== i)) setEscapeHandle(null);
 
   title.textContent = is_insert ? "周回軌道投入 (捕獲)" : "軌道脱出 (再出発)";
   badge.textContent = is_insert ? "減速" : "加速";
   badge.className = "orbit-badge " + (is_insert ? "brake" : "boost");
+
+  const mode_row = document.getElementById("orbit_mode");
+  if (mode_row) {
+    mode_row.innerHTML = "";
+    mode_row.style.display = is_insert ? "none" : "flex";
+    if (!is_insert) {
+      [
+        ["自動", true],
+        ["手動", false],
+      ].forEach(([text, auto]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = text;
+        btn.className = "mode-btn" + (mission.is_auto_mode(i) === auto ? " active" : "");
+        // 最終軌道が続いている間は目的地が無いので自動には戻せない (打上げと同じ)
+        if (auto && !mission.can_set_auto(i)) {
+          btn.disabled = true;
+          btn.title = "最終軌道で終えている間は手動のみ";
+        }
+        btn.onclick = () => {
+          mission.set_auto_mode(i, auto);
+          // 手動にするとDSMが1つ増えてノードの並びが変わる
+          clear_checks();
+          State.selected_sequence = Math.min(State.selected_sequence, mission.count - 1);
+          change_sequence();
+          refresh_after_orbit_change();
+        };
+        mode_row.appendChild(btn);
+      });
+    }
+  }
 
   // 近景(周回軌道→双曲線、これまでの唯一のビュー)/遠景(V∞。打上げビューと
   // 同じ見方)の切り替え。周回軌道投入そのものには「天体を離れる」動きが無く
@@ -1875,11 +1924,13 @@ export function renderOrbitControls() {
   if (far_active) invalidateEscapeView();
   else invalidateOrbitView();
 
-  // 遠景では周回軌道の設定(近点/遠点高度)には触れない。V∞は軌道の形に
-  // 依らず次の目的地までのランベール解だけで決まるので、遠景では出す
-  // 項目が無い (打上げの自動モードに入力欄が無いのと同じ理屈)。
+  // 入力欄はタブごとに中身が変わる。
+  //   近景 … 周回軌道の形 (近点高度・遠点高度)。自動でも手動でも設計変数
+  //   遠景 … 手動モードのときだけ、出ていく速度 (|V∞|・α・δ)。
+  //          自動モードではこの3つはランベール解の結果なので入力欄は無い
+  //          (打上げの自動モードに入力欄が無いのと同じ理屈)
   inputs.innerHTML = "";
-  inputs.style.display = far_active ? "none" : "";
+  inputs.style.display = far_active && !is_manual ? "none" : "";
   readout.innerHTML = "";
 
   if (lim == undefined) {
@@ -1983,6 +2034,52 @@ export function renderOrbitControls() {
   }
 
   if (far_active) {
+    if (is_manual) {
+      // 手動モード: この3つがそのまま設計変数。打上げの手動モードと
+      // まったく同じ流儀 (大きさ + 進行方向まわりの2角) で受け取る。
+      // 欄を選ぶと遠景ビューにハンドルが出てマウスでも動かせる。
+      const addAngleField = (key, label_text, value, step, hint, on_change) => {
+        const label = document.createElement("label");
+        label.textContent = label_text;
+        if (hint) label.title = hint;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = String(step);
+        input.value = value;
+        input.onchange = () => {
+          on_change(Number(input.value));
+          refresh_after_orbit_change();
+        };
+        inputs.appendChild(makeParamField(key, label, input, ESCAPE_HANDLE));
+      };
+      addAngleField("vinf", "脱出速度 V∞ [km/s]", mission.escape_vinf(i).toFixed(3), 0.01, undefined, (v) =>
+        mission.set_escape_vinf(i, v)
+      );
+      addAngleField(
+        "alpha",
+        "方位角 α [deg]",
+        (mission.escape_alpha(i) * RAD2DEG).toFixed(1),
+        0.1,
+        "軌道面内で、天体の公転方向から測った角",
+        (v) => mission.set_escape_alpha(i, v * DEG2RAD)
+      );
+      addAngleField(
+        "delta",
+        "仰角 δ [deg]",
+        (mission.escape_delta(i) * RAD2DEG).toFixed(1),
+        0.1,
+        "軌道面からの傾き (北向きが正)。±90度まで",
+        (v) => mission.set_escape_delta(i, v * DEG2RAD)
+      );
+      // 出ていく速度は入力欄に出ているので、読み値はそれを実現する代償だけ
+      const rows = [];
+      if (info) rows.push(["脱出ΔV", (info.dv * 1000).toFixed(1) + " m/s"]);
+      const dsm = mission.get_dsm_info(i + 1);
+      if (dsm) rows.push(["この後のDSM", (dsm.dv * 1000).toFixed(0) + " m/s"]);
+      if (rows.length > 0) readout.appendChild(makeReadout(rows));
+      return;
+    }
+
     // 遠景の読み値は打上げの自動モードと同じ並び (V∞ → 角度 → ボタン)。
     // 近点/遠点/離心率/周期は周回軌道(近景)の話であって遠景の絵とは
     // 対応しないので、ここには出さない。
@@ -2338,6 +2435,7 @@ export function renderSwingbyControls() {
 let handle_seq = -1;
 let launch_handle_seq = -1;
 let orbit_handle_seq = -1;
+let escape_handle_seq = -1;
 let entry_handle_seq = -1;
 let dsm_handle_seq = -1;
 
@@ -2364,6 +2462,14 @@ export function setOrbitHandle(key) {
   setOrbitActiveHandle(key === "orbit_rp" ? "rp" : key === "orbit_ra" ? "ra" : null);
 }
 
+// 軌道脱出の遠景ビュー(手動モード)のハンドルの出し分け。
+// keyは "vinf" | "alpha" | "delta" | null (打上げビューと同じ)
+export function setEscapeHandle(key) {
+  State.escape_handle = key;
+  escape_handle_seq = key ? State.selected_sequence : -1;
+  setEscapeActiveHandle(key);
+}
+
 // マヌーバビューのハンドルの出し分け。keyは "dv" | "alpha" | "delta" | null
 export function setDsmHandle(key) {
   State.dsm_handle = key;
@@ -2382,6 +2488,7 @@ export function setEntryHandle(key) {
 const SWINGBY_HANDLE = { get: () => State.swingby_handle, set: setSwingbyHandle };
 const LAUNCH_HANDLE = { get: () => State.launch_handle, set: setLaunchHandle };
 const ORBIT_HANDLE = { get: () => State.orbit_handle, set: setOrbitHandle };
+const ESCAPE_HANDLE = { get: () => State.escape_handle, set: setEscapeHandle };
 const ENTRY_HANDLE = { get: () => State.entry_handle, set: setEntryHandle };
 const DSM_HANDLE = { get: () => State.dsm_handle, set: setDsmHandle };
 
@@ -2457,6 +2564,17 @@ function apply_entry_gamma_from_drag(gamma) {
 // 周回軌道ビューのハンドルをドラッグしている間の反映。
 // 入力欄に打ち込んだときと同じ経路を通す (上下限のクランプもMission側で効く)。
 function apply_orbit_from_drag(set) {
+  return (value) => {
+    const i = State.selected_sequence;
+    if (i == -1 || !State.mission_sequence) return;
+    set(State.mission_sequence, i, value);
+    refresh_after_orbit_change();
+  };
+}
+
+// 軌道脱出の遠景ビューのハンドルをドラッグしている間の反映。
+// 打上げと違い軌道脱出はいくつも置けるので、どのノードの値かを一緒に渡す。
+function apply_escape_from_drag(set) {
   return (value) => {
     const i = State.selected_sequence;
     if (i == -1 || !State.mission_sequence) return;
@@ -2597,7 +2715,12 @@ function boot() {
     onRp: apply_orbit_from_drag((m, i, v) => m.set_orbit_rp(i, v)),
     onRa: apply_orbit_from_drag((m, i, v) => m.set_orbit_ra(i, v)),
   });
-  initEscapeView(); // 遠景はV∞を読むだけ (打上げと違い常に自動モード) なのでドラッグの登録は無い
+  initEscapeView();
+  setEscapeViewHandlers({
+    onVinf: apply_escape_from_drag((m, i, v) => m.set_escape_vinf(i, v)),
+    onAlpha: apply_escape_from_drag((m, i, v) => m.set_escape_alpha(i, v)),
+    onDelta: apply_escape_from_drag((m, i, v) => m.set_escape_delta(i, v)),
+  });
   initEntryView();
   setEntryViewHandlers({ onGamma: apply_entry_gamma_from_drag });
   initDsmView();

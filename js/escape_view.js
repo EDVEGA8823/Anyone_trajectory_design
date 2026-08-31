@@ -10,8 +10,8 @@ import { createVectorView } from './vector_view.js';
 // 「天体を離れる瞬間の相対速度」という点で打上げの脱出速度と同じ量なので、
 // 中身は launch_view.js とほぼ同じ設定で vector_view.js を使い回している。
 //
-// 打上げと違って軌道脱出は常に自動モード (次の目的地までランベールで解く)
-// なので、ここは読み取り専用 (ドラッグでの編集は無い)。
+// 打上げと同じく自動/手動があり、手動モードでは V∞・α・δ をこのビューの上で
+// マウスで動かせる (自動モードでは読み取るだけ)。
 
 const COLOR_VINF = 0xff8c1a;
 const COLOR_ALPHA = 0x3b6fe0;
@@ -43,6 +43,20 @@ const view = createVectorView({
 
 export function initEscapeView() {
   view.init();
+}
+
+/** ドラッグでV∞・α・δが変わったときに呼ぶコールバックを登録する (手動モード用) */
+export function setEscapeViewHandlers(h) {
+  view.setHandlers({
+    onMagnitude: h && h.onVinf,
+    onAlpha: h && h.onAlpha,
+    onDelta: h && h.onDelta,
+  });
+}
+
+/** どの欄のハンドルを出すか。null で全部隠す */
+export function setEscapeActiveHandle(which) {
+  view.setActiveHandle(which === "vinf" ? "vector" : which);
 }
 
 /**
