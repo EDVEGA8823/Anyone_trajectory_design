@@ -1544,6 +1544,37 @@ input:focus {
   color: #ffffff;
 }
 
+/* 近景/遠景のように「同じ節の中で見せ方だけ切り替える」タブ。
+   自動/手動 (mode-btn) は設計そのものの分岐で見出しの横に置くのに対し、
+   こちらは見出しの下に専用の行を取り、下線で選択中を示す控えめな見た目に
+   することで、両方並んでいても取り違えないようにする。 */
+.view-tabs {
+  gap: 2px;
+  flex-wrap: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.view-tab {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 4px 10px 6px;
+  margin-bottom: -1px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.view-tab:hover {
+  color: var(--text);
+}
+.view-tab.active {
+  color: var(--accent-strong);
+  border-bottom-color: var(--accent);
+}
+
 .swingby-hint {
   font-size: 10px;
   color: var(--text-muted);
@@ -1610,6 +1641,17 @@ input:focus {
 }
 .orbit-readout {
   min-width: 0;
+}
+
+/* 打上げ・スイングバイと同じく、縦の余りを引き受けてプレビューを大きく取る。
+   これが無いと (打上げ/スイングバイだけの特別扱いのままだと)、周回軌道投入・
+   軌道脱出のプレビューだけ小さいまま伸びず、大きさが揃わなかった。
+   伸びる量が読み値欄の中身(近景は入力欄+読み値、遠景は読み値のみ)の高さより
+   じゅうぶん大きいので、近景/遠景/周回軌道投入のどれでもプレビューの大きさは
+   読み値欄の中身の量に左右されず、打上げと同じだけ伸びる。 */
+#orbit_box {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* 投入(減速)か脱出(加速)かをひと目で分かるようにする印 */

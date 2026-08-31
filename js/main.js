@@ -1854,7 +1854,9 @@ export function renderOrbitControls() {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = text;
-        btn.className = "mode-btn" + (orbit_view_mode === mode ? " active" : "");
+        // mode-btn (自動/手動などの設計そのものの分岐) とは見た目を変え、
+        // 同じ絵の見せ方だけを切り替えるタブだと分かるようにする
+        btn.className = "view-tab" + (orbit_view_mode === mode ? " active" : "");
         btn.onclick = () => set_orbit_view_mode(mode);
         view_mode_row.appendChild(btn);
       });
@@ -1962,8 +1964,10 @@ export function renderOrbitControls() {
     dv: info ? info.dv : undefined,
   });
 
-  // 3Dビュー (遠景・V∞)。タブが近景側のときは更新しない: 呼べば「準備できている」
-  // 扱いになり、太陽方向の目印などがタブを跨いで出っぱなしになってしまうため。
+  // 3Dビュー (遠景・V∞)。タブが遠景でないとき (近景・周回軌道投入どちらも) は
+  // 必ず「未準備」を渡して隠す。ここを省略すると、呼ばなかった側は前に
+  // 遠景を表示していたときの状態のまま (太陽方向の目印なども含めて) 残って
+  // しまう。周回軌道投入では常にこちら (never far_active)。
   const angles = !is_insert ? mission.get_launch_angles(i) : null;
   if (far_active) {
     updateEscapeView({
@@ -1975,7 +1979,7 @@ export function renderOrbitControls() {
       planetPos: mission.planet_pos(i),
       planetVel: mission.planet_vel(i),
     });
-  } else if (!is_insert) {
+  } else {
     updateEscapeView({ planetNum: -1 });
   }
 
