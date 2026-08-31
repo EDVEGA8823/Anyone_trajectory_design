@@ -2010,6 +2010,12 @@ export class Mission {
 
   #update_trajectory(i) {
     if (i < 0 || i >= this.#m_count) return;
+    // 既定は「レグ無し」。これを解けたときだけ下で上書きする。
+    // 先に消しておかないと、ノードを削除して最後尾になったノードや、
+    // 位置/速度が求まらなくなったノードで、以前解けていたときの軌道が
+    // 太陽系ビューに残ってしまう (#m_trajectory_arcsは#remove_nodeで
+    // 添字を詰めるだけで、中身の再計算はここでしかしないため)。
+    this.#m_trajectory_arcs[i] = undefined;
     if (this.#m_s_c_pos[i] == undefined || this.#m_s_c_vel[i] == undefined) return;
 
     // 次ノードが天体とは限らない(マヌーバノードは深宇宙の一点)ので、
@@ -2092,6 +2098,11 @@ export class Mission {
       if (i > 0) this.#update_trajectory(i - 1);
       this.#set_s_c(i);
     }
+    // 最後尾のノードは出ていくレグを持たない (update_trajectory(i)はi+1が
+    // あって初めて呼ばれる) ので、上のループでは触れない。以前ここが
+    // 最後尾でなかったとき(=末尾のノードを削除したとき)の軌道が残らないよう、
+    // 明示的に空にしておく。
+    if (this.#m_count > 0) this.#m_trajectory_arcs[this.#m_count - 1] = undefined;
   }
 
   // 前後のノードとの最小間隔を守る位置に日付を切り詰める
