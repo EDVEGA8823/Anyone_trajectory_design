@@ -1885,13 +1885,13 @@ export function renderOrbitControls() {
   if (lim == undefined) {
     // 縦を使わないよう、説明は読み値の枠に1行だけ出す
     readout.appendChild(
-      makeReadout(
-        [["", is_insert ? "天体を選ぶと計算されます" : "直前の「周回軌道投入」と同じ天体からのみ"]],
-        { inline: true }
-      )
+      makeReadout([
+        ["", is_insert ? "天体を選ぶと計算されます" : "直前の「周回軌道投入」と同じ天体からのみ"],
+      ])
     );
-    // 打上げと並び順を揃えるため、読み値の下にボタンを置く
-    if (!is_insert) readout.appendChild(makePorkchopButton(i));
+    // ポークチョップ図は「次の天体までのレグ」の話なので、そのレグを映して
+    // いる遠景でだけ出す (近景は天体のすぐそばの周回軌道の話で、図とは別の題材)
+    if (far_active) readout.appendChild(makePorkchopButton(i));
     updateOrbitView({ planetNum: -1 });
     updateEscapeView({ planetNum: -1 }); // タブが遠景でなければ常にこちら (太陽方向の目印も一緒に隠れる)
     return;
@@ -1938,7 +1938,7 @@ export function renderOrbitControls() {
     );
     addField(
       "orbit_ra",
-      "遠点高度 [km]",
+      "遠点高度 [km]" + (info && info.ra_clamped ? " (上限)" : ""),
       `上限 ${format_radius(lim.ra_max - R)} (ヒル半径の半分。これより外は太陽の摂動で軌道を保てない)` +
         (info && info.dv_min != undefined
           ? "\n上限まで広げたときの" + (is_insert ? "投入" : "脱出") + "ΔV " + (info.dv_min * 1000).toFixed(0) + " m/s"
@@ -1991,34 +1991,29 @@ export function renderOrbitControls() {
       rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°"]);
       rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°"]);
     }
-    readout.appendChild(makeReadout(rows, { inline: true }));
+    readout.appendChild(makeReadout(rows));
     readout.appendChild(makePorkchopButton(i));
     return;
   }
 
   if (info == null) {
     readout.appendChild(
-      makeReadout([["", is_insert ? "前のレグが決まると計算" : "次の目的地が決まると計算"]], { inline: true })
+      makeReadout([["", is_insert ? "前のレグが決まると計算" : "次の目的地が決まると計算"]])
     );
-    if (!is_insert) readout.appendChild(makePorkchopButton(i));
     return;
   }
 
-  // 高度は入力欄に出ているので、こちらには元の半径を出しておく
-  // (双曲線や軌道の式に現れるのは半径の方なので、両方見えるようにする)
+  // 近点半径・遠点半径は、すぐ上の近点高度・遠点高度の欄と天体の半径ぶん
+  // 違うだけなので出さない。打上げと同じく、右の欄には「そう設定した結果
+  // どうなるか」だけを並べる (遠点がヒル半径の上限に張り付いていることは、
+  // その入力欄の見出しに添えてある)。
   const rows = [
     [is_insert ? "侵入速度 V∞" : "脱出速度 V∞", info.v_inf.toFixed(3) + " km/s"],
     [is_insert ? "投入ΔV" : "脱出ΔV", (info.dv * 1000).toFixed(1) + " m/s"],
-    ["近点半径 rp", format_radius(info.rp)],
-    ["遠点半径 ra", format_radius(info.ra)],
     ["離心率", info.e.toFixed(4)],
     ["周期", format_period(info.period)],
   ];
-  // 遠点がヒル半径の上限に張り付いていることは、値の脇に短く添えるだけにする
-  if (info.ra_clamped) rows[3][1] += " (上限)";
-  readout.appendChild(makeReadout(rows, { inline: true }));
-  // 打上げと並び順を揃えるため、読み値の下にボタンを置く
-  if (!is_insert) readout.appendChild(makePorkchopButton(i));
+  readout.appendChild(makeReadout(rows));
 }
 
 // --- 突入速度の色分け ---

@@ -213,6 +213,7 @@
               </div>
               <div class="column orbit-controls">
                 <div class="column swingby-inputs orbit-inputs" id="orbit_inputs"></div>
+                <div class="orbit-readout" id="orbit_readout"></div>
               </div>
             </div>
             <div class="view-legend" id="orbit_legend_near">
@@ -229,12 +230,6 @@
               <span><i class="sw-delta"></i>仰角 δ</span>
               <span><i class="sw-porbit"></i>天体の公転方向</span>
             </div>
-            <!-- 読み値は右の細い欄ではなくプレビューの下に横並びで置く。
-                 この節は読み値が多く (V∞・ΔV・近点/遠点半径・離心率・周期)、
-                 118pxの欄に縦積みすると欄だけで350px近くになり、プレビューを
-                 打上げと同じ大きさにする余地が無くなるため (区間の周回数と
-                 同じ流儀) -->
-            <div class="column orbit-below" id="orbit_readout"></div>
           </div>
 
           <div class="column box entry-only" id="entry_box">

@@ -1657,17 +1657,6 @@ input:focus {
   flex: 1 1 auto;
 }
 
-/* 読み値をプレビューの下に横並びで置く帯 */
-.orbit-below {
-  gap: 6px;
-}
-/* 帯いっぱいに伸びると重いので、ボタンは中身の幅で左に置く */
-.orbit-below .pc-open {
-  width: auto;
-  align-self: flex-start;
-  margin-top: 2px;
-}
-
 /* 投入(減速)か脱出(加速)かをひと目で分かるようにする印 */
 .orbit-badge {
   font-size: 10px;
