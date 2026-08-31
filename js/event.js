@@ -8,6 +8,7 @@ import {
   toggle_planet,
   updateControlPanelDisplay,
   update_plot,
+  update_sequence_times,
 } from './main.js';
 import { camera, controls, createLine, getZScale } from './plot.js';
 import { coast_anomalies, kepler_equation, MU_SUN } from './trajectory.js';
@@ -262,6 +263,10 @@ export function Update_time() {
   update_stat_bar();
   update_edit_target_label();
   renderLegEvents();
+  // ミッションシーケンス一覧の日付も、ドラッグ中を含めて追従させる。
+  // 一覧を作り直す change_sequence() はチェック状態などを乱すので、
+  // ここでは日付だけを書き換える軽い経路を使う
+  update_sequence_times();
 }
 
 // --------------------- Mouse / Touch Handlers ---------------------

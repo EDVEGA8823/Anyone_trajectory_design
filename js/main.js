@@ -309,6 +309,32 @@ export function change_sequence() {
   renderBulkBar();
 }
 
+// 天体ドラッグ中など、日付が高頻度で動く間の軽い更新。
+// change_sequence() は一覧をまるごと作り直すので、ドラッグ中毎フレーム
+// 呼ぶとチェック状態やスクロール位置が乱れうるし重い。ここでは既存の
+// カードを使い回し、日付 (と自動マヌーバのΔV、ドラッグで変わりうる) だけ
+// 書き換える。ノードの増減など構造が変わる操作は別経路 (change_sequence)
+// を通るので、ここでは考えなくてよい。
+export function update_sequence_times() {
+  const mission = State.mission_sequence;
+  if (!mission) return;
+  document.querySelectorAll("#sequence > .sequence").forEach((card) => {
+    const id = Number(card.id);
+    if (isNaN(id) || id >= mission.count) return;
+
+    const date_el = card.querySelector(".seq-date");
+    if (date_el) date_el.textContent = JulianToDate(mission.date(id)).toLocaleDateString();
+
+    if (mission.type(id) === Sequence_Type.Maneuver && mission.is_auto_mode(id)) {
+      const name_el = card.querySelector(".seq-name");
+      if (name_el) {
+        const dsm = mission.get_dsm_info(id);
+        name_el.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+      }
+    }
+  });
+}
+
 // 探査機の推進系。ドライ質量(=燃料を使い切った後に残る質量)を出すのに要る。
 // 二液式のアポジエンジン程度を想定した既定値。
 const ISP = 320; // 比推力 [s]
