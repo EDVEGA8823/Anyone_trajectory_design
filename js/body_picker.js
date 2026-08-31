@@ -10,6 +10,7 @@ import {
   searchBodies,
   bodyLabel,
   bodySubLabel,
+  normalizeBody,
 } from './bodies.js';
 import { notify } from './topbar.js';
 
@@ -134,6 +135,7 @@ function on_key(e) {
 const SECTION_MINE = "sec:mine";
 const SECTION_POPULAR = "sec:popular";
 const SECTION_ALL = "sec:all";
+const SECTION_MANUAL = "sec:manual";
 // 取り込んだ天体はここからしか消せないうえ、多くても数件なので開いておく
 const expanded = new Set([SECTION_MINE, SECTION_POPULAR]);
 
@@ -234,17 +236,27 @@ function render_tree() {
 
   // --- すべての天体。枝を開いたときに取りに行く ---
   tree_el.appendChild(section_head(SECTION_ALL, "すべての天体", render_tree));
-  if (!expanded.has(SECTION_ALL)) return;
-
-  for (const s of bodySets()) {
-    if (s.id === "popular") continue;
-    const key = "set:" + s.id;
-    const item = tree_node(s.label, 0, () => show_set(s, key), s.count);
-    item.dataset.key = key;
-    item.title = s.note + "\n" + s.count.toLocaleString() + " 件 (" + Math.round(s.bytes / 1e5) / 10 + " MB)";
-    if (key === active_key) item.classList.add("active");
-    tree_el.appendChild(item);
+  if (expanded.has(SECTION_ALL)) {
+    for (const s of bodySets()) {
+      if (s.id === "popular") continue;
+      const key = "set:" + s.id;
+      const item = tree_node(s.label, 0, () => show_set(s, key), s.count);
+      item.dataset.key = key;
+      item.title = s.note + "\n" + s.count.toLocaleString() + " 件 (" + Math.round(s.bytes / 1e5) / 10 + " MB)";
+      if (key === active_key) item.classList.add("active");
+      tree_el.appendChild(item);
+    }
   }
+
+  // --- 軌道要素を自分で入力。掲載されていない天体や自前のデータを使うための
+  // 上級者向けの入口なので、他の分類と分けて控えめに置く ---
+  tree_el.appendChild(el("div", "bp-tree-sep"));
+  const manual = tree_node("軌道要素を入力して追加", 0, () => show_manual_form(), undefined, false);
+  manual.classList.add("bp-manual-link");
+  manual.dataset.key = SECTION_MANUAL;
+  manual.title = "掲載されていない天体を、自分で用意した軌道要素から追加する";
+  if (SECTION_MANUAL === active_key) manual.classList.add("active");
+  tree_el.appendChild(manual);
 }
 
 // 枝とその下にぶら下がる天体のidを全部集める
@@ -297,6 +309,15 @@ async function show_set(entry, key) {
   render_list(bodiesOfSet(entry.id), entry.label);
 }
 
+function show_manual_form() {
+  search_el.value = "";
+  set_status("");
+  current = { type: "manual" };
+  render_tree();
+  mark_active(SECTION_MANUAL);
+  render_manual_form();
+}
+
 /* ==================================================================
    右の一覧
    ================================================================== */
@@ -341,7 +362,17 @@ function make_row(b, imported) {
   row.dataset.id = b.id;
 
   const main = el("div", "bp-row-main");
-  main.appendChild(el("div", "bp-row-name", bodyLabel(b)));
+  // 天体名の行。双曲線・放物線の目印は行の並び(a/e/i/周期の列)を崩さないよう、
+  // 別列にせず名前の右にくっつける
+  const name_line = el("div", "bp-row-name-line");
+  name_line.appendChild(el("span", "bp-row-name", bodyLabel(b)));
+  if (!b.closed) {
+    // 二度と戻らない軌道。設計としては「一度きりの機会」なので目印を出す
+    const open_kind = Math.abs(b.e - 1) < 1e-6 ? "放物線" : "双曲線";
+    row.title = open_kind + "軌道。太陽系を離れるので、次の機会は無い";
+    name_line.appendChild(el("span", "bp-badge", open_kind));
+  }
+  main.appendChild(name_line);
   const sub = bodySubLabel(b);
   if (sub) main.appendChild(el("div", "bp-row-sub", sub));
   row.appendChild(main);
@@ -354,13 +385,6 @@ function make_row(b, imported) {
   nums.appendChild(el("span", null, "i " + fmt(b.i, 1) + "°"));
   nums.appendChild(el("span", null, period ? "周期 " + fmt(period, 1) + "年" : "周期 —"));
   row.appendChild(nums);
-
-  if (!b.closed) {
-    // 二度と戻らない軌道。設計としては「一度きりの機会」なので目印を出す
-    const open_kind = Math.abs(b.e - 1) < 1e-6 ? "放物線" : "双曲線";
-    row.title = open_kind + "軌道。太陽系を離れるので、次の機会は無い";
-    row.appendChild(el("span", "bp-badge", open_kind));
-  }
 
   if (imported) {
     row.classList.add("imported");
@@ -381,6 +405,159 @@ function make_row(b, imported) {
     add_selected();
   };
   return row;
+}
+
+/* ==================================================================
+   軌道要素を自分で入力
+   ==================================================================
+   掲載されていない天体 (未発見・仮の設計・JPL Horizonsから拾った値など)
+   を、軌道要素そのものから追加するための入口。あくまで上級者向けの
+   素朴な入力欄でよく、視覚化などは持たせない。
+   小惑星は (a, 平均近点角M, 元期)、彗星・恒星間天体は (近日点距離q,
+   近日点通過tp) で軌道が決まる (normalizeBody と同じ規約)。 */
+
+function manual_field(label, { type = "number", step, placeholder } = {}) {
+  const col = el("div", "column");
+  col.appendChild(el("label", null, label));
+  const input = document.createElement("input");
+  input.type = type;
+  if (step != undefined) input.step = String(step);
+  if (placeholder) input.placeholder = placeholder;
+  col.appendChild(input);
+  return { col, input };
+}
+
+function render_manual_form() {
+  list_el.innerHTML = "";
+  select_body(null); // 一覧の選択・下の追加ボタンはこの画面では使わない
+
+  const wrap = el("div", "bp-manual");
+  wrap.appendChild(
+    el(
+      "div",
+      "bp-manual-hint",
+      "掲載されていない天体を、軌道要素から直接追加します。" +
+        "元期・近日点通過はユリウス日(JD)で入力してください。"
+    )
+  );
+
+  let kind = "asteroid";
+  const kindCol = el("div", "column");
+  kindCol.appendChild(el("label", null, "分類"));
+  const kindBtns = el("div", "row bp-manual-kind");
+  const asteroidBtn = el("button", "mode-btn active", "小惑星");
+  const cometBtn = el("button", "mode-btn", "彗星・恒星間天体");
+  asteroidBtn.type = "button";
+  cometBtn.type = "button";
+  kindBtns.appendChild(asteroidBtn);
+  kindBtns.appendChild(cometBtn);
+  kindCol.appendChild(kindBtns);
+  wrap.appendChild(kindCol);
+
+  const desig = manual_field("符号・仮符号", { type: "text", placeholder: "例: 2020 XL5" });
+  const name = manual_field("名前 (任意)", { type: "text", placeholder: "例: Ryugu" });
+  const nameRow = el("div", "row");
+  nameRow.appendChild(desig.col);
+  nameRow.appendChild(name.col);
+  wrap.appendChild(nameRow);
+
+  const eF = manual_field("離心率 e", { step: 0.0001 });
+  const iF = manual_field("軌道傾斜角 i [deg]", { step: 0.01 });
+  const row1 = el("div", "row");
+  row1.appendChild(eF.col);
+  row1.appendChild(iF.col);
+  wrap.appendChild(row1);
+
+  const nodeF = manual_field("昇交点黄経 Ω [deg]", { step: 0.01 });
+  const periF = manual_field("近日点引数 ω [deg]", { step: 0.01 });
+  const row2 = el("div", "row");
+  row2.appendChild(nodeF.col);
+  row2.appendChild(periF.col);
+  wrap.appendChild(row2);
+
+  // 分類で必要な項目が変わる。小惑星は a・M・元期、彗星・恒星間天体は q・近日点通過
+  const aF = manual_field("軌道長半径 a [AU]", { step: 0.0001 });
+  const mF = manual_field("平均近点角 M [deg]", { step: 0.01 });
+  const epochF = manual_field("元期 [JD]", { step: 0.0001 });
+  const asteroidRow = el("div", "row");
+  asteroidRow.appendChild(aF.col);
+  asteroidRow.appendChild(mF.col);
+  asteroidRow.appendChild(epochF.col);
+  wrap.appendChild(asteroidRow);
+
+  const qF = manual_field("近日点距離 q [AU]", { step: 0.0001 });
+  const tpF = manual_field("近日点通過 [JD]", { step: 0.0001 });
+  const cometRow = el("div", "row");
+  cometRow.appendChild(qF.col);
+  cometRow.appendChild(tpF.col);
+  cometRow.style.display = "none";
+  wrap.appendChild(cometRow);
+
+  const hF = manual_field("絶対等級 H (任意)", { step: 0.1 });
+  const numF = manual_field("番号 (任意)", { step: 1 });
+  const row3 = el("div", "row");
+  row3.appendChild(hF.col);
+  row3.appendChild(numF.col);
+  wrap.appendChild(row3);
+
+  const set_kind = (k) => {
+    kind = k;
+    asteroidBtn.classList.toggle("active", k === "asteroid");
+    cometBtn.classList.toggle("active", k === "comet");
+    asteroidRow.style.display = k === "asteroid" ? "" : "none";
+    cometRow.style.display = k === "comet" ? "" : "none";
+  };
+  asteroidBtn.onclick = () => set_kind("asteroid");
+  cometBtn.onclick = () => set_kind("comet");
+
+  const error = el("div", "bp-manual-error");
+  wrap.appendChild(error);
+
+  const actions = el("div", "row bp-manual-actions");
+  const submit = el("button", "bp-add", "この内容で追加");
+  submit.type = "button";
+  submit.onclick = () => {
+    const num = (input) => {
+      const v = parseFloat(input.value);
+      return isFinite(v) ? v : undefined;
+    };
+    if (!desig.input.value.trim() && num(numF.input) == undefined) {
+      error.textContent = "符号・仮符号か番号のどちらかは入力してください";
+      return;
+    }
+    const raw = {
+      kind,
+      desig: desig.input.value.trim() || undefined,
+      name: name.input.value.trim() || undefined,
+      num: num(numF.input),
+      e: num(eF.input),
+      i: num(iF.input),
+      node: num(nodeF.input),
+      peri: num(periF.input),
+      H: num(hF.input),
+    };
+    if (kind === "asteroid") {
+      raw.a = num(aF.input);
+      raw.M = num(mF.input);
+      raw.epoch = num(epochF.input);
+    } else {
+      raw.q = num(qF.input);
+      raw.tp = num(tpF.input);
+    }
+    const body = normalizeBody(raw);
+    if (!body) {
+      error.textContent = "軌道要素が読み取れません。数値が入っていない欄がないか確認してください";
+      return;
+    }
+    error.textContent = "";
+    if (on_add) on_add(body);
+    else notify("「" + bodyLabel(body) + "」を選びました");
+    closeBodyPicker();
+  };
+  actions.appendChild(submit);
+  wrap.appendChild(actions);
+
+  list_el.appendChild(wrap);
 }
 
 function remove_imported(entry) {

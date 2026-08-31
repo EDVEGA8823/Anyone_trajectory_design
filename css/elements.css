@@ -2351,7 +2351,15 @@ button {
   flex: 1 1 auto;
   min-width: 0;
 }
+.bp-row-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .bp-row-name {
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -2413,6 +2421,50 @@ button {
   border-color: var(--danger);
   background: var(--danger-soft);
   color: var(--danger);
+}
+
+/* 左の木の末尾、「軌道要素を入力して追加」への区切りと入口。
+   分類の並びとは性質が違う(上級者向けの入口)ので、線で分けて控えめに置く */
+.bp-tree-sep {
+  height: 1px;
+  margin: 8px 12px;
+  background: var(--border);
+}
+.bp-manual-link {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ==================================================================
+   軌道要素を自分で入力
+   ================================================================== */
+.bp-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  max-width: 520px;
+}
+/* e・i・Ω・ωなど軌道要素の記号は大文字化すると意味が変わるので、そのまま出す */
+.bp-manual label {
+  text-transform: none;
+}
+.bp-manual-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.bp-manual-kind {
+  gap: 6px;
+  justify-content: flex-start;
+}
+.bp-manual-error {
+  min-height: 16px;
+  color: var(--danger);
+  font-size: 12px;
+}
+.bp-manual-actions {
+  justify-content: flex-end;
 }
 
 .bp-foot {
