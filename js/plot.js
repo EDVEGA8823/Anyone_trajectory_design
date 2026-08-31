@@ -132,6 +132,11 @@ export function initPlot() {
   // z-indexを与えて重なりの文脈を作らないと、その値が画面全体と競合して、
   // ラベルの数が多いときにダイアログや道具ボタンの上に抜けてしまう。
   labelRenderer.domElement.style.zIndex = "1";
+  // OrbitControlsはこの層(canvasではなくラベルの重なり)にドラッグを付ける。
+  // 素のdivなのでブラウザは既定でテキスト選択の起点にでき、回転操作の
+  // ドラッグがそのままテキスト選択になって、マウスがビュー外に出た先の
+  // 文字まで選択されてしまっていた。ここを選択不可にして起点にさせない。
+  labelRenderer.domElement.style.userSelect = "none";
   plot_area.appendChild(labelRenderer.domElement);
 
   controls = new THREE.OrbitControls(camera, labelRenderer.domElement);
