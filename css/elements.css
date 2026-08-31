@@ -489,7 +489,6 @@ body.file-drop::after {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   margin: 0 calc(-1 * var(--panel-pad));
   padding: 9px var(--panel-pad);
@@ -498,13 +497,19 @@ body.file-drop::after {
   font-weight: 700;
   color: var(--text);
 }
-/* 選択解除ボタン。押せることが伝わるよう普段からうっすら枠を見せておく */
+/* 選択解除ボタン。押せることが伝わるよう普段からうっすら枠を見せておく。
+   絶対配置にして通常の流れから外し、出し入れしても見出しの高さ (=下の線の
+   位置) が変わらないようにする */
 .panel-close {
+  position: absolute;
+  top: 50%;
+  right: var(--panel-pad);
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 6px;

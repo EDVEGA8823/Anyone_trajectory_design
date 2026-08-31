@@ -314,8 +314,12 @@ export function updateEntryView({
   // --- 突入点まわり (地平線・速度・γの弧) ---
   const entry = atAngle(re_n, theta_p + nuEntry);
   const up = entry.clone().normalize(); // 突入点での天頂方向
-  // 進行方向側の地平方向 (上から見て角度が増える向き)
-  const horizon = new THREE.Vector3(-up.z, 0, -up.x).normalize();
+  // 進行方向側の地平方向 (上から見て角度が増える向き)。
+  // atAngle(r,θ)をθで微分した向き (r・(-sinθ,0,-cosθ)) と一致させる必要が
+  // あり、up=(cosθ,0,-sinθ)から作るなら (up.z, 0, -up.x) が正しい。
+  // (-up.z, 0, -up.x) はupと直交しない(=地平方向になっていない)ため、
+  // θによっては突入速度や地平線が大きく逆を向いてしまっていた。
+  const horizon = new THREE.Vector3(up.z, 0, -up.x).normalize();
   const vDir = horizon
     .clone()
     .multiplyScalar(Math.cos(gamma))
