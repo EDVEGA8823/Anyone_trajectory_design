@@ -409,6 +409,10 @@ body.file-drop::after {
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
+/* display:flex が [hidden] の既定を上書きしてしまうので明示的に消す */
+.view-tool[hidden] {
+  display: none;
+}
 .view-tool:hover {
   border-color: var(--gray-300);
   color: var(--text);
@@ -2410,23 +2414,32 @@ button {
   }
 }
 
-/* 区間 (レグ) の周回数を選ぶ行 */
-.leg-revs,
+/* 区間 (レグ) の周回数を選ぶ行。
+   見出しを左、ボタンを右に寄せて「打上げ (脱出速度)」などの行と同じ並びに揃える。
+   .row の space-between のままだとボタンが横いっぱいに散ってスカスカに見える */
+.leg-head,
 .leg-branch {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.leg-head > .fold-head {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.leg-btns {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: 4px;
+  flex: 0 1 auto;
   flex-wrap: wrap;
-}
-.leg-branch {
-  margin-top: 2px;
 }
 .leg-branch-label {
   color: var(--text-muted);
   font-size: 11px;
-  margin-right: 2px;
+  flex: 0 0 auto;
 }
-.leg-revs .mode-btn:disabled {
+#leg_revs .mode-btn:disabled {
   color: var(--gray-400);
   background: var(--surface-muted);
   border-color: var(--border);
@@ -2438,11 +2451,12 @@ button {
    ==================================================================
    分かりにくい設定 (多周回など) は既定で畳んでおき、見出しを押すと開く。
    畳んだ状態でも、見出しの右のバッジで今の設定が読めるようにする。 */
-.fold > .fold-head {
+/* 見出しの右に操作を並べたい箱では、見出しは行の中に入れ子になる。
+   直の子とは限らないので子孫で当てる (幅だけは直の子のときの見た目を保つ) */
+.fold .fold-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
   padding: 0;
   border: none;
   background: transparent;
@@ -2451,11 +2465,18 @@ button {
   text-align: left;
   cursor: pointer;
 }
-.fold > .fold-head label {
+.fold > .fold-head {
+  width: 100%;
+}
+.fold .fold-head label {
   cursor: pointer;
 }
 .fold > .fold-head .orbit-badge {
   margin-left: auto;
+}
+/* 周回数はボタンの選択状態で読めるので、バッジは注意のときだけ出す */
+#leg_badge:empty {
+  display: none;
 }
 .fold-mark {
   display: flex;
@@ -2463,7 +2484,7 @@ button {
   color: var(--gray-400);
   transition: transform 0.15s ease;
 }
-.fold:not(.closed) > .fold-head .fold-mark {
+.fold:not(.closed) .fold-head .fold-mark {
   transform: rotate(90deg);
 }
 .fold.closed > .fold-body {

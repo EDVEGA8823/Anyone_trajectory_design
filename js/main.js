@@ -677,6 +677,9 @@ export function update_plot() {
 
   update_vinf_arrow();
   update_dsm_arrows();
+  // 拡大できるものが有るかで道具ボタンの出し入れが変わる。
+  // すでに引き直した公転軌道を渡して測り直しを省く
+  update_z_zoom_button(planet_orbits);
   invalidate();
 }
 
@@ -1446,6 +1449,9 @@ export function renderLegControls() {
     label.className = "leg-branch-label";
     label.textContent = "軌道の取り方";
     branch_row.appendChild(label);
+    const btns = document.createElement("div");
+    btns.className = "leg-btns";
+    branch_row.appendChild(btns);
     [true, false].forEach((low) => {
       const ap = low ? preview.low : preview.high;
       const btn = document.createElement("button");
@@ -1458,13 +1464,14 @@ export function renderLegControls() {
         mission.set_leg_low_path(i, low);
         refresh_after_swingby_change();
       };
-      branch_row.appendChild(btn);
+      btns.appendChild(btn);
     });
   }
 
-  // 縦を詰めたいので横一列に並べる
+  // 縦を詰めたいので横一列に並べる。
+  // 遠日点は多周回のときは「軌道の取り方」のボタンに出ているので繰り返さない
   const rows = [["飛行時間", tof_days.toFixed(0) + " 日"]];
-  if (info && info.aphelion != undefined) {
+  if (wanted === 0 && info && info.aphelion != undefined) {
     rows.push(["遠日点", (info.aphelion / AU).toFixed(2) + " AU"]);
   }
   const next_need = min_days[Math.min(wanted + 1, MAX_LEG_REVS)];
@@ -1474,14 +1481,15 @@ export function renderLegControls() {
   readout.innerHTML = "";
   readout.appendChild(makeReadout(rows, { inline: true }));
 
+  // いま何周かは押されているボタンで読めるので、バッジは注意のときだけ出す
   if (info && info.fallback) {
     // 指定した周回数では解けず、落として解いた
     badge.textContent = info.revs + "周に変更";
     badge.className = "orbit-badge caution";
     badge.title = wanted + "周では飛行時間が足りないので " + info.revs + "周で解いています";
   } else {
-    badge.textContent = wanted === 0 ? "直行" : wanted + "周";
-    badge.className = "orbit-badge" + (wanted > 0 ? " safe" : "");
+    badge.textContent = "";
+    badge.className = "orbit-badge";
     badge.title = "";
   }
 }
@@ -2342,12 +2350,14 @@ function apply_launch_from_drag(set) {
 // 拡大後の起伏が「面内の広がり」のこの割合になるようにする。
 const Z_ZOOM_TARGET = 0.8;
 const Z_ZOOM_MAX = 200;
+// 拡大しきってもこの割合に届かないなら、押しても平らなままなので拡大しない
+const Z_ZOOM_MIN_TILT = 0.02;
 
 /**
  * 拡大の基準を測る。選択中ならそのノードに関わる軌道、無選択ならミッション全体。
  * 描画用の点(拡大前)から直に測るので、いまの拡大率には影響されない。
  */
-function measure_z_extent() {
+function measure_z_extent(planet_orbits) {
   const mission = State.mission_sequence;
   const sel = State.selected_sequence;
   let z_max = 0;
@@ -2365,37 +2375,44 @@ function measure_z_extent() {
     scan(mission.get_trajectory(i));
   }
 
-  // 関わる天体の公転軌道
-  const [, planet_orbits] = calc();
+  // 関わる天体の公転軌道。呼び元が計算済みならそれを使う (毎回引き直すと重い)
+  const orbits = planet_orbits ?? calc()[1];
   for (let i = 0; i < mission.count; i++) {
     if (sel != -1 && Math.abs(i - sel) > 1) continue;
     const n = mission.planet_num(i);
-    if (n >= 0 && planet_orbits[n]) scan(planet_orbits[n]);
+    if (n >= 0 && orbits[n]) scan(orbits[n]);
   }
   return { z_max, r_max };
 }
 
+// 押したときに掛かる倍率。1なら拡大しても見た目が変わらない (押す意味がない)
+function z_zoom_scale(planet_orbits) {
+  if (!State.mission_sequence) return 1;
+  const { z_max, r_max } = measure_z_extent(planet_orbits);
+  if (!(z_max > 0) || !(r_max > 0)) return 1;
+  const s = Math.min(Math.max((Z_ZOOM_TARGET * r_max) / z_max, 1), Z_ZOOM_MAX);
+  // 上限まで伸ばしてもまだ平らなままなら押しても何も変わらない。
+  // 地球しか出していないときがこれで、傾きが数値誤差ぶんしかないのに
+  // 上限の200倍まで掛かってしまう
+  return s * z_max >= Z_ZOOM_MIN_TILT * r_max ? s : 1;
+}
+
 export function toggle_z_zoom() {
-  if (getZScale() > 1) {
-    setZScale(1);
-  } else {
-    const { z_max, r_max } = measure_z_extent();
-    const target = Z_ZOOM_TARGET * r_max;
-    const s = z_max > 1e-9 && target > 0 ? Math.min(Math.max(target / z_max, 1), Z_ZOOM_MAX) : 1;
-    setZScale(s);
-  }
+  setZScale(getZScale() > 1 ? 1 : z_zoom_scale());
   // 位置を持つものはすべて描き直す (拡大は描画データに掛けているため)
   update_plot();
   toggle_planet();
-  update_z_zoom_button();
 }
 
-export function update_z_zoom_button() {
+export function update_z_zoom_button(planet_orbits) {
   const btn = document.getElementById("z_zoom");
   const label = document.getElementById("z_zoom_factor");
   if (!btn || !label) return;
   const s = getZScale();
   const on = s > 1;
+  // 押しても何も変わらないとき (まだ何も無い・軌道が黄道面に乗っている) は隠す。
+  // 拡大中は必ず出す。隠すと等倍に戻す手段が無くなるため
+  btn.hidden = !on && z_zoom_scale(planet_orbits) <= 1;
   btn.classList.toggle("active", on);
   label.textContent = on ? "Z ×" + (s < 10 ? s.toFixed(1) : s.toFixed(0)) : "Z拡大";
 }

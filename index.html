@@ -176,19 +176,21 @@
           </div>
 
           <div class="column box leg-only fold closed" id="leg_box">
-            <button type="button" class="fold-head" id="leg_fold"
-              title="次の目的地までの区間。太陽を何周してから着くかを選べる。&#10;同じ2点・同じ飛行時間でも、1周まわってから着く解は直行とはまったく別の軌道になり、&#10;遠い目的地へはそちらの方がずっと安いことが多い。&#10;周回数ごとに必要な最短飛行時間が決まっていて、それより短いと解が無い。">
-              <span class="fold-mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 5l7 7-7 7" />
-                </svg>
-              </span>
-              <label>この区間</label>
-              <span class="orbit-badge" id="leg_badge"></span>
-            </button>
+            <div class="row leg-head">
+              <button type="button" class="fold-head" id="leg_fold"
+                title="次の目的地までの区間。太陽を何周してから着くかを選べる。&#10;同じ2点・同じ飛行時間でも、1周まわってから着く解は直行とはまったく別の軌道になり、&#10;遠い目的地へはそちらの方がずっと安いことが多い。&#10;周回数ごとに必要な最短飛行時間が決まっていて、それより短いと解が無い。&#10;押すと軌道の取り方と読み取りが出る。">
+                <span class="fold-mark" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+                <label>区間の周回数</label>
+                <span class="orbit-badge" id="leg_badge"></span>
+              </button>
+              <div class="leg-btns" id="leg_revs"></div>
+            </div>
             <div class="column fold-body">
-              <div class="row leg-revs" id="leg_revs"></div>
               <div class="row leg-branch" id="leg_branch"></div>
               <div class="orbit-readout" id="leg_readout"></div>
             </div>
