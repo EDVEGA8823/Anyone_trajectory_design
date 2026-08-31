@@ -1551,6 +1551,9 @@ input:focus {
 .view-tabs {
   gap: 2px;
   flex-wrap: nowrap;
+  /* .row の既定は space-between で、タブが2枚だと左右の端に離れて
+     しまう。タブは並んでいてこそ切り替えだと分かるので左に寄せる */
+  justify-content: flex-start;
   border-bottom: 1px solid var(--border);
 }
 .view-tab {

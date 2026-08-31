@@ -325,8 +325,18 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   const hyperbolic = e_h != undefined && e_h > 1;
   if (hyperbolic) extent = Math.max(extent, r_fit + Math.abs(center_x));
 
+  // 画角とグリッドを取り直す単位。呼び出し側のkey (ノード・天体・種別) に
+  // 「双曲線があるか」を足す。
+  //   軌道脱出では、次の目的地が決まって初めてV∞が求まり、そこで双曲線が
+  //   何も無いところから現れる。keyだけを見ていると、このときノードも天体も
+  //   種別も変わっていないので画角もグリッドも古いまま据え置かれ、楕円しか
+  //   無かった頃の狭い画角に双曲線が突き刺さった絵になってしまう。
+  //   rp/raの変更で取り直さない (操作中に画角が動くと大きさの感覚が崩れる)
+  //   という元の方針は保ったまま、この構造の変わり目でだけ取り直す。
+  const view_key = key + (hyperbolic ? "|h" : "|-");
+
   // 軌道面グリッドの広さ。画角と同じく、表示対象が変わったときだけ決め直す
-  const view_changed = key !== lastViewKey;
+  const view_changed = view_key !== lastViewKey;
   if (view_changed || !(gridHalf > 0)) {
     gridHalf = extent * GRID_SPAN;
     planeGrid.geometry.dispose();
@@ -418,10 +428,11 @@ export function updateOrbitView({ planetNum, key, kind = "insert", rp, ra, vinf,
   geom = { rp_n, ra_n, R, extent, center_x };
   updateHandles();
 
-  // 画角を取り直すのは表示するノードが変わったときだけ (B面ビューと同じ)。
-  // rpやraを変えるたびにカメラが動くと、見ている大きさの感覚が崩れて操作しづらい。
-  if (key !== lastViewKey) {
-    lastViewKey = key;
+  // 画角を取り直すのは表示するノードが変わったときと、双曲線が現れ消えした
+  // ときだけ (view_keyの説明を参照)。rpやraを変えるたびにカメラが動くと、
+  // 見ている大きさの感覚が崩れて操作しづらい。
+  if (view_changed) {
+    lastViewKey = view_key;
     fitCamera(extent);
   }
   invalidateOrbitView();

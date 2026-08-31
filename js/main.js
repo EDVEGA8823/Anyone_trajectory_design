@@ -1429,9 +1429,10 @@ const MAX_LEG_REVS = 3;
 let leg_box_open = false;
 
 // 軌道脱出(再出発)の3Dビューは近景(周回軌道→双曲線)と遠景(打上げと同じV∞の
-// 見方)を切り替えられる。既定は近景 (これまでの唯一のビュー)。ノードをまたいで
-// 覚えておく (切り替えるたびに既定へ戻ると煩わしいため)。
-let orbit_view_mode = "near"; // "near" | "far"
+// 見方)を切り替えられる。既定は遠景: 再出発でまず決めたいのは「どこへどれだけの
+// 速度で出ていくか」で、周回軌道そのものは直前の周回軌道投入で決めているため。
+// 一度切り替えたらノードをまたいで覚えておく (毎回既定へ戻ると煩わしい)。
+let orbit_view_mode = "far"; // "near" | "far"
 
 function set_orbit_view_mode(mode) {
   if (orbit_view_mode === mode) return;
