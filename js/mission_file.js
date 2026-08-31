@@ -198,7 +198,8 @@ export function loadMissionData(data, filename) {
     return false;
   }
 
-  State.selected_sequence = mission.count > 0 ? 0 : -1;
+  // どのノードも選ばずに開く (前回選んでいた位置を引き継ぐ理由が無いため)
+  State.selected_sequence = -1;
   State.editing_sequence = -1;
   State.checked.clear();
   State.tmp_date = mission.date(0) ?? State.tmp_date;

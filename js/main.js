@@ -789,10 +789,7 @@ export function import_small_body(body) {
 /**
  * ミッションを空にして最初からやり直す。
  *
- * 取り込んだ天体はそのまま残す。天体は「作業場に並べた道具」で、同じ天体へ
- * 別の行き方を試すのが軌道設計のふつうの流れなので、ここで一緒に消すと
- * 毎回入れ直すことになる。要らなくなった天体は「天体を追加」の画面から
- * 個別に外せる (remove_small_body)。
+ * 取り込んだ小天体も含めて、読み込んだ直後と同じまっさらな状態に戻す。
  */
 export async function new_mission() {
   if (!(await confirmDiscard("新しく作り直す"))) return;
@@ -805,6 +802,7 @@ export async function new_mission() {
   State.old_date = State.tmp_date;
   setMissionName(DEFAULT_NAME);
   closePorkchop();
+  reload_small_bodies([]); // 取り込んだ小天体も一緒にまっさらにする
 
   // 弧の線は数が合わなくなるので、いったん全部捨てる
   for (const arc of State.arcs) if (arc) disposeLine(arc);
@@ -2460,7 +2458,11 @@ function refresh_after_swingby_change() {
 function boot() {
   // Initialize Mission
   State.mission_sequence = new Mission();
-  
+  // ブラウザが再読み込み時にフォームの入力値を勝手に復元することがあり、
+  // HTMLのvalue属性任せだと前回入力した名前が残ってしまう。中身は空の
+  // ミッションなので、名前も明示的に既定へ揃えておく
+  setMissionName(DEFAULT_NAME);
+
   // Set up events
   initEvents();
 
