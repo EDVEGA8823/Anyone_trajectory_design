@@ -4,6 +4,9 @@ import {
   setLinePoints,
   makeArrow,
   setArrow,
+  makeArrowTrail,
+  setArrowTrailPath,
+  updateArrowTrail,
   makeHandle,
   scaleHandleToScreen,
   makeSquareResizer,
@@ -78,7 +81,7 @@ export function createVectorView(config) {
   const MAX_FIT_EXTENT = HALF * 6;
 
   let renderer, scene, camera, controls, sunLight;
-  let centerMesh, planeGrid, referenceArrow, referenceLine;
+  let centerMesh, planeGrid, referenceLine, referenceHeads;
   let vectorArrow, shadowLine, riseLine, alphaArc, deltaArc;
   let vectorHandle, alphaHandle, deltaHandle, vectorGuide, alphaGuide, deltaGuide;
 
@@ -130,10 +133,12 @@ export function createVectorView(config) {
     scene.add(centerMesh);
 
     // 基準方向 (= 方位角 α の 0°)
-    referenceArrow = makeArrow(colors.reference, 0.85);
-    scene.add(referenceArrow);
-    referenceLine = makeLine([new THREE.Vector3()], colors.reference, 0.5);
+    // 基準方向 (= 方位角αの0°)。グリッドの端まで引くので、矢じるしは先端では
+    // なく線の途中に置く (view3d.js の makeArrowTrail)
+    referenceLine = makeLine([new THREE.Vector3()], colors.reference, 0.85);
     scene.add(referenceLine);
+    referenceHeads = makeArrowTrail(colors.reference, 2, 0.85);
+    scene.add(referenceHeads);
 
     vectorArrow = makeArrow(colors.vector, 1);
     vectorArrow.name = "vector_arrow";
@@ -300,15 +305,14 @@ export function createVectorView(config) {
 
     // 基準方向 (=α の基準) は中心を貫いて前後に伸ばす。
     // 大きさではなく向きを示す線なので、グリッドの端まで引く
-    setArrow(
-      referenceArrow,
+    const refPts = [
       new THREE.Vector3(-GRID_HALF, 0, 0),
+      new THREE.Vector3(),
       new THREE.Vector3(GRID_HALF, 0, 0),
-      0.45,
-      0.1,
-      0.45
-    );
-    setLinePoints(referenceLine, [new THREE.Vector3(), new THREE.Vector3(GRID_HALF, 0, 0)]);
+    ];
+    setLinePoints(referenceLine, refPts);
+    // 中心をはさんで前後に1つずつ、画角の中ほどに置く
+    setArrowTrailPath(referenceHeads, refPts, [0.55]);
 
     // 方位角の円弧 (軌道面内、基準方向から反時計回りに α)
     const arcA = Math.min(alphaR * 0.55, Math.max(shown * 0.45, 0.8));
@@ -472,8 +476,8 @@ export function createVectorView(config) {
   function setVisible(visible) {
     centerMesh.visible = visible;
     planeGrid.visible = visible;
-    referenceArrow.visible = visible;
     referenceLine.visible = visible;
+    referenceHeads.visible = visible;
     vectorArrow.visible = visible;
     shadowLine.visible = visible;
     riseLine.visible = visible;
@@ -491,6 +495,7 @@ export function createVectorView(config) {
     scaleHandleToScreen(vectorHandle, camera, renderer);
     scaleHandleToScreen(alphaHandle, camera, renderer);
     scaleHandleToScreen(deltaHandle, camera, renderer);
+    updateArrowTrail(referenceHeads, camera, renderer, 9);
     updateSunCompass(sunCompass, sunWorldDir, camera, renderer);
     renderer.render(scene, camera);
   });
