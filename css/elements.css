@@ -1783,6 +1783,9 @@ button {
 /* ==================================================================
    3D plot overlay labels (three.js CSS2DObject)
    ================================================================== */
+/* キャンバスの上に重なった普通のDOM文字なので、マウスでビューを回転させて
+   ドラッグすると地の文と同じようにテキスト選択が始まってしまう。
+   選択できても嬉しくない飾りの文字なので外す */
 .label_1au_x,
 .label_1au_y,
 .label_1au_z {
@@ -1792,6 +1795,7 @@ button {
   font-size: 10px;
   --opacity: 1;
   opacity: var(--opacity);
+  user-select: none;
 }
 
 .label_5au_x,
@@ -1803,6 +1807,7 @@ button {
   padding: 2px;
   --opacity: 1;
   opacity: var(--opacity);
+  user-select: none;
 }
 
 .label_planet {
@@ -1813,6 +1818,7 @@ button {
   font-size: 11px;
   --opacity: 1;
   opacity: var(--opacity);
+  user-select: none;
 }
 
 /* ==================================================================
