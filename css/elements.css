@@ -1301,6 +1301,12 @@ input:focus {
   font-size: 13px;
   width: 100%;
 }
+/* 「脱出速度 V∞ [km/s]」は118px幅だと2行になってしまうので、この欄だけ
+   ラベルを少し小さくして1行に収める */
+.param-field--vinf label {
+  font-size: 10.5px;
+  white-space: nowrap;
+}
 
 /* ==================================================================
    最終軌道 (ミッションの終端)
@@ -1642,6 +1648,15 @@ input:focus {
   margin: 0 -6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+/* input と label はブラウザの既定スタイルでそれぞれ text / default の
+   カーソルを持ち、.param-field の cursor:pointer は (継承ではなく既定側が
+   勝ってしまうため) そのままでは効かない。個別に上書きする。
+   inputはクリックすれば数値も編集できるが、ハンドルを出す操作を
+   兼ねているのでポインタのままにする */
+.param-field input,
+.param-field label {
   cursor: pointer;
 }
 .param-field:hover {
@@ -2489,6 +2504,10 @@ button {
 .leg-body .orbit-readout {
   flex: 1 1 auto;
   padding-top: 1px; /* 「軌道の取り方」の文字と高さを揃える */
+}
+/* 「軌道の取り方」は左寄せのまま、読み取りは右寄せにして左右で分ける */
+.leg-body .swingby-readout--inline {
+  justify-content: flex-end;
 }
 #leg_revs .mode-btn:disabled {
   color: var(--gray-400);
