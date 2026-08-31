@@ -994,12 +994,16 @@ export class Mission {
   #m_dsm_alpha = []; // 方位角 [rad] (進行方向が0)
   #m_dsm_delta = []; // 仰角 [rad] (軌道面から法線向きが正)
 
-  // 手動モードの軌道脱出パラメータ。打上げの手動モードとまったく同じ量
-  // (天体を離れるときの|V∞|と2つの角度) だが、打上げが常にノード0の1つきり
-  // なのに対し軌道脱出はいくつも置けるので、ノードごとの配列で持つ。
-  #m_escape_vinf = [];
-  #m_escape_alpha = [];
-  #m_escape_delta = [];
+  // 手動モードで「天体を離れるとき」の設計変数。打上げの手動モードとまったく
+  // 同じ量 (天体に対する相対速度の大きさ [km/s] と2つの角度) で、軌道脱出と
+  // 再出発の両方が使う。打上げが常にノード0の1つきりなのに対しこの2つは
+  // いくつも置けるので、ノードごとの配列で持つ。
+  //   軌道脱出 (惑星の周回軌道から) … 表示上は「脱出速度 V∞」
+  //   再出発 (小天体から)          … 重力がほとんど無く無限遠も何も無いので、
+  //                                  表示上は素直に「出発ΔV」と呼ぶ
+  #m_depart_v = [];
+  #m_depart_alpha = [];
+  #m_depart_delta = [];
 
   // 大気圏突入ノードの突入経路角 [rad] (水平から測り、降下方向が負) と計算結果
   #m_entry_gamma = [];
@@ -1203,7 +1207,10 @@ export class Mission {
     const t = this.#m_types[i];
     if (t === Sequence_Type.Flyby) return true;
     return (
-      (t === Sequence_Type.Launch || t === Sequence_Type.Swingby || t === Sequence_Type.Escape) &&
+      (t === Sequence_Type.Launch ||
+        t === Sequence_Type.Swingby ||
+        t === Sequence_Type.Escape ||
+        t === Sequence_Type.Departure) &&
       !this.#m_is_auto_mode[i]
     );
   }
@@ -1454,9 +1461,9 @@ export class Mission {
     const result = launch_velocity(
       r_pla,
       v_pla,
-      this.escape_vinf(i),
-      this.escape_alpha(i),
-      this.escape_delta(i)
+      this.depart_v(i),
+      this.depart_alpha(i),
+      this.depart_delta(i)
     );
     if (result == undefined) return;
     // 到着速度(index 1)は #update_trajectory 側で伝播結果から補完される
@@ -1464,14 +1471,35 @@ export class Mission {
     this.#calc_orbit(i);
   }
 
-  // 軌道脱出を手動に切り替えたときの初期値。打上げと同じく、切り替えた瞬間に
-  // 軌道が飛ばないよう、いまの自動モードの解から逆算した値を入れる。
-  #init_escape_manual_from_auto(i) {
+  // 手動モードの再出発: 軌道脱出とまったく同じで、指定した大きさと2つの角度で
+  // その小天体を離れる。周回軌道が無いぶん近点ΔVのような変換も要らず、
+  // 指定したΔVがそのまま出発ΔVになる (#calc_encounter が読み取る)。
+  #calc_departure_manual(i) {
+    const r_pla = this.#m_planet_pos[i];
+    const v_pla = this.#m_planet_vel[i];
+    if (r_pla == undefined || v_pla == undefined) return;
+
+    const result = launch_velocity(
+      r_pla,
+      v_pla,
+      this.depart_v(i),
+      this.depart_alpha(i),
+      this.depart_delta(i)
+    );
+    if (result == undefined) return;
+    // 到着速度(index 1)は #update_trajectory 側で伝播結果から補完される
+    this.#m_s_c_vel[i] = [result.v_out, undefined];
+    this.#calc_encounter(i);
+  }
+
+  // 軌道脱出・再出発を手動に切り替えたときの初期値。打上げと同じく、切り替えた
+  // 瞬間に軌道が飛ばないよう、いまの自動モードの解から逆算した値を入れる。
+  #init_depart_manual_from_auto(i) {
     const angles = this.#launch_angles_from_velocity(i);
     if (angles == undefined) return;
-    this.#m_escape_vinf[i] = angles.vinf;
-    this.#m_escape_delta[i] = angles.delta;
-    this.#m_escape_alpha[i] = angles.alpha;
+    this.#m_depart_v[i] = angles.vinf;
+    this.#m_depart_delta[i] = angles.delta;
+    this.#m_depart_alpha[i] = angles.alpha;
   }
 
   // マヌーバ(DSM)ノード: 天体ではなく深宇宙の一点。
@@ -2033,10 +2061,15 @@ export class Mission {
       return;
     }
 
-    // 手動モードの軌道脱出: 打上げの手動モードと同じく、指定した|V∞|と2つの
-    // 角度でその天体を離れる。次の天体への到達は直後のマヌーバノードが担保する。
+    // 手動モードの軌道脱出・再出発: 打上げの手動モードと同じく、指定した
+    // 大きさと2つの角度でその天体を離れる。次の天体への到達は直後の
+    // マヌーバノードが担保する。
     if (this.#m_types[i] === Sequence_Type.Escape && !this.#m_is_auto_mode[i]) {
       this.#calc_escape_manual(i);
+      return;
+    }
+    if (this.#m_types[i] === Sequence_Type.Departure && !this.#m_is_auto_mode[i]) {
+      this.#calc_departure_manual(i);
       return;
     }
 
@@ -2445,14 +2478,19 @@ export class Mission {
   set_auto_mode(i, is_auto) {
     const type = this.#m_types[i];
     const has_manual =
-      type === Sequence_Type.Swingby || type === Sequence_Type.Launch || type === Sequence_Type.Escape;
+      type === Sequence_Type.Swingby ||
+      type === Sequence_Type.Launch ||
+      type === Sequence_Type.Escape ||
+      type === Sequence_Type.Departure;
     // 最終軌道が続いている間は目的地が無いので自動には戻せない
     if (is_auto && !this.can_set_auto(i)) return;
 
     // 手動に切り替えるときは、いまの軌道から初期値を取って飛びを防ぐ
     if (has_manual && !is_auto && this.#m_is_auto_mode[i]) {
       if (type === Sequence_Type.Launch) this.#init_launch_manual_from_auto();
-      else if (type === Sequence_Type.Escape) this.#init_escape_manual_from_auto(i);
+      else if (type === Sequence_Type.Escape || type === Sequence_Type.Departure) {
+        this.#init_depart_manual_from_auto(i);
+      }
     }
     this.#m_is_auto_mode[i] = is_auto;
 
@@ -2492,30 +2530,32 @@ export class Mission {
     this.#recompute_all();
   }
 
-  // --- 手動モードの軌道脱出パラメータ (打上げの手動モードと同じ流儀) ---
-  // 既定値は打上げの初期値と揃えず、切り替え時に自動解から入れる
-  // (#init_escape_manual_from_auto)。それも取れないときだけ0にする。
-  escape_vinf(i) {
-    return this.#m_escape_vinf[i] ?? 0;
+  // --- 手動モードで天体を離れるときの設計変数 (軌道脱出・再出発で共通) ---
+  // 大きさ depart_v は天体に対する相対速度 [km/s]。軌道脱出では「脱出速度 V∞」、
+  // 再出発では「出発ΔV」として見せるが、量としては同じもの。
+  // 既定値は切り替え時に自動解から入れる (#init_depart_manual_from_auto)。
+  // それも取れないときだけ0にする。
+  depart_v(i) {
+    return this.#m_depart_v[i] ?? 0;
   }
-  escape_alpha(i) {
-    return this.#m_escape_alpha[i] ?? 0;
+  depart_alpha(i) {
+    return this.#m_depart_alpha[i] ?? 0;
   }
-  escape_delta(i) {
-    return this.#m_escape_delta[i] ?? 0;
+  depart_delta(i) {
+    return this.#m_depart_delta[i] ?? 0;
   }
-  set_escape_vinf(i, vinf) {
-    this.#m_escape_vinf[i] = Math.max(0, vinf);
+  set_depart_v(i, vinf) {
+    this.#m_depart_v[i] = Math.max(0, vinf);
     this.#recompute_all();
   }
-  set_escape_alpha(i, alpha) {
-    this.#m_escape_alpha[i] = alpha;
+  set_depart_alpha(i, alpha) {
+    this.#m_depart_alpha[i] = alpha;
     this.#recompute_all();
   }
-  set_escape_delta(i, delta) {
+  set_depart_delta(i, delta) {
     // 仰角は±90度まで (これを超えると方位角側で表せる)
     const lim = Math.PI / 2;
-    this.#m_escape_delta[i] = Math.max(-lim, Math.min(lim, delta));
+    this.#m_depart_delta[i] = Math.max(-lim, Math.min(lim, delta));
     this.#recompute_all();
   }
 
@@ -2637,9 +2677,9 @@ export class Mission {
     this.#m_dsm_dv.splice(idx, 0, undefined);
     this.#m_dsm_alpha.splice(idx, 0, undefined);
     this.#m_dsm_delta.splice(idx, 0, undefined);
-    this.#m_escape_vinf.splice(idx, 0, undefined);
-    this.#m_escape_alpha.splice(idx, 0, undefined);
-    this.#m_escape_delta.splice(idx, 0, undefined);
+    this.#m_depart_v.splice(idx, 0, undefined);
+    this.#m_depart_alpha.splice(idx, 0, undefined);
+    this.#m_depart_delta.splice(idx, 0, undefined);
     this.#m_planet_pos.splice(idx, 0, undefined);
     this.#m_planet_vel.splice(idx, 0, undefined);
     this.#m_s_c_pos.splice(idx, 0, undefined);
@@ -2672,9 +2712,9 @@ export class Mission {
     this.#m_dsm_dv.splice(idx, 1);
     this.#m_dsm_alpha.splice(idx, 1);
     this.#m_dsm_delta.splice(idx, 1);
-    this.#m_escape_vinf.splice(idx, 1);
-    this.#m_escape_alpha.splice(idx, 1);
-    this.#m_escape_delta.splice(idx, 1);
+    this.#m_depart_v.splice(idx, 1);
+    this.#m_depart_alpha.splice(idx, 1);
+    this.#m_depart_delta.splice(idx, 1);
     this.#m_planet_pos.splice(idx, 1);
     this.#m_planet_vel.splice(idx, 1);
     this.#m_s_c_pos.splice(idx, 1);
@@ -2721,9 +2761,9 @@ export class Mission {
     this.#m_dsm_dv.splice(idx, 0, undefined);
     this.#m_dsm_alpha.splice(idx, 0, undefined);
     this.#m_dsm_delta.splice(idx, 0, undefined);
-    this.#m_escape_vinf.splice(idx, 0, undefined);
-    this.#m_escape_alpha.splice(idx, 0, undefined);
-    this.#m_escape_delta.splice(idx, 0, undefined);
+    this.#m_depart_v.splice(idx, 0, undefined);
+    this.#m_depart_alpha.splice(idx, 0, undefined);
+    this.#m_depart_delta.splice(idx, 0, undefined);
     // 平行配列はすべて同じ位置にずらす。ここを漏らすと途中挿入のときに
     // 添字がずれて別ノードの計算結果を参照してしまう。
     this.#m_planet_pos.splice(idx, 0, undefined);
@@ -2816,11 +2856,11 @@ export class Mission {
       if (this.#m_dsm_dv[i] != undefined) {
         n.dsm = { dv: this.#m_dsm_dv[i], alpha: this.#m_dsm_alpha[i] ?? 0, delta: this.#m_dsm_delta[i] ?? 0 };
       }
-      if (this.#m_escape_vinf[i] != undefined) {
-        n.escape = {
-          vinf: this.#m_escape_vinf[i],
-          alpha: this.#m_escape_alpha[i] ?? 0,
-          delta: this.#m_escape_delta[i] ?? 0,
+      if (this.#m_depart_v[i] != undefined) {
+        n.depart = {
+          v: this.#m_depart_v[i],
+          alpha: this.#m_depart_alpha[i] ?? 0,
+          delta: this.#m_depart_delta[i] ?? 0,
         };
       }
       if (this.#m_pinned_event[i] != undefined) n.pinned = this.#m_pinned_event[i];
@@ -2872,9 +2912,11 @@ export class Mission {
     this.#m_dsm_dv = nodes.map((n) => (n.dsm ? num(n.dsm.dv, 0) : undefined));
     this.#m_dsm_alpha = nodes.map((n) => (n.dsm ? num(n.dsm.alpha, 0) : undefined));
     this.#m_dsm_delta = nodes.map((n) => (n.dsm ? num(n.dsm.delta, 0) : undefined));
-    this.#m_escape_vinf = nodes.map((n) => (n.escape ? num(n.escape.vinf, 0) : undefined));
-    this.#m_escape_alpha = nodes.map((n) => (n.escape ? num(n.escape.alpha, 0) : undefined));
-    this.#m_escape_delta = nodes.map((n) => (n.escape ? num(n.escape.delta, 0) : undefined));
+    // n.escape は、この設計変数が軌道脱出専用だった頃の古いキー
+    const dep_of = (n) => n.depart ?? (n.escape ? { v: n.escape.vinf, alpha: n.escape.alpha, delta: n.escape.delta } : undefined);
+    this.#m_depart_v = nodes.map((n) => { const d = dep_of(n); return d ? num(d.v, 0) : undefined; });
+    this.#m_depart_alpha = nodes.map((n) => { const d = dep_of(n); return d ? num(d.alpha, 0) : undefined; });
+    this.#m_depart_delta = nodes.map((n) => { const d = dep_of(n); return d ? num(d.delta, 0) : undefined; });
     this.#m_pinned_event = nodes.map((n) =>
       Object.values(Leg_Event).includes(n.pinned) ? n.pinned : undefined
     );

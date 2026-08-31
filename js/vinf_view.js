@@ -1,11 +1,16 @@
 import { launch_frame } from './trajectory.js';
 import { createVectorView } from './vector_view.js';
 
-// 「天体を離れる瞬間の相対速度 V∞」を見る遠景3Dビューのひな型。
+// 「天体を離れる瞬間の、天体に対する相対速度」を見る遠景3Dビューのひな型。
 //
-// 打上げビュー (launch_view.js) とまったく同じ絵 — 脱出速度ベクトル V∞ と、
-// それを決める2つの角度 (方位角α・仰角δ) — を、天体から十分離れて V∞ に
-// 落ち着いたあとのスケールで見せる。
+// 打上げビュー (launch_view.js) とまったく同じ絵 — 速度ベクトルと、それを
+// 決める2つの角度 (方位角α・仰角δ) — を見せる。同じ量だが呼び名は場面で違う:
+//   惑星の周回軌道から出ていく (軌道脱出) … 「脱出速度 V∞」。無限遠まで
+//        離れたときに残る速度で、そこまで登る途中で重力に食われる分は
+//        近点ΔV (近景 orbit_view.js) の側が受け持つ
+//   小天体から飛び立つ (再出発)          … 「出発ΔV」。重力がほとんど無く
+//        登る途中で食われる分も無限遠も意味を持たないので、噴いたΔVが
+//        そのまま相対速度になる
 //
 // この絵が要る節は2つあり、どちらも「いま居る天体から自分の速度で飛び立つ」
 // という同じ形をしている:
@@ -30,16 +35,27 @@ const PLANET_COLORS = [
 // 取り込んだ小天体 (番号が惑星の範囲より後ろ) の色。岩っぽい色で塗る
 const SMALL_BODY_COLOR = 0xddaa44;
 
+// 中心を「軌道上の一点」として描くときの色。太陽系ビューの選択中ノードの印と
+// 同じ色にして、同じものを指していると分かるようにする (js/plot.js)
+const COLOR_NODE = 0x1f4fd8;
+
 /**
  * 遠景ビューを1つ作る。
  * @param {string} canvasId 描画先のcanvasのid
+ * @param {object} [opts]
+ * @param {"body"|"node"} [opts.centerStyle] 中心の描き方 (vector_view.js を参照)。
+ *        小天体は重力も大きさもほとんど無いので "node" (軌道上の一点) で描く
  */
-export function createVinfView(canvasId) {
+export function createVinfView(canvasId, { centerStyle = "body" } = {}) {
+  const node_center = centerStyle === "node";
   const view = createVectorView({
     canvasId,
+    centerStyle,
     cells: 10, // 1目盛 = 1 km/s。画角はこの ±5 km/s に合わせる (打上げビューと同じ)
     gridCells: 36,
-    centerRadius: 0.55,
+    // 一点として描くときは小さく。惑星のように場所を取ると、大きさのある
+    // 天体に見えてしまう
+    centerRadius: node_center ? 0.22 : 0.55,
     alphaR: 3.2,
     deltaR: 2.2,
     colors: {
@@ -47,7 +63,7 @@ export function createVinfView(canvasId) {
       alpha: COLOR_ALPHA,
       delta: COLOR_DELTA,
       reference: COLOR_PLANET_ORBIT,
-      center: 0x3a7bd5,
+      center: node_center ? COLOR_NODE : 0x3a7bd5,
     },
     ambient: 0.45,
     useSunLight: true,
@@ -101,7 +117,9 @@ export function createVinfView(canvasId) {
         magnitude: vinf,
         alpha,
         delta,
-        centerColor: ready ? PLANET_COLORS[planetNum] ?? SMALL_BODY_COLOR : undefined,
+        // 一点として描くときは天体ごとの色を使わない (大きさのある天体を
+        // 表しているわけではないので、色で天体を示すとかえって紛らわしい)
+        centerColor: !ready || node_center ? undefined : PLANET_COLORS[planetNum] ?? SMALL_BODY_COLOR,
         sunDir,
       });
     },

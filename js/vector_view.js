@@ -47,6 +47,12 @@ const NICE_SCALES = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10];
  * @param {number} config.gridCells   実際に敷くグリッドの目の数 (省略すると cells)
  *        cells より多くすると、矢印の見え方はそのままで軌道面だけを広く敷ける
  * @param {number} config.centerRadius 中心に置く球の見た目の半径 [目盛]
+ * @param {"body"|"node"} config.centerStyle 中心の描き方
+ *        "body" … 太陽光で陰影の付く球 (惑星のような天体そのものを表す)
+ *        "node" … 陰影を付けない小さな点 (太陽系ビューのノードの印と同じ見立て)。
+ *        重力がほとんど無く「地表」も「無限遠」も意味を持たない小天体では、
+ *        惑星のような球を描くと大きさや重力があるように見えて誤解を招くので、
+ *        軌道上の一点として描く
  * @param {number} config.alphaR      方位角ハンドルの半径 [目盛]
  * @param {number} config.deltaR      仰角ハンドルの半径 [目盛]
  * @param {object} config.colors      { vector, alpha, delta, reference, center }
@@ -61,6 +67,7 @@ export function createVectorView(config) {
     cells = 10,
     gridCells = cells,
     centerRadius = 0.55,
+    centerStyle = "body",
     alphaR = 3.2,
     deltaR = 2.2,
     colors,
@@ -127,7 +134,9 @@ export function createVectorView(config) {
 
     centerMesh = new THREE.Mesh(
       new THREE.SphereGeometry(centerRadius, 40, 40),
-      new THREE.MeshStandardMaterial({ color: colors.center, roughness: 0.62, metalness: 0.0 })
+      centerStyle === "node"
+        ? new THREE.MeshBasicMaterial({ color: colors.center })
+        : new THREE.MeshStandardMaterial({ color: colors.center, roughness: 0.62, metalness: 0.0 })
     );
     centerMesh.name = "center";
     scene.add(centerMesh);

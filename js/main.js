@@ -58,7 +58,13 @@ import {
   setEscapeViewHandlers,
   setEscapeActiveHandle,
 } from './escape_view.js';
-import { initDepartureView, updateDepartureView, invalidateDepartureView } from './departure_view.js';
+import {
+  initDepartureView,
+  updateDepartureView,
+  invalidateDepartureView,
+  setDepartureViewHandlers,
+  setDepartureActiveHandle,
+} from './departure_view.js';
 import {
   initDsmView,
   updateDsmView,
@@ -1089,6 +1095,7 @@ export function updateControlPanelDisplay() {
   if (is_entry) renderEntryControls();
   else if (State.entry_handle) setEntryHandle(null);
   if (is_encounter) renderEncounterControls();
+  else if (State.departure_handle) setDepartureHandle(null);
   if (is_lambert_leg) renderLegControls();
   if (is_launch) renderLaunchControls();
   // 打上げ以外に移ったらハンドルの選択は解除しておく
@@ -1576,7 +1583,46 @@ export function renderEncounterControls() {
   const info = mission.get_encounter_info(i);
   const type = mission.type(i);
   const is_departure = type === Sequence_Type.Departure;
+  // 再出発は軌道脱出と同じく自動/手動を選べる。
+  //   自動 … 次の天体までをランベールで解く (ΔVは結果)
+  //   手動 (MGA-1DSM) … ΔVと2つの角度で飛び立ち、直後に自動挿入される
+  //          マヌーバ(DSM)のΔVで次の天体へ到達させる
+  // フライバイ (無推力) とランデブー (天体に留まる) には選ぶ余地が無い。
+  const is_manual = is_departure && !mission.is_auto_mode(i);
   title.textContent = type;
+
+  if (State.departure_handle && (!is_manual || departure_handle_seq !== i)) setDepartureHandle(null);
+
+  const mode_row = document.getElementById("encounter_mode");
+  if (mode_row) {
+    mode_row.innerHTML = "";
+    mode_row.style.display = is_departure ? "flex" : "none";
+    if (is_departure) {
+      [
+        ["自動", true],
+        ["手動", false],
+      ].forEach(([text, auto]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = text;
+        btn.className = "mode-btn" + (mission.is_auto_mode(i) === auto ? " active" : "");
+        // 最終軌道が続いている間は目的地が無いので自動には戻せない (打上げと同じ)
+        if (auto && !mission.can_set_auto(i)) {
+          btn.disabled = true;
+          btn.title = "最終軌道で終えている間は手動のみ";
+        }
+        btn.onclick = () => {
+          mission.set_auto_mode(i, auto);
+          // 手動にするとDSMが1つ増えてノードの並びが変わる
+          clear_checks();
+          State.selected_sequence = Math.min(State.selected_sequence, mission.count - 1);
+          change_sequence();
+          refresh_after_swingby_change();
+        };
+        mode_row.appendChild(btn);
+      });
+    }
+  }
 
   // 3Dビューは再出発のときだけ。読み値もそれに合わせて置き場所を変える
   // (ビューがあるときはその横の細い欄、無いときは箱の幅いっぱい)。
@@ -1594,6 +1640,10 @@ export function renderEncounterControls() {
 
   side.innerHTML = "";
   wide.innerHTML = "";
+  // 手動モードの入力欄は、読み値と同じ細い欄に積む (打上げと同じ並び)
+  const inputs = document.createElement("div");
+  inputs.className = "column swingby-inputs orbit-inputs";
+  if (is_manual) side.appendChild(inputs);
 
   // 3Dビュー。再出発でないときは必ず「未準備」を渡して隠す。ここを省略すると、
   // 前に再出発を表示していたときの状態 (太陽方向の目印を含む) が残ってしまう。
@@ -1630,14 +1680,56 @@ export function renderEncounterControls() {
     if (info.v_rel_in != undefined) rows.push(["接近速度", info.v_rel_in.toFixed(3) + " km/s"]);
     rows.push(["この先", info.terminal ? "天体と一緒に進む" : "「再出発」で次へ向かう"]);
   } else if (info.kind === "departure") {
-    // 離脱速度の向きは3Dビューに出ているので、数字は打上げと同じ並びで添える
-    rows.push(["離脱速度 V∞", (info.v_rel_out ?? 0).toFixed(3) + " km/s"]);
-    const angles = mission.get_launch_angles(i);
-    if (angles) {
-      rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°"]);
-      rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°"]);
+    // 小天体には意味のある重力圏が無く、噴いたΔVがそのまま天体に対する
+    // 相対速度になる (info.dv と info.v_rel_out は同じ値)。V∞という呼び方は
+    // 無限遠まで登る話なのでここでは使わず、素直にΔVと呼ぶ。
+    if (is_manual) {
+      // 手動モード: この3つがそのまま設計変数。欄を選ぶと3Dビューに
+      // ハンドルが出てマウスでも動かせる (打上げ・軌道脱出と同じ流儀)。
+      const addField = (key, label_text, value, step, hint, on_change) => {
+        const label = document.createElement("label");
+        label.textContent = label_text;
+        if (hint) label.title = hint;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = String(step);
+        input.value = value;
+        input.onchange = () => {
+          on_change(Number(input.value));
+          refresh_after_swingby_change();
+        };
+        inputs.appendChild(makeParamField(key, label, input, DEPARTURE_HANDLE));
+      };
+      // ΔVの単位は他の節 (マヌーバ・投入/脱出) と揃えて m/s で受け取る
+      addField("vinf", "出発ΔV [m/s]", (mission.depart_v(i) * 1000).toFixed(0), 1, undefined, (v) =>
+        mission.set_depart_v(i, v / 1000)
+      );
+      addField(
+        "alpha",
+        "方位角 α [deg]",
+        (mission.depart_alpha(i) * RAD2DEG).toFixed(1),
+        0.1,
+        "軌道面内で、天体の公転方向から測った角",
+        (v) => mission.set_depart_alpha(i, v * DEG2RAD)
+      );
+      addField(
+        "delta",
+        "仰角 δ [deg]",
+        (mission.depart_delta(i) * RAD2DEG).toFixed(1),
+        0.1,
+        "軌道面からの傾き (北向きが正)。±90度まで",
+        (v) => mission.set_depart_delta(i, v * DEG2RAD)
+      );
+      const dsm = mission.get_dsm_info(i + 1);
+      if (dsm) rows.push(["この後のDSM", ms(dsm.dv)]);
+    } else {
+      rows.push(["出発ΔV", ms(info.dv)]);
+      const angles = mission.get_launch_angles(i);
+      if (angles) {
+        rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°"]);
+        rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°"]);
+      }
     }
-    rows.push(["出発ΔV", ms(info.dv)]);
   } else {
     // フライバイは無推力。ΔVはかからない
     if (info.v_rel_in != undefined) rows.push(["通過の相対速度", info.v_rel_in.toFixed(3) + " km/s"]);
@@ -1645,9 +1737,10 @@ export function renderEncounterControls() {
     const dsm = mission.get_dsm_info(i + 1);
     if (dsm) rows.push(["この後のDSM", ms(dsm.dv)]);
   }
-  box.appendChild(makeReadout(rows));
-  // 打上げと同じ並びで、読み値の下にボタンを置く
-  if (is_departure) box.appendChild(makePorkchopButton(i));
+  if (rows.length > 0) box.appendChild(makeReadout(rows));
+  // 打上げと同じ並びで、読み値の下にボタンを置く。ポークチョップ図は
+  // ランベールで解く自動モードでしか意味を持たないので手動では出さない
+  if (is_departure && !is_manual) box.appendChild(makePorkchopButton(i));
 
   const dv_ms = info.dv * 1000;
   if (info.kind === "flyby") {
@@ -2096,24 +2189,24 @@ export function renderOrbitControls() {
         };
         inputs.appendChild(makeParamField(key, label, input, ESCAPE_HANDLE));
       };
-      addAngleField("vinf", "脱出速度 V∞ [km/s]", mission.escape_vinf(i).toFixed(3), 0.01, undefined, (v) =>
-        mission.set_escape_vinf(i, v)
+      addAngleField("vinf", "脱出速度 V∞ [km/s]", mission.depart_v(i).toFixed(3), 0.01, undefined, (v) =>
+        mission.set_depart_v(i, v)
       );
       addAngleField(
         "alpha",
         "方位角 α [deg]",
-        (mission.escape_alpha(i) * RAD2DEG).toFixed(1),
+        (mission.depart_alpha(i) * RAD2DEG).toFixed(1),
         0.1,
         "軌道面内で、天体の公転方向から測った角",
-        (v) => mission.set_escape_alpha(i, v * DEG2RAD)
+        (v) => mission.set_depart_alpha(i, v * DEG2RAD)
       );
       addAngleField(
         "delta",
         "仰角 δ [deg]",
-        (mission.escape_delta(i) * RAD2DEG).toFixed(1),
+        (mission.depart_delta(i) * RAD2DEG).toFixed(1),
         0.1,
         "軌道面からの傾き (北向きが正)。±90度まで",
-        (v) => mission.set_escape_delta(i, v * DEG2RAD)
+        (v) => mission.set_depart_delta(i, v * DEG2RAD)
       );
       // 出ていく速度は入力欄に出ているので、読み値はそれを実現する代償だけ
       const rows = [];
@@ -2480,6 +2573,7 @@ let handle_seq = -1;
 let launch_handle_seq = -1;
 let orbit_handle_seq = -1;
 let escape_handle_seq = -1;
+let departure_handle_seq = -1;
 let entry_handle_seq = -1;
 let dsm_handle_seq = -1;
 
@@ -2514,6 +2608,14 @@ export function setEscapeHandle(key) {
   setEscapeActiveHandle(key);
 }
 
+// 再出発ビュー(手動モード)のハンドルの出し分け。
+// keyは "vinf" | "alpha" | "delta" | null (軌道脱出の遠景と同じ)
+export function setDepartureHandle(key) {
+  State.departure_handle = key;
+  departure_handle_seq = key ? State.selected_sequence : -1;
+  setDepartureActiveHandle(key);
+}
+
 // マヌーバビューのハンドルの出し分け。keyは "dv" | "alpha" | "delta" | null
 export function setDsmHandle(key) {
   State.dsm_handle = key;
@@ -2533,6 +2635,7 @@ const SWINGBY_HANDLE = { get: () => State.swingby_handle, set: setSwingbyHandle 
 const LAUNCH_HANDLE = { get: () => State.launch_handle, set: setLaunchHandle };
 const ORBIT_HANDLE = { get: () => State.orbit_handle, set: setOrbitHandle };
 const ESCAPE_HANDLE = { get: () => State.escape_handle, set: setEscapeHandle };
+const DEPARTURE_HANDLE = { get: () => State.departure_handle, set: setDepartureHandle };
 const ENTRY_HANDLE = { get: () => State.entry_handle, set: setEntryHandle };
 const DSM_HANDLE = { get: () => State.dsm_handle, set: setDsmHandle };
 
@@ -2624,6 +2727,16 @@ function apply_escape_from_drag(set) {
     if (i == -1 || !State.mission_sequence) return;
     set(State.mission_sequence, i, value);
     refresh_after_orbit_change();
+  };
+}
+
+// 再出発ビューのハンドルをドラッグしている間の反映 (軌道脱出と同じ流儀)。
+function apply_departure_from_drag(set) {
+  return (value) => {
+    const i = State.selected_sequence;
+    if (i == -1 || !State.mission_sequence) return;
+    set(State.mission_sequence, i, value);
+    refresh_after_swingby_change();
   };
 }
 
@@ -2759,12 +2872,17 @@ function boot() {
     onRp: apply_orbit_from_drag((m, i, v) => m.set_orbit_rp(i, v)),
     onRa: apply_orbit_from_drag((m, i, v) => m.set_orbit_ra(i, v)),
   });
-  initDepartureView(); // 再出発は常に自動 (V∞は次の目的地が決める) なので読むだけ
+  initDepartureView();
+  setDepartureViewHandlers({
+    onVinf: apply_departure_from_drag((m, i, v) => m.set_depart_v(i, v)),
+    onAlpha: apply_departure_from_drag((m, i, v) => m.set_depart_alpha(i, v)),
+    onDelta: apply_departure_from_drag((m, i, v) => m.set_depart_delta(i, v)),
+  });
   initEscapeView();
   setEscapeViewHandlers({
-    onVinf: apply_escape_from_drag((m, i, v) => m.set_escape_vinf(i, v)),
-    onAlpha: apply_escape_from_drag((m, i, v) => m.set_escape_alpha(i, v)),
-    onDelta: apply_escape_from_drag((m, i, v) => m.set_escape_delta(i, v)),
+    onVinf: apply_escape_from_drag((m, i, v) => m.set_depart_v(i, v)),
+    onAlpha: apply_escape_from_drag((m, i, v) => m.set_depart_alpha(i, v)),
+    onDelta: apply_escape_from_drag((m, i, v) => m.set_depart_delta(i, v)),
   });
   initEntryView();
   setEntryViewHandlers({ onGamma: apply_entry_gamma_from_drag });

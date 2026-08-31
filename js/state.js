@@ -68,6 +68,9 @@ export const State = {
   // 軌道脱出の遠景ビュー(手動モード)でマウスで動かせるようにしているパラメータ
   // (null | "vinf" | "alpha" | "delta")。打上げビューと同じ流儀。
   escape_handle: null,
+  // 再出発ビュー(手動モード)でマウスで動かせるようにしているパラメータ
+  // (null | "vinf" | "alpha" | "delta")。軌道脱出と同じ流儀。
+  departure_handle: null,
   // 大気圏突入ビューでマウスで動かせるようにしているパラメータ (null | "gamma")。
   entry_handle: null,
   // マヌーバビューでマウスで動かせるようにしているパラメータ

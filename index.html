@@ -187,6 +187,7 @@
             <div class="row swingby-head"
               title="小天体の重力はスイングバイに使えるほどではない (ケレスでさえ曲げ角は1度に満たない)。&#10;そのため速度を変えるぶんは全部自前のΔVになる。&#10;フライバイ: 通り過ぎるだけ。入ってきた速度と出ていく速度の差を払う&#10;ランデブー: 天体に速度を合わせる。先へ向かうなら出発ぶんも要る">
               <label id="encounter_title">フライバイ</label>
+              <div class="row swingby-mode" id="encounter_mode"></div>
               <span class="orbit-badge" id="encounter_badge"></span>
             </div>
             <!-- 3Dビューは「再出発」のときだけ出す。フライバイ (無推力で通り
@@ -199,7 +200,7 @@
               <div class="column orbit-controls" id="departure_controls"></div>
             </div>
             <div class="view-legend" id="departure_legend">
-              <span><i class="sw-vinf"></i>離脱速度 V<sub>∞</sub></span>
+              <span><i class="sw-vinf"></i>出発ΔV</span>
               <span><i class="sw-alpha"></i>方位角 α</span>
               <span><i class="sw-delta"></i>仰角 δ</span>
               <span><i class="sw-porbit"></i>天体の公転方向</span>
