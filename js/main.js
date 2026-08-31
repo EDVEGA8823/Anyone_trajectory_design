@@ -58,7 +58,6 @@ import {
   setDsmViewHandlers,
   setDsmActiveHandle,
   invalidateDsmView,
-  dsmViewScale,
 } from './dsm_view.js';
 import {
   openPorkchop,
@@ -1750,8 +1749,6 @@ export function renderManeuverControls() {
       delta: mission.dsm_delta(i),
       ready: dsm != null,
     });
-    const scale = document.getElementById("dsm_scale");
-    if (scale) scale.textContent = "グリッド 1目盛 = " + (dsmViewScale() * 1000).toFixed(0) + " m/s";
   }
 
   if (dsm == null) {
@@ -1875,14 +1872,12 @@ export function renderOrbitControls() {
   if (far_active) invalidateEscapeView();
   else invalidateOrbitView();
 
+  // 遠景では周回軌道の設定(近点/遠点高度)には触れない。V∞は軌道の形に
+  // 依らず次の目的地までのランベール解だけで決まるので、遠景では出す
+  // 項目が無い (打上げの自動モードに入力欄が無いのと同じ理屈)。
   inputs.innerHTML = "";
+  inputs.style.display = far_active ? "none" : "";
   readout.innerHTML = "";
-
-  // 軌道脱出(再出発)の先は打上げと同じ流儀 (次の天体までを自動でランベール解く)
-  // なので、同じポークチョップ図が使える。周回軌道投入そのものには次のレグが無い。
-  if (!is_insert) {
-    readout.appendChild(makePorkchopButton(i));
-  }
 
   if (lim == undefined) {
     // 縦を使わないよう、説明は読み値の枠に1行だけ出す
@@ -1894,64 +1889,68 @@ export function renderOrbitControls() {
         ],
       ])
     );
+    // 打上げと並び順を揃えるため、読み値の下にボタンを置く
+    if (!is_insert) readout.appendChild(makePorkchopButton(i));
     updateOrbitView({ planetNum: -1 });
-    if (!is_insert) updateEscapeView({ planetNum: -1 });
+    updateEscapeView({ planetNum: -1 }); // タブが遠景でなければ常にこちら (太陽方向の目印も一緒に隠れる)
     return;
   }
 
   const rp = mission.orbit_rp(i);
   const ra = mission.orbit_ra(i);
 
-  // 欄を選ぶと、その欄に対応するハンドルが3Dビューに出てマウスで動かせる
-  const addField = (key, label_text, hint, value, step, min, max, apply) => {
-    const label = document.createElement("label");
-    label.textContent = label_text;
-    // 上下限の理由などはツールチップに逃がす。パネルの縦は3Dビューに使いたい。
-    if (hint) label.title = hint;
-    const input = document.createElement("input");
-    input.type = "number";
-    input.step = String(step);
-    if (min != undefined) input.min = String(Math.ceil(min));
-    if (max != undefined) input.max = String(Math.floor(max));
-    input.value = value.toFixed(0);
-    input.onchange = () => {
-      apply(Number(input.value));
-      // 上下限でクランプされた場合は入力欄も実際の値に合わせる
-      refresh_after_orbit_change();
+  if (!far_active) {
+    // 欄を選ぶと、その欄に対応するハンドルが3Dビューに出てマウスで動かせる
+    const addField = (key, label_text, hint, value, step, min, max, apply) => {
+      const label = document.createElement("label");
+      label.textContent = label_text;
+      // 上下限の理由などはツールチップに逃がす。パネルの縦は3Dビューに使いたい。
+      if (hint) label.title = hint;
+      const input = document.createElement("input");
+      input.type = "number";
+      input.step = String(step);
+      if (min != undefined) input.min = String(Math.ceil(min));
+      if (max != undefined) input.max = String(Math.floor(max));
+      input.value = value.toFixed(0);
+      input.onchange = () => {
+        apply(Number(input.value));
+        // 上下限でクランプされた場合は入力欄も実際の値に合わせる
+        refresh_after_orbit_change();
+      };
+      inputs.appendChild(makeParamField(key, label, input, ORBIT_HANDLE));
     };
-    inputs.appendChild(makeParamField(key, label, input, ORBIT_HANDLE));
-  };
 
-  // 入力は半径ではなく天体表面からの高度で受け取る (手動スイングバイと同じ)。
-  // 内部は一貫して半径で扱い、ここで足し引きするだけにする。
-  const R = lim.radius;
-  // 刻みは天体の大きさに合わせる (地球で10km、木星で1000km程度)
-  const step = Math.max(10, Math.round(R / 500) * 10);
-  addField(
-    "orbit_rp",
-    "近点高度 [km]",
-    `下限 ${(lim.rp_min - R).toFixed(0)} km (大気・放射線帯)`,
-    rp - R,
-    step,
-    lim.rp_min - R,
-    lim.ra_max - R,
-    (v) => mission.set_orbit_rp(i, v + R)
-  );
-  addField(
-    "orbit_ra",
-    "遠点高度 [km]",
-    `上限 ${format_radius(lim.ra_max - R)} (ヒル半径の半分。これより外は太陽の摂動で軌道を保てない)` +
-      (info && info.dv_min != undefined
-        ? "\n上限まで広げたときの" + (is_insert ? "投入" : "脱出") + "ΔV " + (info.dv_min * 1000).toFixed(0) + " m/s"
-        : ""),
-    ra - R,
-    step * 10,
-    rp - R,
-    lim.ra_max - R,
-    (v) => mission.set_orbit_ra(i, v + R)
-  );
+    // 入力は半径ではなく天体表面からの高度で受け取る (手動スイングバイと同じ)。
+    // 内部は一貫して半径で扱い、ここで足し引きするだけにする。
+    const R = lim.radius;
+    // 刻みは天体の大きさに合わせる (地球で10km、木星で1000km程度)
+    const step = Math.max(10, Math.round(R / 500) * 10);
+    addField(
+      "orbit_rp",
+      "近点高度 [km]",
+      `下限 ${(lim.rp_min - R).toFixed(0)} km (大気・放射線帯)`,
+      rp - R,
+      step,
+      lim.rp_min - R,
+      lim.ra_max - R,
+      (v) => mission.set_orbit_rp(i, v + R)
+    );
+    addField(
+      "orbit_ra",
+      "遠点高度 [km]",
+      `上限 ${format_radius(lim.ra_max - R)} (ヒル半径の半分。これより外は太陽の摂動で軌道を保てない)` +
+        (info && info.dv_min != undefined
+          ? "\n上限まで広げたときの" + (is_insert ? "投入" : "脱出") + "ΔV " + (info.dv_min * 1000).toFixed(0) + " m/s"
+          : ""),
+      ra - R,
+      step * 10,
+      rp - R,
+      lim.ra_max - R,
+      (v) => mission.set_orbit_ra(i, v + R)
+    );
+  }
 
-  // 3Dビュー。V∞が未確定でも周回軌道そのものは描けるので、常に更新する。
+  // 3Dビュー (近景)。V∞が未確定でも周回軌道そのものは描けるので、常に更新する。
   updateOrbitView({
     planetNum: lim.planet_num,
     // 表示対象が変わったときだけ画角を取り直させる
@@ -1963,11 +1962,10 @@ export function renderOrbitControls() {
     dv: info ? info.dv : undefined,
   });
 
-  // 遠景 (V∞)。近景と違ってrp/raには依らず、次の目的地までのランベール解
-  // だけで決まる (打上げのV∞とまったく同じ立ち位置)。タブが近景側でも、
-  // 切り替えた瞬間に古い絵が出ないよう常に更新しておく。
-  if (!is_insert) {
-    const angles = mission.get_launch_angles(i);
+  // 3Dビュー (遠景・V∞)。タブが近景側のときは更新しない: 呼べば「準備できている」
+  // 扱いになり、太陽方向の目印などがタブを跨いで出っぱなしになってしまうため。
+  const angles = !is_insert ? mission.get_launch_angles(i) : null;
+  if (far_active) {
     updateEscapeView({
       planetNum: lim.planet_num,
       key: i + ":" + lim.planet_num,
@@ -1977,12 +1975,29 @@ export function renderOrbitControls() {
       planetPos: mission.planet_pos(i),
       planetVel: mission.planet_vel(i),
     });
+  } else if (!is_insert) {
+    updateEscapeView({ planetNum: -1 });
+  }
+
+  if (far_active) {
+    // 遠景の読み値は打上げの自動モードと同じ並び (V∞ → 角度 → ボタン)。
+    // 近点/遠点/離心率/周期は周回軌道(近景)の話であって遠景の絵とは
+    // 対応しないので、ここには出さない。
+    const rows = [["脱出速度 V∞", mission.get_v_inf(i).toFixed(3) + " km/s"]];
+    if (angles) {
+      rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°"]);
+      rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°"]);
+    }
+    readout.appendChild(makeReadout(rows));
+    readout.appendChild(makePorkchopButton(i));
+    return;
   }
 
   if (info == null) {
     readout.appendChild(
       makeReadout([["", is_insert ? "前のレグが決まると計算" : "次の目的地が決まると計算"]])
     );
+    if (!is_insert) readout.appendChild(makePorkchopButton(i));
     return;
   }
 
@@ -1999,6 +2014,8 @@ export function renderOrbitControls() {
   // 遠点がヒル半径の上限に張り付いていることは、値の脇に短く添えるだけにする
   if (info.ra_clamped) rows[3][1] += " (上限)";
   readout.appendChild(makeReadout(rows));
+  // 打上げと並び順を揃えるため、読み値の下にボタンを置く
+  if (!is_insert) readout.appendChild(makePorkchopButton(i));
 }
 
 // --- 突入速度の色分け ---

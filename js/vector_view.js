@@ -267,6 +267,10 @@ export function createVectorView(config) {
     if (!ready) {
       geom = null;
       sunWorldDir = null;
+      // 太陽方向の目印は毎フレームの描画ループ (offsetParentがあるときだけ動く)
+      // でしか隠れないので、canvasごと隠れて次のフレームが来ない場合に備えて
+      // ここでも直接隠しておく (でないと前の状態のまま出っぱなしになる)。
+      if (sunCompass) sunCompass.style.display = "none";
       updateHandles();
       invalidate();
       return;
