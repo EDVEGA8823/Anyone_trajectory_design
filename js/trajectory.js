@@ -1216,6 +1216,11 @@ export class Mission {
 
   #calc_planet(i) {
     if (i < 0 || i >= this.#m_count) return;
+    // 天体が未選択なら位置は無い。先に消しておかないと、以前ここに割り当てて
+    // いた天体の位置が残ったままになり、#set_s_c 以降がそれを「まだ有効な
+    // 位置」として使い続けてしまう (天体を外したのに軌道が繋がって見える)。
+    this.#m_planet_pos[i] = undefined;
+    this.#m_planet_vel[i] = undefined;
     if (this.#m_planet_nums[i] == -1) return;
     let elements = get_planet_elements(this.#m_dates[i], this.#m_planet_nums[i]);
     let { r, v } = get_planets_pos(elements);
@@ -1989,6 +1994,11 @@ export class Mission {
     }
 
     if (this.#m_is_auto_mode[i]) {
+      // 先に消しておく。次の目的地が無い(天体未選択・末尾など)ときや
+      // ランベールが解けなかったときにここを素通りすると、前に解けていた
+      // ときの出発速度が残ったままになり、#update_trajectory が それを使って
+      // (もう無いはずの)行き先への軌道を描き続けてしまう。
+      this.#m_s_c_vel[i] = undefined;
       if (this.#m_planet_pos[i + 1] != undefined && this.#m_dates[i] != undefined) {
         this.#m_s_c_pos[i + 1] = this.#m_planet_pos[i + 1];
         let time_diff = this.#m_dates[i + 1] - this.#m_dates[i];
