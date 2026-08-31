@@ -58,6 +58,7 @@ import {
   setEscapeViewHandlers,
   setEscapeActiveHandle,
 } from './escape_view.js';
+import { initDepartureView, updateDepartureView, invalidateDepartureView } from './departure_view.js';
 import {
   initDsmView,
   updateDsmView,
@@ -1072,6 +1073,7 @@ export function updateControlPanelDisplay() {
   invalidateLaunchView();
   invalidateOrbitView();
   invalidateEscapeView();
+  invalidateDepartureView();
   invalidateEntryView();
   invalidateDsmView();
 
@@ -1458,6 +1460,7 @@ export function toggle_leg_box() {
   invalidateBPlane();
   invalidateOrbitView();
   invalidateEscapeView();
+  invalidateDepartureView();
   invalidateEntryView();
   invalidateDsmView();
 }
@@ -1558,32 +1561,65 @@ export function renderLegControls() {
   }
 }
 
-// 小天体との出会い (フライバイ・ランデブー) の結果を出す。
+// 小天体との出会い (フライバイ・ランデブー・再出発) の結果を出す。
 //   フライバイ … 通り過ぎるときの相対速度と、軌道を繋ぐために要るΔV
 //   ランデブー … 天体に速度を合わせるΔV (先へ向かうなら出発ぶんも)
+//   再出発     … 天体から飛び立つ速度。これだけは「どこへどれだけの速度で
+//                 出ていくか」を持つので、軌道脱出の遠景と同じ3Dビューを出す
 export function renderEncounterControls() {
   const title = document.getElementById("encounter_title");
   const badge = document.getElementById("encounter_badge");
-  const box = document.getElementById("encounter_readout");
   const i = State.selected_sequence;
-  if (!title || !box || i == -1 || !State.mission_sequence) return;
+  if (!title || i == -1 || !State.mission_sequence) return;
 
   const mission = State.mission_sequence;
   const info = mission.get_encounter_info(i);
   const type = mission.type(i);
+  const is_departure = type === Sequence_Type.Departure;
   title.textContent = type;
-  box.innerHTML = "";
 
-  // 再出発の先は打上げと同じ流儀 (次の天体までを自動でランベール解く) なので、
-  // 同じポークチョップ図が使える。フライバイ・ランデブーには次のレグという概念が無い。
-  if (type === Sequence_Type.Departure) {
-    box.appendChild(makePorkchopButton(i));
+  // 3Dビューは再出発のときだけ。読み値もそれに合わせて置き場所を変える
+  // (ビューがあるときはその横の細い欄、無いときは箱の幅いっぱい)。
+  const view_row = document.getElementById("departure_view_row");
+  const legend = document.getElementById("departure_legend");
+  const side = document.getElementById("departure_controls");
+  const wide = document.getElementById("encounter_readout");
+  if (view_row) view_row.style.display = is_departure ? "flex" : "none";
+  if (legend) legend.style.display = is_departure ? "flex" : "none";
+  if (wide) wide.style.display = is_departure ? "none" : "";
+  const enc_box = document.getElementById("encounter_box");
+  if (enc_box) enc_box.classList.toggle("has-view", is_departure);
+  const box = is_departure && side ? side : wide;
+  if (!box) return;
+
+  side.innerHTML = "";
+  wide.innerHTML = "";
+
+  // 3Dビュー。再出発でないときは必ず「未準備」を渡して隠す。ここを省略すると、
+  // 前に再出発を表示していたときの状態 (太陽方向の目印を含む) が残ってしまう。
+  if (is_departure) {
+    const angles = mission.get_launch_angles(i);
+    updateDepartureView({
+      planetNum: mission.planet_num(i),
+      // 表示対象が変わったときだけ画角を取り直させる
+      key: i + ":" + mission.planet_num(i),
+      vinf: mission.get_v_inf(i),
+      alpha: angles ? angles.alpha : 0,
+      delta: angles ? angles.delta : 0,
+      planetPos: mission.planet_pos(i),
+      planetVel: mission.planet_vel(i),
+    });
+  } else {
+    updateDepartureView({ planetNum: -1 });
   }
+  invalidateDepartureView();
 
   if (info == null) {
     badge.textContent = "";
     badge.className = "orbit-badge";
     box.appendChild(makeReadout([["", "前のレグが決まると計算されます"]]));
+    // ポークチョップ図は「次の天体までのレグ」の話なので再出発だけ
+    if (is_departure) box.appendChild(makePorkchopButton(i));
     return;
   }
 
@@ -1594,8 +1630,14 @@ export function renderEncounterControls() {
     if (info.v_rel_in != undefined) rows.push(["接近速度", info.v_rel_in.toFixed(3) + " km/s"]);
     rows.push(["この先", info.terminal ? "天体と一緒に進む" : "「再出発」で次へ向かう"]);
   } else if (info.kind === "departure") {
+    // 離脱速度の向きは3Dビューに出ているので、数字は打上げと同じ並びで添える
+    rows.push(["離脱速度 V∞", (info.v_rel_out ?? 0).toFixed(3) + " km/s"]);
+    const angles = mission.get_launch_angles(i);
+    if (angles) {
+      rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°"]);
+      rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°"]);
+    }
     rows.push(["出発ΔV", ms(info.dv)]);
-    if (info.v_rel_out != undefined) rows.push(["離脱速度", info.v_rel_out.toFixed(3) + " km/s"]);
   } else {
     // フライバイは無推力。ΔVはかからない
     if (info.v_rel_in != undefined) rows.push(["通過の相対速度", info.v_rel_in.toFixed(3) + " km/s"]);
@@ -1604,6 +1646,8 @@ export function renderEncounterControls() {
     if (dsm) rows.push(["この後のDSM", ms(dsm.dv)]);
   }
   box.appendChild(makeReadout(rows));
+  // 打上げと同じ並びで、読み値の下にボタンを置く
+  if (is_departure) box.appendChild(makePorkchopButton(i));
 
   const dv_ms = info.dv * 1000;
   if (info.kind === "flyby") {
@@ -2715,6 +2759,7 @@ function boot() {
     onRp: apply_orbit_from_drag((m, i, v) => m.set_orbit_rp(i, v)),
     onRa: apply_orbit_from_drag((m, i, v) => m.set_orbit_ra(i, v)),
   });
+  initDepartureView(); // 再出発は常に自動 (V∞は次の目的地が決める) なので読むだけ
   initEscapeView();
   setEscapeViewHandlers({
     onVinf: apply_escape_from_drag((m, i, v) => m.set_escape_vinf(i, v)),
@@ -2794,6 +2839,7 @@ function install_redraw_safety_net() {
     invalidateLaunchView();
     invalidateOrbitView();
     invalidateEscapeView();
+    invalidateDepartureView();
     invalidateEntryView();
     invalidateDsmView();
   };
