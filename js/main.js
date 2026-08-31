@@ -51,6 +51,7 @@ import {
   setOrbitActiveHandle,
   invalidateOrbitView,
 } from './orbit_view.js';
+import { initEscapeView, updateEscapeView, invalidateEscapeView } from './escape_view.js';
 import {
   initDsmView,
   updateDsmView,
@@ -1065,6 +1066,7 @@ export function updateControlPanelDisplay() {
   invalidateBPlane();
   invalidateLaunchView();
   invalidateOrbitView();
+  invalidateEscapeView();
   invalidateEntryView();
   invalidateDsmView();
 
@@ -1427,6 +1429,17 @@ const MAX_LEG_REVS = 3;
 // 分かりにくい設定なので既定では畳んでおく。一度開いたらその状態を覚える
 let leg_box_open = false;
 
+// 軌道脱出(再出発)の3Dビューは近景(周回軌道→双曲線)と遠景(打上げと同じV∞の
+// 見方)を切り替えられる。既定は近景 (これまでの唯一のビュー)。ノードをまたいで
+// 覚えておく (切り替えるたびに既定へ戻ると煩わしいため)。
+let orbit_view_mode = "near"; // "near" | "far"
+
+function set_orbit_view_mode(mode) {
+  if (orbit_view_mode === mode) return;
+  orbit_view_mode = mode;
+  renderOrbitControls();
+}
+
 export function toggle_leg_box() {
   leg_box_open = !leg_box_open;
   const box = document.getElementById("leg_box");
@@ -1435,6 +1448,7 @@ export function toggle_leg_box() {
   invalidateLaunchView();
   invalidateBPlane();
   invalidateOrbitView();
+  invalidateEscapeView();
   invalidateEntryView();
   invalidateDsmView();
 }
@@ -1828,6 +1842,39 @@ export function renderOrbitControls() {
   badge.textContent = is_insert ? "減速" : "加速";
   badge.className = "orbit-badge " + (is_insert ? "brake" : "boost");
 
+  // 近景(周回軌道→双曲線、これまでの唯一のビュー)/遠景(V∞。打上げビューと
+  // 同じ見方)の切り替え。周回軌道投入そのものには「天体を離れる」動きが無く
+  // 遠景の意味を持たないので、タブ自体を出さず常に近景にする。
+  const view_mode_row = document.getElementById("orbit_view_mode");
+  if (view_mode_row) {
+    view_mode_row.innerHTML = "";
+    view_mode_row.style.display = is_insert ? "none" : "flex";
+    if (!is_insert) {
+      [
+        ["近景", "near"],
+        ["遠景", "far"],
+      ].forEach(([text, mode]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = text;
+        btn.className = "mode-btn" + (orbit_view_mode === mode ? " active" : "");
+        btn.onclick = () => set_orbit_view_mode(mode);
+        view_mode_row.appendChild(btn);
+      });
+    }
+  }
+  const far_active = !is_insert && orbit_view_mode === "far";
+  const near_canvas = document.getElementById("orbit_canvas");
+  const far_canvas = document.getElementById("orbit_far_canvas");
+  const near_legend = document.getElementById("orbit_legend_near");
+  const far_legend = document.getElementById("orbit_legend_far");
+  if (near_canvas) near_canvas.style.display = far_active ? "none" : "";
+  if (far_canvas) far_canvas.style.display = far_active ? "" : "none";
+  if (near_legend) near_legend.style.display = far_active ? "none" : "";
+  if (far_legend) far_legend.style.display = far_active ? "" : "none";
+  if (far_active) invalidateEscapeView();
+  else invalidateOrbitView();
+
   inputs.innerHTML = "";
   readout.innerHTML = "";
 
@@ -1848,6 +1895,7 @@ export function renderOrbitControls() {
       ])
     );
     updateOrbitView({ planetNum: -1 });
+    if (!is_insert) updateEscapeView({ planetNum: -1 });
     return;
   }
 
@@ -1914,6 +1962,22 @@ export function renderOrbitControls() {
     vinf: info ? info.v_inf : undefined,
     dv: info ? info.dv : undefined,
   });
+
+  // 遠景 (V∞)。近景と違ってrp/raには依らず、次の目的地までのランベール解
+  // だけで決まる (打上げのV∞とまったく同じ立ち位置)。タブが近景側でも、
+  // 切り替えた瞬間に古い絵が出ないよう常に更新しておく。
+  if (!is_insert) {
+    const angles = mission.get_launch_angles(i);
+    updateEscapeView({
+      planetNum: lim.planet_num,
+      key: i + ":" + lim.planet_num,
+      vinf: mission.get_v_inf(i),
+      alpha: angles ? angles.alpha : 0,
+      delta: angles ? angles.delta : 0,
+      planetPos: mission.planet_pos(i),
+      planetVel: mission.planet_vel(i),
+    });
+  }
 
   if (info == null) {
     readout.appendChild(
@@ -2518,6 +2582,7 @@ function boot() {
     onRp: apply_orbit_from_drag((m, i, v) => m.set_orbit_rp(i, v)),
     onRa: apply_orbit_from_drag((m, i, v) => m.set_orbit_ra(i, v)),
   });
+  initEscapeView(); // 遠景はV∞を読むだけ (打上げと違い常に自動モード) なのでドラッグの登録は無い
   initEntryView();
   setEntryViewHandlers({ onGamma: apply_entry_gamma_from_drag });
   initDsmView();
@@ -2590,6 +2655,7 @@ function install_redraw_safety_net() {
     invalidateBPlane();
     invalidateLaunchView();
     invalidateOrbitView();
+    invalidateEscapeView();
     invalidateEntryView();
     invalidateDsmView();
   };

@@ -226,24 +226,34 @@
             <div class="row swingby-head"
               title="近点で軌道接線方向に噴射する前提。&#10;ΔVは (V∞, 近点半径, 遠点半径) だけで決まり、軌道面の向きや到着位相には依らないため、&#10;3Dビューの向きは代表的な姿で描いている。">
               <label id="orbit_title">周回軌道</label>
+              <div class="row swingby-mode" id="orbit_view_mode"
+                title="近景: 周回軌道から双曲線に乗り移る、天体のすぐそばの様子&#10;遠景: 天体から十分離れて落ち着いたあとの脱出速度 V∞ (打上げビューと同じ見方)"></div>
               <span class="orbit-badge" id="orbit_badge"></span>
             </div>
             <div class="row view-row">
               <div class="view-3d">
                 <canvas id="orbit_canvas"></canvas>
+                <canvas id="orbit_far_canvas" style="display: none"></canvas>
               </div>
               <div class="column orbit-controls">
                 <div class="column swingby-inputs orbit-inputs" id="orbit_inputs"></div>
                 <div class="orbit-readout" id="orbit_readout"></div>
               </div>
             </div>
-            <div class="view-legend">
+            <div class="view-legend" id="orbit_legend_near">
               <span><i class="sw-b"></i>周回軌道</span>
               <span><i class="sw-orbit"></i>双曲線軌道</span>
               <span><i class="sw-coast"></i>ΔV未実施</span>
               <span><i class="sw-rp"></i>近点 r<sub>p</sub></span>
               <span><i class="sw-ra"></i>遠点 r<sub>a</sub></span>
               <span><i class="sw-dv"></i>近点ΔV</span>
+            </div>
+            <div class="view-legend" id="orbit_legend_far" style="display: none">
+              <span><i class="sw-vinf"></i>脱出速度 V<sub>∞</sub></span>
+              <span><i class="sw-alpha"></i>方位角 α</span>
+              <span><i class="sw-delta"></i>仰角 δ</span>
+              <span><i class="sw-porbit"></i>天体の公転方向 (画面右基準)</span>
+              <span>グリッド 1目盛 = 1 km/s</span>
             </div>
           </div>
 

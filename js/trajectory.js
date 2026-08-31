@@ -1024,16 +1024,19 @@ export class Mission {
 
   #m_trajectory_arcs = [];
 
-  get_v_inf() {
-    const v_inf = this.get_launch_v_inf_vec();
+  // i は「天体を離れる」ノードの番号。既定の0は打上げ (常に先頭ノード)。
+  // 軌道脱出 (周回軌道からの再出発) も天体を離れる瞬間という点で打上げと
+  // 同じ形の量を持つので、同じ計算をノードを指定して使い回せる。
+  get_v_inf(i = 0) {
+    const v_inf = this.get_launch_v_inf_vec(i);
     return v_inf == undefined ? 0 : math.norm(v_inf);
   }
 
-  // 打上げの双曲線余剰速度ベクトル [km/s] (太陽中心慣性系)。
-  // 出発天体の公転速度と出発時の探査機速度の差。3Dビューの矢印表示に使う。
-  get_launch_v_inf_vec() {
-    const v_pla = this.#m_planet_vel[0];
-    const v_sc = this.#m_s_c_vel[0] != undefined ? this.#m_s_c_vel[0][0] : undefined;
+  // 天体を離れる瞬間の双曲線余剰速度ベクトル [km/s] (太陽中心慣性系)。
+  // その天体の公転速度と、離れる瞬間の探査機速度の差。3Dビューの矢印表示に使う。
+  get_launch_v_inf_vec(i = 0) {
+    const v_pla = this.#m_planet_vel[i];
+    const v_sc = this.#m_s_c_vel[i] != undefined ? this.#m_s_c_vel[i][0] : undefined;
     if (v_pla == undefined || v_sc == undefined) return undefined;
     return math.subtract(v_sc, v_pla);
   }
@@ -1041,21 +1044,22 @@ export class Mission {
   // いまの出発軌道を launch_frame で測った |V∞| と2つの角度。
   // 手動モードでは設定値そのものになるが、自動モードでもランベール解から
   // 逆算できるので、どちらのモードでも打上げビューに同じ形で表示できる。
-  get_launch_angles() {
+  // 軌道脱出には手動モードが無い(常に自動)ので、i≠0のときは逆算一択になる。
+  get_launch_angles(i = 0) {
     // 手動モードでは、この3つがそのまま設計変数。ベクトルから逆算せずに
     // 持っている値を返す。V∞を0まで絞ると速度ベクトルからは向きが取り出せず、
     // 逆算に頼ると打上げビューが消えて、引き伸ばして戻せなくなってしまう。
-    if (this.#m_count > 0 && this.#m_is_auto_mode[0] === false) {
+    if (this.#m_types[i] === Sequence_Type.Launch && this.#m_is_auto_mode[i] === false) {
       return { vinf: this.#m_launch_vinf, alpha: this.#m_launch_alpha, delta: this.#m_launch_delta };
     }
-    return this.#launch_angles_from_velocity();
+    return this.#launch_angles_from_velocity(i);
   }
 
   // 出発速度から |V∞| と2つの角度を逆算する (自動モードの表示用)
-  #launch_angles_from_velocity() {
-    const v_inf = this.get_launch_v_inf_vec();
-    const r_pla = this.#m_planet_pos[0];
-    const v_pla = this.#m_planet_vel[0];
+  #launch_angles_from_velocity(i) {
+    const v_inf = this.get_launch_v_inf_vec(i);
+    const r_pla = this.#m_planet_pos[i];
+    const v_pla = this.#m_planet_vel[i];
     if (v_inf == undefined || r_pla == undefined || v_pla == undefined) return undefined;
 
     const frame = launch_frame(r_pla, v_pla);
