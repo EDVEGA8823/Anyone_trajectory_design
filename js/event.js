@@ -11,7 +11,7 @@ import {
   update_sequence_times,
 } from './main.js';
 import { camera, controls, createLine, getZScale } from './plot.js';
-import { coast_anomalies, kepler_equation, MU_SUN } from './trajectory.js';
+import { coast_anomalies, kepler_equation, solve_kepler, MU_SUN } from './trajectory.js';
 import { buildOrbitSamples, pickAnomaly } from './orbit_pick.js';
 import { JulianToDate, DateToJulian } from './trajectory.js';
 
@@ -422,20 +422,36 @@ function Select_marker(v, x_0) {
  * @param {number[]} elements 軌道要素 [a, e, i, W, w, E]
  * @param {number} base_date elements[5] に対応する日付 [JD]
  * @param {Float64Array} [anomalies] 描かれている線と揃えた近点角の並び
+ * @param {number} [current_date] 掴んだノード自身のいまの日付。
+ *   base_date (=elements[5]の日付) と異なる場合はここから解き直して、
+ *   ピックの最初の基準 (E_prev) を「いまの位置」に合わせる。
+ *   マヌーバは前ノードの軌道に乗って動くため、elements[5] は前ノードの
+ *   近点角であってマヌーバ自身の位置ではない。合わせずに使うと、
+ *   最初のドラッグで軌道の反対側などまるで無関係な近点角へ飛んでしまう
+ *   (2π周期のどちら側の代表値を選ぶかが、たまたま近い前ノードの近点角に
+ *   引きずられるため)。
  */
-function set_drag_orbit(elements, base_date, anomalies) {
+function set_drag_orbit(elements, base_date, anomalies, current_date = base_date) {
   const a = elements[0];
   const e = elements[1];
   const E_base = elements[5];
   const t_base = kepler_equation(a, e, E_base, MU_SUN);
   if (!isFinite(t_base)) return false;
 
+  let E_now = E_base;
+  if (current_date !== base_date) {
+    const n = Math.sqrt(MU_SUN / Math.abs(a) ** 3);
+    const M_now = n * (current_date - base_date) * 86400;
+    const solved = solve_kepler(e, M_now);
+    if (isFinite(solved)) E_now = solved;
+  }
+
   State.drag_orbit = {
     elements: elements.slice(),
     base_date,
     t_base,
     samples: buildOrbitSamples(elements, anomalies),
-    E_prev: E_base,
+    E_prev: E_now,
   };
   return true;
 }
@@ -453,8 +469,9 @@ function start_drag_node(n) {
 
     set_edit_target(n);
     // 軌道要素の epoch は前のノードの日付 (そこでの近点角が par[5])。
-    // 掴めるのは描かれている「未実行時の軌道」の上だけなので、その範囲を渡す
-    if (!set_drag_orbit(conic.par, conic.epoch, coast_anomalies(conic.par, 241))) return false;
+    // 掴めるのは描かれている「未実行時の軌道」の上だけなので、その範囲を渡す。
+    // このノード自身のいまの日付も渡し、ピックの基準をそこに合わせる
+    if (!set_drag_orbit(conic.par, conic.epoch, coast_anomalies(conic.par, 241), mission.date(n))) return false;
     State.is_change_time = true;
     State.is_selected = true;
     if (controls) controls.enableRotate = false;
