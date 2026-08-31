@@ -2252,6 +2252,19 @@ export class Mission {
     return this.#m_planet_nums[i];
   }
 
+  /**
+   * index i から dir (+1|-1) 方向へ、天体を持つノードが見つかるまで辿る。
+   * マヌーバ(DSM)は深宇宙の一点で天体を持たないので、1レグに複数繋がって
+   * いると隣のノードだけを見ても天体に辿り着けないことがある
+   * (例: 打上げ→マヌーバ→マヌーバ→スイングバイ)。見つからなければ -1。
+   */
+  nearest_planet(i, dir) {
+    for (let k = i; k >= 0 && k < this.#m_count; k += dir) {
+      if (this.#m_planet_nums[k] != -1) return this.#m_planet_nums[k];
+    }
+    return -1;
+  }
+
   date(i) {
     return this.#m_dates[i];
   }

@@ -904,15 +904,16 @@ export function toggle_planet() {
     updateNodeMarkers(all);
   }
 
-  if (State.mission_sequence.planet_num(State.selected_sequence - 1) != -1) {
-    toggle_visibility(State.mission_sequence.planet_num(State.selected_sequence - 1), true);
-  }
+  // 前後は隣のノードだけでなく、マヌーバ(天体を持たない)が続く分だけ先まで
+  // 辿って「直前にいた天体」「次にたどり着く天体」の軌道を出す
+  // (例: 打上げ→マヌーバ→マヌーバ→スイングバイ、でマヌーバを選んでいる場合)
+  const prev_planet = State.mission_sequence.nearest_planet(State.selected_sequence - 1, -1);
+  if (prev_planet != -1) toggle_visibility(prev_planet, true);
   if (State.mission_sequence.planet_num(State.selected_sequence) != -1) {
     toggle_visibility(State.mission_sequence.planet_num(State.selected_sequence), true);
   }
-  if (State.mission_sequence.planet_num(State.selected_sequence + 1) != -1) {
-    toggle_visibility(State.mission_sequence.planet_num(State.selected_sequence + 1), true);
-  }
+  const next_planet = State.mission_sequence.nearest_planet(State.selected_sequence + 1, 1);
+  if (next_planet != -1) toggle_visibility(next_planet, true);
 
   update_coast_orbit();
   update_vinf_arrow();
