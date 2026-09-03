@@ -93,16 +93,20 @@
             <div class="title">打ち上げロケット</div>
             <select id="launcher" title="打上げに使うロケット"></select>
           </div>
-          <div class="value_box mass-box" id="wet_box">
-            <div class="title">打上げ質量<span class="sub">燃料込み</span></div>
-            <div class="value" id="wet_mass">-</div>
-            <div class="unit">kg</div>
-          </div>
-          <div class="mass-arrow" id="mass_arrow" aria-hidden="true">→</div>
-          <div class="value_box mass-box" id="dry_box" title="色の目安 (打上げ質量に対して残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">
-            <div class="title">残る質量<span class="sub">燃料抜き</span></div>
-            <div class="value" id="dry_mass">-</div>
-            <div class="unit">kg</div>
+          <!-- 打上げ質量 → 残る質量 はひとつながりの話なので、まとめて包む。
+               幅が足りないときは枠を繋げて1つの箱に見せる -->
+          <div class="row stat-group mass-group">
+            <div class="value_box mass-box" id="wet_box">
+              <div class="title">打上げ質量<span class="sub">燃料込み</span></div>
+              <div class="value" id="wet_mass">-</div>
+              <div class="unit">kg</div>
+            </div>
+            <div class="mass-arrow" id="mass_arrow" aria-hidden="true">→</div>
+            <div class="value_box mass-box" id="dry_box" title="色の目安 (打上げ質量に対して残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">
+              <div class="title">残る質量<span class="sub">燃料抜き</span></div>
+              <div class="value" id="dry_mass">-</div>
+              <div class="unit">kg</div>
+            </div>
           </div>
         </div>
       </div>

@@ -1035,19 +1035,6 @@ body.file-drop::after {
   }
 }
 
-/* スマホの幅では、ここまで削っても1段に収まらない (390pxで75pxはみ出して、
-   いちばん見たい「残る質量」が画面の外に出る)。折り返しを許して2段にする。
-   バーが高くなるぶんは太陽系ビューから取る (数字が読めない方が困る) */
-@media (max-aspect-ratio: 1/1) and (max-width: 620px) {
-  .row.stat-bar {
-    flex-wrap: wrap;
-    row-gap: 4px;
-    overflow-x: hidden;
-  }
-  .stat-bar .launcher-group {
-    margin-left: 0;
-  }
-}
 
 .launcher-group select {
   grid-column: 1 / -1;
@@ -1060,6 +1047,55 @@ body.file-drop::after {
   font-size: 11px;
   font-weight: 600;
   line-height: 1.15;
+}
+
+/* スマホの幅。ここまで削っても1段に収まらない (390pxで64pxはみ出して、
+   いちばん見たい「残る質量」が画面の外に出る)。2段にすると太陽系ビューが
+   そのぶん低くなるので、横に詰めて1段を守る。
+     ・ロケットの見出しは「打ち上げロケット」だと選択欄より広くて、そこが
+       枠の幅を決めてしまう。短くして選択欄の幅だけで済むようにする
+     ・打上げ質量 → 残る質量 はひとつながりなので、枠を繋げて1つに見せる
+       (間の矢印と、内側の枠線・余白のぶんが浮く) */
+@media (max-aspect-ratio: 1/1) and (max-width: 620px) {
+  .row.stat-bar {
+    gap: 3px;
+    padding: 6px 3px;
+  }
+  /* 枠線で区切りは付いているので、枠の内側の余白は最小限でよい */
+  .stat-bar .value_box {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+  .stat-bar .select-box {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+  .stat-bar .select-box .title {
+    font-size: 0;
+  }
+  .stat-bar .select-box .title::before {
+    content: "ロケット";
+    font-size: 9px;
+  }
+  .launcher-group select {
+    width: 80px;
+  }
+  .mass-group {
+    gap: 0;
+  }
+  .stat-bar .mass-arrow {
+    /* JS が inline style で出し入れするので、こちらから消すには !important が要る */
+    display: none !important;
+  }
+  #wet_box {
+    border-right: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  #dry_box {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
 }
 
 /* ==================================================================
