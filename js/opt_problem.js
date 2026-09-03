@@ -47,6 +47,10 @@
  * わずかな大きさを与えてから始めるか、多点から出発すること。
  *
  * 入れていないもの:
+ *   周回軌道の近点・遠点      … 観測したい高度はミッションの要件であって、
+ *                               燃料の都合で勝手に動かすものではない。遠点を
+ *                               広げれば捕獲ΔVはいくらでも減るので、入れると
+ *                               必ずそこへ流れる (option の tune_orbit で開ける)
  *   周回数・分枝 (low/high)  … 連続でないので、探索の外で選ぶもの
  *   突入経路角                … 突入は無推力でΔVを生まないため、最終質量に
  *                               まったく効かない。入れても平らな次元が増えるだけ
@@ -61,10 +65,21 @@ import {
   min_flyby_rp,
   hill_radius,
   final_mass,
+  SPACECRAFT_ISP,
+  G0,
 } from './trajectory.js';
 import { launcher_mass, launch_declination, launcher_list } from './launchers.js';
 
 const TWO_PI = 2 * Math.PI;
+
+// 機種の能力を超えたV∞に、1km/sあたりどれだけ罰を積むか。
+// 打ち上げられる設計どうしの差 (対数質量で数程度) より十分大きくして、
+// 「まず能力の中に入る」ことを優先させる
+const OVER_VINF_WEIGHT = 10;
+
+// 能力を超えたときに置く打上げ質量の下限 [kg]。
+// 上限ぴったりの打上げ能力はちょうど0なので、そのままでは対数が取れない
+const LAUNCH_MASS_FLOOR = 1;
 
 /**
  * 範囲の既定値。呼び出し側が options で上書きできる。
@@ -74,8 +89,11 @@ const TWO_PI = 2 * Math.PI;
  * 見せると、いまの設計と似ても似つかない答えが返って戸惑うことになる。
  */
 export const DEFAULT_OPTIONS = {
-  launch_window_days: 180, // 打上げ日を前後どこまで動かすか [日]
-  tof_scale: 2.0, // 各レグの飛行時間を初期値の 1/scale 〜 scale 倍で動かす
+  // 範囲は「いまの設計を整える」ために狭く取る。実測では、まともな設計から
+  // なら ±30日/±20% でも広く取ったとき (±180日/×2) の改善の9割以上が取れ、
+  // そのぶん出来上がりが元の設計から離れない (飛行時間が何百日も動かない)。
+  launch_window_days: 30, // 打上げ日を前後どこまで動かすか [日]
+  tof_scale: 1.2, // 各レグの飛行時間を初期値の 1/scale 〜 scale 倍で動かす
   tof_min_days: MIN_NODE_GAP, // 飛行時間の下限 [日]
   tof_max_days: 40000, // 飛行時間の上限 [日] (約110年)
   vinf_max: undefined, // 打上げV∞の上限 [km/s] (既定は機種の能力から)
@@ -87,9 +105,14 @@ export const DEFAULT_OPTIONS = {
   flyby_rp_hill: 0.25, // スイングバイ近点半径の上限をヒル半径の何倍にするか
   flyby_rp_factor: 200, // ヒル半径が取れないときの上限 (最小近点半径の何倍か)
   orbit_ra_ratio_max: 1e4, // 周回軌道の 遠点/近点 比の上限
+  // 周回軌道の近点・遠点を動かすか。既定は動かさない。
+  // 周回軌道は「その高度で観測したい」というミッションの要件であって、
+  // 燃料を減らすために勝手に上げ下げしてよい値ではない。遠点を広げれば
+  // 捕獲ΔVはいくらでも減るので、入れておくと必ずそこへ流れてしまう。
+  tune_orbit: false,
   launcher: 'h3_24', // 打上げ能力の見積もりに使う機種
   keep_revs: true, // 指定した周回数で解けなくなった点を罰する
-  penalty: 1e3, // 成り立たない点に与える罰の大きさ
+  penalty: 1e3, // 軌道が繋がらない点に与える罰の大きさ
 };
 
 // ── 変数の写像 ────────────────────────────────────────
@@ -179,11 +202,16 @@ function flyby_rp_max(mission, i, opt) {
   return Math.max(rp_min * 1.01, by_hill ?? by_factor);
 }
 
-/** 打上げV∞の上限 [km/s]。機種の能力の上端まで */
-function launch_vinf_max(opt) {
-  if (opt.vinf_max > 0) return opt.vinf_max;
+/** その機種が出せるV∞の上端 [km/s] */
+function launcher_vinf_cap(opt) {
   const L = launcher_list().find((l) => l.id === opt.launcher);
   return L && L.vinf_max > 0 ? L.vinf_max : opt.vinf_max_fallback;
+}
+
+/** 打上げV∞を動かすときの上限 [km/s]。機種の能力の上端まで */
+function launch_vinf_max(opt) {
+  if (opt.vinf_max > 0) return opt.vinf_max;
+  return launcher_vinf_cap(opt);
 }
 
 /**
@@ -313,7 +341,7 @@ function collect_vars(mission, opt) {
     // 周回軌道投入: どんな軌道に入るかで捕獲ΔVが決まる。
     // 遠点は近点との比で持つ (近点を動かしたときに「遠点が近点より内側」へ
     // はみ出さないので、箱の中がまるごと成り立つ設計になる)
-    if (type === Sequence_Type.Orbit) {
+    if (type === Sequence_Type.Orbit && opt.tune_orbit) {
       const lim = mission.orbit_limits(i);
       const rp = mission.orbit_rp(i);
       const ra = mission.orbit_ra(i);
@@ -372,6 +400,9 @@ export function scoreMission(mission, opt = DEFAULT_OPTIONS) {
   const out = {
     ok: false, reason: undefined, dv: NaN, vinf: NaN, decl: 0,
     launch_mass: 0, final_mass: 0, fallback: false, status: 'unknown',
+    // 機種の能力をどれだけ超えているか [km/s]。超えていなければ0。
+    // 「どれだけ足りないか」が分かると、戻る向きを示せる
+    over_vinf: 0,
   };
   if (mission.count < 2) {
     out.reason = 'ノードが2つ未満';
@@ -410,20 +441,31 @@ export function scoreMission(mission, opt = DEFAULT_OPTIONS) {
     if (leg && leg.fallback) out.fallback = true;
   }
 
+  const cap = launcher_vinf_cap(opt);
   const { mass, status } = launcher_mass(opt.launcher, vinf, out.decl);
   out.status = status;
-  if (!(mass > 0)) {
+
+  // 能力を超えていても、そこで話を打ち切らない。上限ぴったりで打ち上げた
+  // ことにした質量を入れておき、超過分を別に持つ。こうしておくと
+  // 「速すぎる」側から「打ち上げられる」側へ、値が飛ばずに繋がる
+  // (崖にすると、そこを渡る手がかりが最適化の側に無くなってしまう)
+  let m = mass;
+  if (!(m > 0)) {
+    out.over_vinf = Math.max(vinf - cap, 1e-6);
+    // 上限ぴったりの能力はちょうど0なので、対数が取れるところまで持ち上げる
+    m = Math.max(launcher_mass(opt.launcher, cap, out.decl).mass, LAUNCH_MASS_FLOOR);
+  }
+  out.launch_mass = m;
+  out.final_mass = final_mass(m, dv) ?? 0;
+
+  if (out.over_vinf > 0) {
     out.reason = 'この脱出速度はロケットの能力を超えている';
     return out;
   }
-  out.launch_mass = mass;
-
-  const fm = final_mass(mass, dv);
-  if (!(fm > 0)) {
+  if (!(out.final_mass > 0)) {
     out.reason = '最終質量が求まらない';
     return out;
   }
-  out.final_mass = fm;
   out.ok = true;
   return out;
 }
@@ -523,20 +565,23 @@ export function buildProblem(mission, options = {}) {
     const s = scoreMission(mission, opt);
     const P = opt.penalty;
     let f;
-    if (s.ok) {
-      // ln(初期の最終質量 / いまの最終質量)。負なら改善
-      f = Math.log(ref_mass / s.final_mass);
+    if (s.launch_mass > 0 && isFinite(s.dv)) {
+      // ln(初期の最終質量 / いまの最終質量)。負なら改善。
+      // 質量そのものではなく対数のまま組み立てる。ΔVが桁外れに大きい設計では
+      // exp(-ΔV/Isp g0) が0に潰れてしまい、比が取れなくなるため
+      f =
+        Math.log(ref_mass) -
+        Math.log(s.launch_mass) +
+        (s.dv * 1000) / (SPACECRAFT_ISP * G0);
+      // 脱出速度がロケットの能力を超えているぶんを積む。上限で打ち上げた
+      // ことにした質量から測っているので、能力の境目で値が飛ばない。
+      // 勾配がそのまま「速度を落とせ」と教えてくれる
+      if (s.over_vinf > 0) f += OVER_VINF_WEIGHT * s.over_vinf;
       // 指定した周回数で解けなくなった点は、もう同じ骨格の設計ではない。
       // 罰で切り離しておかないと、最適化が勝手に別の軌道へ乗り換えてしまう
       if (opt.keep_revs && s.fallback) f += P;
-    } else if (isFinite(s.vinf)) {
-      // 軌道は繋がっているが、その脱出速度はロケットが出せない。
-      // 一定の壁にすると戻る向きが分からなくなるので、V∞を足して
-      // 「遅い方が feasible に近い」と伝える
-      f = 2 * P + s.vinf;
     } else {
-      // 軌道そのものが繋がっていない。近さの測りようが無いので平らな壁。
-      // 上の2つより必ず悪くしておく
+      // 軌道そのものが繋がっていない。近さの測りようが無いので平らな壁
       f = 3 * P;
     }
     return { f, ...s };

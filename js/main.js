@@ -91,7 +91,7 @@ import {
   setHistoryState,
   setMissionDirty,
 } from './topbar.js';
-import { initHistory, resetHistory, undoMission, redoMission } from './history.js';
+import { initHistory, resetHistory, undoMission, redoMission, recordHistory } from './history.js';
 import {
   saveMissionFile,
   openMissionFile,
@@ -99,8 +99,11 @@ import {
   confirmDiscard,
   markMissionSaved,
   missionHasUnsavedChanges,
+  missionData,
+  applyMissionData,
   DEFAULT_NAME,
 } from './mission_file.js';
+import { tuneMission } from './optimize.js';
 import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
 import {
   addSmallBody,
@@ -2946,6 +2949,7 @@ function boot() {
     setMissionDirty(state.dirty);
   });
   install_shortcut_keys();
+  init_tune_button();
 
   const leg_fold = document.getElementById("leg_fold");
   if (leg_fold) leg_fold.addEventListener("click", toggle_leg_box);
@@ -2990,6 +2994,101 @@ function redo_mission() {
  * 元に戻す/やり直すは、文字を打っている最中だけ横取りしない。ミッション名を
  * 打ち間違えたときは、まず欄の中で直せる方が早いため。
  */
+/**
+ * 「自動調整」ボタン。いまの設計を出発点に、残る質量が増える方へ動かす。
+ *
+ * 数秒かかることがあるので、走っている間は文字を差し替えて押せなくし、
+ * 途中経過 (いま何%良くなっているか) をそのまま出す。
+ * 探すのは「いまの設計の近く」だけ (範囲は js/opt_problem.js の既定)。
+ * 手で作ったものを別物に置き換えては調整にならないため。
+ */
+function init_tune_button() {
+  const btn = document.getElementById("tune_btn");
+  if (!btn) return;
+
+  const idle = () => {
+    btn.textContent = "自動調整";
+    btn.disabled = false;
+    btn.classList.remove("is-busy");
+    btn.title =
+      "いまの設計を出発点に、残る質量がいちばん多くなるよう\n" +
+      "日付やスイングバイのパラメータを調整します\n" +
+      "(いまの設計の近くだけを探すので、軌道の骨格は変わりません)";
+  };
+  idle();
+
+  let running = false;
+  btn.onclick = async () => {
+    if (running) return;
+    const mission = State.mission_sequence;
+    if (!mission || mission.count < 2) {
+      notify("シーケンスが2つ以上あると調整できます");
+      return;
+    }
+    running = true;
+    btn.disabled = true;
+    btn.classList.add("is-busy");
+    btn.textContent = "調整中…";
+
+    let result;
+    try {
+      result = await tuneMission(mission, {
+        launcher: State.launcher,
+        onProgress: ({ gain }) => {
+          btn.textContent = gain > 1e-4 ? "調整中 +" + (gain * 100).toFixed(1) + "%" : "調整中…";
+        },
+      });
+    } catch (e) {
+      result = { ok: false, reason: "計算に失敗しました" };
+    }
+    running = false;
+    idle();
+
+    if (!result.ok) {
+      notify(result.reason ?? "調整できませんでした");
+      return;
+    }
+    if (!result.improved) {
+      // 元から成り立っていない設計を助けられなかったときは、何がまずいのかを
+      // そのまま伝える。「良くなりません」だけでは打つ手が分からない
+      notify(result.rescue ? "成り立つ設計が見つかりませんでした (" + result.reason + ")" : "これ以上は良くなりませんでした");
+      return;
+    }
+
+    // 設計そのもの (打上げと節) だけを差し替える。天体の取り込みやロケットの
+    // 選択は変わっていないので、いまの姿から引き継ぐ
+    const data = missionData();
+    data.launch = result.data.launch;
+    data.nodes = result.data.nodes;
+    if (!applyMissionData(data, { keepSelection: true })) {
+      notify("調整した結果を反映できませんでした");
+      return;
+    }
+    // 一手として戻せるようにする。見張りは押した直後に一度走ってしまうので、
+    // 反映し終わったこの時点で改めて記録する
+    recordHistory();
+    // 質量がほとんど残らない設計では「0 → 0 kg」としか言えないので、
+    // 動いたことが伝わる総ΔVの方で知らせる
+    notify(
+      result.after < 1
+        ? "総ΔVが " +
+            (result.dv_before ?? 0).toFixed(1) +
+            " → " +
+            (result.dv_after ?? 0).toFixed(1) +
+            " km/s になりました (この設計ではまだ質量が残りません)"
+        : result.before >= 1
+        ? "残る質量が " +
+          Math.round(result.before) +
+          " → " +
+          Math.round(result.after) +
+          " kg (+" +
+          (result.gain * 100).toFixed(1) +
+          "%) になりました"
+        : "使える設計に直しました (残る質量 " + Math.round(result.after) + " kg)"
+    );
+  };
+}
+
 function install_shortcut_keys() {
   document.addEventListener("keydown", (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return;

@@ -545,6 +545,47 @@ body.file-drop::after {
   font-weight: 700;
   color: var(--text);
 }
+/* 見出しの文字。横にボタンを置くと、幅の狭い画面で見出しが2行に折り返して
+   帯の高さが変わってしまうので、折り返さずに詰める */
+.panel-head-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 「自動調整」。見出しの横に置いて、この一覧に対する操作だと分かるようにする。
+   数秒かかることがあるので、走っている間は文字を差し替えて押せなくする */
+.tune-btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+  /* 見出しと並べても入るように詰める。幅の狭い画面では見出しの方が
+     先に省略されるので、こちらは読める大きさを保つ */
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.tune-btn:hover:not(:disabled) {
+  border-color: var(--gray-300);
+  color: var(--text);
+}
+.tune-btn:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.tune-btn.is-busy {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* 選択解除ボタン。押せることが伝わるよう普段からうっすら枠を見せておく。
    絶対配置にして通常の流れから外し、出し入れしても見出しの高さ (=下の線の
    位置) が変わらないようにする */
@@ -582,6 +623,11 @@ body.file-drop::after {
   bottom: 0;
   height: 1px;
   background: var(--border);
+}
+
+/* 見出しに「自動調整」が並ぶぶん、すき間を詰めて題字が省略されにくくする */
+.sequence-panel .panel-head {
+  gap: 6px;
 }
 
 .sequence-panel {
