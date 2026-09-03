@@ -1,5 +1,12 @@
 import { State } from './state.js';
-import { AU, PLANET_COUNT, setSmallBodyProvider, setBodyConstants, clearBodyConstantsFrom } from './trajectory.js';
+import {
+  AU,
+  PLANET_COUNT,
+  MAJOR_BODY_MU,
+  setSmallBodyProvider,
+  setBodyConstants,
+  clearBodyConstantsFrom,
+} from './trajectory.js';
 import { bodyConic, bodyLabel } from './bodies.js';
 
 // 取り込んだ小天体の置き場。
@@ -26,7 +33,9 @@ const G = 6.674e-20; // [km^3 kg^-1 s^-2]
 // (ドーンはベスタとケレスを周回した)、近点を選べば軌道もいくらか曲がる。
 // これより小さいと、重力はあってないようなもの (リュウグウの脱出速度は
 // 秒速数十センチ) なので、通過するか速度を合わせるかの2択になる。
-export const MAJOR_BODY_MU = 1;
+// 実体は trajectory.js 側にある (種別が成り立つかの判断もそこで行うため)。
+// これまでここに書いていたので、名前はそのまま通しておく。
+export { MAJOR_BODY_MU };
 
 // 大きさと重さがよく分かっている天体は、Hからの見積もりではなく公表値を使う。
 // 見積もりはアルベドの仮定しだいで倍半分ずれるので、探査機が実際に訪れた
@@ -129,6 +138,7 @@ export function addSmallBody(body) {
 /**
  * 惑星のように扱う大きさかどうか。
  * これが真なら、スイングバイと周回軌道投入も選べるようにする。
+ * (種別を選ばせるかの判断そのものは Mission#can_set_type が持つ)
  */
 export function isMajorBody(n) {
   const b = smallBody(n);

@@ -94,8 +94,6 @@ import {
 import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
 import {
   addSmallBody,
-  isSmallBody,
-  isMajorBody,
   smallBody,
   smallBodies,
   smallBodiesWithout,
@@ -580,6 +578,11 @@ export function change_sequence_propaty() {
     change_sequence();
     update_plot();
     toggle_planet();
+    // 選べる種別は天体で変わる (惑星ならスイングバイ・周回軌道投入、小天体なら
+    // フライバイ・ランデブー)。天体を選び直したらこの欄も作り直す。
+    // これを忘れると、小天体に変えたあとも惑星向けの種別が並んだままになる。
+    updateControlPanelDisplay();
+    change_sequence_propaty();
   };
 
   const sequence_propaty = document.getElementById("sequence_propaty");
@@ -587,12 +590,20 @@ export function change_sequence_propaty() {
     sequence_propaty.removeChild(sequence_propaty.firstChild);
   }
 
-  // マヌーバは手動レグに付随する節なので、他の種別には変えられない
-  // (要らなくなったら削除するか、手動ノードを自動に戻す)
+  // 種別を変えられない節は、空の欄を押させても仕方がないので閉じておく。
+  //   先頭 … 常に打上げ
+  //   マヌーバ … 手動レグに付随する節 (要らなくなったら削除するか、
+  //             手動ノードを自動に戻す)
   const is_maneuver = sel_type === Sequence_Type.Maneuver;
-  sequence_propaty.disabled = is_maneuver;
+  const is_first = State.selected_sequence === 0;
+  sequence_propaty.disabled = is_maneuver || is_first;
+  sequence_propaty.title = is_first
+    ? "先頭のシーケンスは常に打上げ"
+    : is_maneuver
+    ? "マヌーバは手動モードのレグに付いてくる節なので、種別は変えられない"
+    : "";
 
-  if (State.selected_sequence != 0 && !is_maneuver) {
+  if (!is_first && !is_maneuver) {
     let option1 = document.createElement("option");
     option1.text = "変更";
     option1.value = "default";
@@ -600,54 +611,34 @@ export function change_sequence_propaty() {
     option1.selected = true;
     sequence_propaty.add(option1);
 
-    // 最終軌道は「手動モードのノードの後の最後の節」でしか意味を持たないので、
-    // その条件を満たすときだけ選択肢に出す
-    const can_end = State.mission_sequence.can_end(State.selected_sequence);
-    // 軌道脱出は「直前が周回軌道投入」のときだけ。天体は投入側に自動で揃う
-    const can_escape = State.mission_sequence.can_escape(State.selected_sequence);
-    // 再出発は「直前がランデブー」のときだけ (軌道脱出と同じ関係)
-    const can_depart = State.mission_sequence.can_depart(State.selected_sequence);
-    // 大気圏突入は大気に入って終わりなので、最後の節でだけ選べる
-    const can_entry = State.mission_sequence.can_entry(State.selected_sequence);
-
-    Object.values(Sequence_Type).forEach((value, i) => {
-      let option = document.createElement("option");
+    // どの種別を選べるかは Mission#can_set_type が唯一の判断場所。
+    // 並び (直前が周回軌道投入か、最後の節か) と天体の性質 (重力で曲げられる
+    // 大きさか、大気があるか) の両方をそこで見ている。ここで条件を書き足すと
+    // 「選べたのに設定すると戻される」ような食い違いが生まれるので書かない。
+    let choices = 0;
+    Object.values(Sequence_Type).forEach((value) => {
+      // 「---」に戻す選択肢は出さない (要らない節は削除で消す)
+      if (value === Sequence_Type.None) return;
+      if (!State.mission_sequence.can_set_type(State.selected_sequence, value)) return;
+      const option = document.createElement("option");
       option.text = value;
       option.value = value;
-      if (i > 1) {
-        if (value == Sequence_Type.End) {
-          if (can_end) sequence_propaty.add(option);
-        } else if (value == Sequence_Type.Escape) {
-          if (can_escape) sequence_propaty.add(option);
-        } else if (value == Sequence_Type.Departure) {
-          if (can_depart) sequence_propaty.add(option);
-        } else if (value == Sequence_Type.Entry) {
-          // 小天体には大気が無いので突入も無い
-          if (can_entry && !isSmallBody(State.mission_sequence.planet_num(State.selected_sequence))) {
-            sequence_propaty.add(option);
-          }
-        } else if (value == Sequence_Type.Maneuver) {
-          // マヌーバは手動レグ (手動の打上げ/スイングバイと次の目的地の間) に
-          // だけ置ける節なので、種別の変更では選ばせない。その区間で
-          // 「+ シーケンスを追加」を押すと手動マヌーバとして入る。
-        } else if (!isSmallBody(State.mission_sequence.planet_num(State.selected_sequence))) {
-          // 惑星: スイングバイ (重力で曲げる) と周回軌道投入
-          if (value != Sequence_Type.Flyby && value != Sequence_Type.Rendezvous) {
-            sequence_propaty.add(option);
-          }
-        } else if (isMajorBody(State.mission_sequence.planet_num(State.selected_sequence))) {
-          // ケレスやベスタくらい大きければ、周回もできるし多少は曲がる。
-          // 通過するだけ・速度を合わせるだけの選び方も残す
-          sequence_propaty.add(option);
-        } else {
-          // 小天体: 重力がほとんど無いので曲げられないし、周回軌道に入れる意味も
-          // 薄い。代わりにフライバイ (通過) とランデブー (速度を合わせる) を出す
-          if (value != Sequence_Type.Swingby && value != Sequence_Type.Orbit) {
-            sequence_propaty.add(option);
-          }
-        }
-      }
+      sequence_propaty.add(option);
+      choices++;
     });
+
+    // 天体で決まる種別 (スイングバイ・周回軌道投入・フライバイ・ランデブー・
+    // 大気圏突入) は、天体を選ぶまでどれも成り立たない。空の欄を押させても
+    // 仕方がないので、理由を添えて閉じておく。
+    if (choices === 0) {
+      sequence_propaty.disabled = true;
+      sequence_propaty.title =
+        State.mission_sequence.planet_num(State.selected_sequence) === -1
+          ? "先に天体を選んでください"
+          : "この位置・この天体で選べる種別はありません";
+    } else {
+      sequence_propaty.title = "";
+    }
   }
   const sequence_type = document.getElementById("sequence_type");
 

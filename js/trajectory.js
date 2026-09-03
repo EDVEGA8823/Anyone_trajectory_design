@@ -321,6 +321,31 @@ export const PLANET_COUNT = 9;
 let small_body_provider = null;
 
 /** @param {(n:number) => ({q,e,i,node,peri,tp}|null)} fn 天体番号から近点基準の要素を返す関数 */
+// 「重力で軌道を曲げられる / 周回軌道に入れる」と見なす下限のμ [km^3/s^2]。
+// ケレス(μ≈62)やベスタ(μ≈17)は超え、よくある小惑星や彗星は遠く及ばない。
+// スイングバイの曲げ角も周回軌道の大きさもμで決まるので、ここで線を引く。
+export const MAJOR_BODY_MU = 1;
+
+/**
+ * その天体が、重力で軌道を曲げたり周回軌道に入れたりできる大きさか。
+ * 惑星は常に該当し、取り込んだ小天体はμがMAJOR_BODY_MU以上のときだけ。
+ */
+export function body_has_gravity_well(n) {
+  if (typeof n !== "number" || n < 0) return false;
+  if (n < PLANET_COUNT) return true;
+  const mu = planet_mu[n];
+  return mu != undefined && mu >= MAJOR_BODY_MU;
+}
+
+/**
+ * その天体に大気圏突入の相手になる大気があるか。
+ * 取り込んだ小天体は突入インターフェース高度を0で登録してある (大気が無い)。
+ */
+export function body_has_atmosphere(n) {
+  if (typeof n !== "number" || n < 0) return false;
+  return ENTRY_ALTITUDE[n] > 0;
+}
+
 export function setSmallBodyProvider(fn) {
   small_body_provider = fn;
 }
@@ -1794,6 +1819,53 @@ export class Mission {
   }
 
   /**
+   * ノードiをその種別にできるか。種別を選ばせる側 (操作パネルの「変更」) と、
+   * 前提が崩れた節を戻す側 (#normalize_types) の両方がここだけを見る。
+   * 二重に条件を書くと必ず食い違うので、判断はこの1か所に集める。
+   *
+   * 天体の大きさで決まるもの:
+   *   スイングバイ・周回軌道投入 … 重力で曲げる/周回する節なので、惑星か
+   *        ケレス級の小天体でだけ成り立つ。μの小さい小惑星では曲げ角が
+   *        1度にも満たず、周回軌道もヒル半径に収まらない
+   *   フライバイ・ランデブー     … 逆に、重力を当てにせず通り過ぎる/速度を
+   *        合わせるだけの節なので小天体向け。惑星では上の2つを使う
+   *   大気圏突入                 … 大気のある天体だけ
+   * 並びで決まるもの (最終軌道・軌道脱出・再出発・大気圏突入) は、それぞれの
+   * can_* が持っている。
+   *
+   * 天体が未選択(-1)のときは、天体で決まる種別はどれも成り立たない。
+   * 先に天体を選んでもらう方が、選んだ後で黙って戻されるより分かりやすい。
+   */
+  can_set_type(i, type) {
+    if (i <= 0 || i >= this.#m_count) return false; // 先頭は常に打上げ
+    const n = this.#m_planet_nums[i];
+    switch (type) {
+      case Sequence_Type.None:
+        return true;
+      // 打上げは先頭専用。マヌーバは手動レグに自動で入る節なので選ばせない
+      case Sequence_Type.Launch:
+      case Sequence_Type.Maneuver:
+        return false;
+      case Sequence_Type.End:
+        return this.can_end(i);
+      case Sequence_Type.Escape:
+        return this.can_escape(i);
+      case Sequence_Type.Departure:
+        return this.can_depart(i);
+      case Sequence_Type.Entry:
+        return this.can_entry(i) && body_has_atmosphere(n);
+      case Sequence_Type.Swingby:
+      case Sequence_Type.Orbit:
+        return body_has_gravity_well(n);
+      case Sequence_Type.Flyby:
+      case Sequence_Type.Rendezvous:
+        return typeof n === "number" && n >= PLANET_COUNT;
+      default:
+        return false;
+    }
+  }
+
+  /**
    * 周回軌道投入 / 軌道脱出のΔVを求める。
    *
    * 投入: 直前のレグの到着速度からV∞を取り、近点で減速して楕円に入る。
@@ -2157,22 +2229,30 @@ export class Mission {
   //   軌道脱出: 直前の周回軌道投入と同じ天体の、同じ軌道から出る節。天体も揃える
   //   大気圏突入: 大気に入って終わりなので、後ろに節が続いていたら成立しない
   #normalize_types() {
-    for (let i = 0; i < this.#m_count; i++) {
-      if (this.#m_types[i] === Sequence_Type.Escape) {
-        if (!this.can_escape(i)) {
-          this.#m_types[i] = Sequence_Type.None;
-          continue;
-        }
+    for (let i = 1; i < this.#m_count; i++) {
+      const type = this.#m_types[i];
+      // 「---」と、手動レグに付いてくるマヌーバは正規化の対象外
+      // (マヌーバの整合は #normalize_maneuvers が受け持つ)
+      if (type === Sequence_Type.None || type === Sequence_Type.Maneuver) continue;
+
+      // 軌道脱出・再出発は、直前のノード (周回軌道投入 / ランデブー) と同じ
+      // 天体から飛び立つ節なので、天体をそちらに揃える
+      const follows_stay =
+        type === Sequence_Type.Escape || type === Sequence_Type.Departure;
+      if (follows_stay && this.can_set_type(i, type)) {
         this.#m_planet_nums[i] = this.#m_planet_nums[i - 1];
-      } else if (this.#m_types[i] === Sequence_Type.Departure) {
-        // 再出発は、直前のランデブーと同じ天体から飛び立つ節
-        if (!this.can_depart(i)) {
-          this.#m_types[i] = Sequence_Type.None;
-          continue;
-        }
-        this.#m_planet_nums[i] = this.#m_planet_nums[i - 1];
-      } else if (this.#m_types[i] === Sequence_Type.Entry && !this.can_entry(i)) {
+        continue;
+      }
+
+      // 前提が崩れた節は「---」に戻す。並びが変わった場合 (直前の投入を消した、
+      // 後ろに節を足して大気圏突入が最後でなくなった) だけでなく、天体を
+      // 選び直して種別に合わなくなった場合もここで戻る。
+      // 例: スイングバイのまま天体を小惑星に変えると、曲げるだけの重力が
+      //     無いので節として成り立たない。
+      if (!this.can_set_type(i, type)) {
         this.#m_types[i] = Sequence_Type.None;
+        // 種別が無くなった節に手動モードだけ残っていると筋が通らない
+        this.#m_is_auto_mode[i] = true;
       }
     }
   }
