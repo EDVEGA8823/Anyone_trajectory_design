@@ -27,6 +27,22 @@ export let element_dot = [
   [-47266.943226371994, 0.0000517, 8.40899633610868e-7, 2.534354299461879, -0.0007091171521756345, -0.0002065565753808753],
 ];
 
+// 探査機の推進系。二液式のアポジエンジン程度を想定した既定値。
+// 「総ΔVを出し切った後に残る質量」を出すのに要る。表示 (統計バー) と
+// 最適化の評価関数の両方が同じ値を見るよう、ここに1つだけ置く。
+export const SPACECRAFT_ISP = 320; // 比推力 [s]
+export const G0 = 9.80665; // 標準重力 [m/s^2]
+
+/**
+ * ロケット方程式。総ΔVの分の燃料を使ったあとに残る質量 [kg]。
+ * @param {number} m0     打上げ時の質量 (ウェット質量) [kg]
+ * @param {number} dv_kms 総ΔV [km/s]
+ */
+export function final_mass(m0, dv_kms) {
+  if (!(m0 > 0) || !isFinite(dv_kms) || dv_kms < 0) return undefined;
+  return m0 * Math.exp((-dv_kms * 1000) / (SPACECRAFT_ISP * G0));
+}
+
 // 惑星ごとの重力定数 mu [km^3/s^2] と赤道半径 [km] (State.planet_list と同じ並び順:
 // 水星,金星,地球,火星,木星,土星,天王星,海王星,冥王星)。スイングバイ計算に使用する。
 export const planet_mu = [
@@ -757,7 +773,7 @@ export const Leg_Event = {
 const COPLANAR_INC = 1e-4;
 
 // 隣り合うノードの間に最低限空ける日数
-const MIN_NODE_GAP = 10;
+export const MIN_NODE_GAP = 10;
 
 function wrap_pi(x) {
   let y = (x + Math.PI) % (2 * Math.PI);
@@ -1025,6 +1041,15 @@ export class Mission {
   #m_leg_revs = [];
   #m_leg_low = [];
   #m_leg_info = [];
+
+  // batch() の入れ子の深さと、その間に再計算を頼まれたか。
+  // 0 のときだけ #recompute_all が実際に走る。
+  #suspend = 0;
+  #pending = false;
+
+  // 軌道の折れ線 (太陽系ビューに描く点列) を作るかどうか。
+  // 描くためだけのもので、ΔVにも質量にも効かない。
+  #arcs = true;
 
   #m_swingby_info = []; // 直近に計算されたスイングバイ結果 (get_swingby_info用)
   #m_dsm_info = []; // 直近に計算されたDSM(マヌーバ)結果 (get_dsm_info用)
@@ -2178,19 +2203,25 @@ export class Mission {
       let M_1 = M_0 + dM;
       let E_1 = solve_kepler(par[1], M_1);
 
-      // 多周回のレグは同じ楕円を何周もするので、点数も周回数ぶん増やす
-      // (100点のまま2周させると、1周あたり50点になって折れ線が目立つ)
-      const revs = this.#m_leg_info[i] != undefined ? this.#m_leg_info[i].revs : 0;
-      const N = 100 * (1 + revs);
-
-      let p = [];
       let v_end;
-      for (let j = 0; j < N; j++) {
-        let { r, v } = get_planets_pos_E(par, E_0 + ((E_1 - E_0) * j) / (N - 1));
-        p.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
-        if (j === N - 1) v_end = v;
+      if (this.#arcs) {
+        // 多周回のレグは同じ楕円を何周もするので、点数も周回数ぶん増やす
+        // (100点のまま2周させると、1周あたり50点になって折れ線が目立つ)
+        const revs = this.#m_leg_info[i] != undefined ? this.#m_leg_info[i].revs : 0;
+        const N = 100 * (1 + revs);
+
+        let p = [];
+        for (let j = 0; j < N; j++) {
+          let { r, v } = get_planets_pos_E(par, E_0 + ((E_1 - E_0) * j) / (N - 1));
+          p.push(new THREE.Vector3(r[0] / AU, r[2] / AU, -r[1] / AU));
+          if (j === N - 1) v_end = v;
+        }
+        this.#m_trajectory_arcs[i] = p;
+      } else {
+        // 折れ線を作らない設定 (最適化など、数だけ要るとき)。
+        // 到着速度の補完には終端の1点しか使わないので、そこだけ求める
+        v_end = get_planets_pos_E(par, E_1).v;
       }
-      this.#m_trajectory_arcs[i] = p;
 
       // ランベールで解いた場合は既に厳密な到着速度(index 1)が入っているので上書きしない。
       // スイングバイ由来の出発速度など到着速度が未確定(=着地点が惑星と一致する保証がない)
@@ -2237,7 +2268,56 @@ export class Mission {
     }
   }
 
+  /**
+   * 設計変数をまとめて書き換えて、再計算を1回で済ませる。
+   *
+   * 設定用のメソッドはどれも1つ書き換えるたびに全ノードを解き直すので、
+   * 変数をn個動かすとn回まわってしまう。最適化のように「一点あたり全変数を
+   * 入れ替えて1回だけ評価する」使い方では、そのほとんどが捨てられる。
+   *
+   *   mission.batch(() => { mission.set_date(1, t); mission.set_dsm_dv(2, v); });
+   *
+   * 中で例外が出ても、書き換えが1つでもあれば抜けるときに解き直す
+   * (書きかけのまま古い計算結果が残らないようにするため)。
+   *
+   * @param {() => void} fn まとめて実行する書き換え
+   */
+  batch(fn) {
+    this.#suspend++;
+    try {
+      fn();
+    } finally {
+      this.#suspend--;
+      if (this.#suspend === 0 && this.#pending) {
+        this.#pending = false;
+        this.#recompute_all();
+      }
+    }
+  }
+
+  /**
+   * 軌道の折れ線を作るかどうかを切り替える。
+   *
+   * 1レグあたり100点 (多周回はさらに増える) を毎回組み直すので、最適化のように
+   * 「ΔVと質量だけ知りたい」場面ではここが計算時間の大半を占める。折れ線は
+   * 描画のためだけのもので、ΔVにも質量にも効かない。
+   * 切ったまま画面に出すと軌道が消えるので、使うのは複製したミッションの上だけ。
+   *
+   * @param {boolean} on 既定は true (作る)
+   */
+  set_arcs_enabled(on) {
+    const next = !!on;
+    if (next === this.#arcs) return;
+    this.#arcs = next;
+    this.#recompute_all();
+  }
+
   #recompute_all() {
+    // batch() の途中は溜めておいて、抜けるときにまとめて1回だけ解く
+    if (this.#suspend > 0) {
+      this.#pending = true;
+      return;
+    }
     this.#normalize_types();
     this.#normalize_maneuvers();
 
@@ -2504,6 +2584,42 @@ export class Mission {
     this.#m_dates[i] = clamped;
     this.#recompute_all();
     return clamped;
+  }
+
+  /**
+   * 全ノードの日付をまとめて入れ替える。
+   *
+   * set_date は前後のノードとの最小間隔でその場で切り詰めるので、1つずつ
+   * 入れると順序に結果が左右される。ミッション全体を後ろへずらしたいだけでも、
+   * 先頭を動かした時点で次のノードに阻まれて動けない。まとめて受け取れば
+   * 先頭から順に間隔を満たしていくだけで済む。
+   *
+   * 配列の穴 (undefined) はそのノードを動かさない指定。節目に固定された
+   * ノードを最適化の対象から外すときに使う (固定も外れない)。
+   *
+   * @param {Array<number|undefined>} dates ノード順の日付 [ユリウス日]
+   */
+  set_dates(dates) {
+    if (!Array.isArray(dates)) return;
+    const next = this.#m_dates.slice();
+    let prev = -Infinity;
+    for (let i = 0; i < this.#m_count; i++) {
+      const want = dates[i];
+      let d = typeof want === "number" && isFinite(want) ? want : next[i];
+      if (i > 0 && d - prev < MIN_NODE_GAP) d = prev + MIN_NODE_GAP;
+      next[i] = d;
+      prev = d;
+    }
+    let changed = false;
+    for (let i = 0; i < this.#m_count; i++) {
+      if (next[i] === this.#m_dates[i]) continue;
+      this.#m_dates[i] = next[i];
+      // 指定して動かしたノードだけ、節目への固定を外す (set_date と同じ扱い)。
+      // 穴のまま押し出されたノードは固定を保つ
+      if (dates[i] != undefined) this.#m_pinned_event[i] = undefined;
+      changed = true;
+    }
+    if (changed) this.#recompute_all();
   }
 
   set_type(i, type) {

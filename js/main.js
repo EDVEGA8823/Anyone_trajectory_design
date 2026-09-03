@@ -8,6 +8,8 @@ import {
   Mission,
   AU,
   planet_radius,
+  SPACECRAFT_ISP,
+  final_mass,
 } from './trajectory.js';
 import {
   initPlot,
@@ -354,10 +356,6 @@ export function update_sequence_times() {
   });
 }
 
-// 探査機の推進系。ドライ質量(=燃料を使い切った後に残る質量)を出すのに要る。
-// 二液式のアポジエンジン程度を想定した既定値。
-const ISP = 320; // 比推力 [s]
-const G0 = 9.80665; // [m/s^2]
 const EARTH = 2; // State.planet_list の地球の番号
 
 // --- 統計バーの色分け ---
@@ -500,12 +498,12 @@ function update_launch_mass(vinf, dv_kms) {
   }
 
   // ロケット方程式。総ΔVの分の燃料を使うと、残るのはこれだけ。
-  const dry = mass * Math.exp((-dv_kms * 1000) / (ISP * G0));
+  const dry = final_mass(mass, dv_kms);
   show(
     mass.toFixed(0),
-    dry.toFixed(0),
+    dry != undefined ? dry.toFixed(0) : "-",
     launch_mass_note(status, decl, sourceMode, confidence),
-    level_high(mass > 0 ? dry / mass : 0, KEEP_LEVELS),
+    level_high(dry != undefined && mass > 0 ? dry / mass : 0, KEEP_LEVELS),
     approx
   );
 }
@@ -525,7 +523,7 @@ const CONFIDENCE_NOTE = {
 
 function launch_mass_note(status, decl, sourceMode, confidence) {
   const base =
-    "赤緯 " + decl.toFixed(1) + "°・比推力 " + ISP + "秒で見積もり\n" +
+    "赤緯 " + decl.toFixed(1) + "°・比推力 " + SPACECRAFT_ISP + "秒で見積もり\n" +
     "打上げ質量: 燃料も含めた打上げ時の質量 (ウェット質量)\n" +
     "残る質量: 総ΔVの分の燃料を使い切った後に残る質量 (ドライ質量)";
   const from = SOURCE_NOTE[sourceMode];
