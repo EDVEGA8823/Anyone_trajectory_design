@@ -81,7 +81,14 @@ import {
   porkchopNote,
   closePorkchop,
 } from './porkchop.js';
-import { initTopbar, setTopbarHandlers } from './topbar.js';
+import {
+  initTopbar,
+  setTopbarHandlers,
+  initHistoryButtons,
+  setHistoryHandlers,
+  setHistoryState,
+} from './topbar.js';
+import { initHistory, resetHistory, undoMission, redoMission } from './history.js';
 import {
   saveMissionFile,
   openMissionFile,
@@ -841,6 +848,7 @@ export async function new_mission() {
   update_plot();
   updateAfterAdd(); // 一覧・操作パネル・時刻欄・マーカーをまとめて作り直す
   markMissionSaved(); // 空なので、失うものはもう無い
+  resetHistory(); // まっさらにしたので、ここより前へは戻さない
   notify("新しいミッションを始めました");
 }
 
@@ -2928,6 +2936,13 @@ function boot() {
   });
   initMissionFileDrop();
 
+  // 元に戻す / やり直す。ボタンを作ってから見張りを始める
+  // (見張りの開始時に「いまの状態」を基準として覚えるため)
+  initHistoryButtons();
+  setHistoryHandlers({ undo: undo_mission, redo: redo_mission });
+  initHistory(setHistoryState);
+  install_history_keys();
+
   const leg_fold = document.getElementById("leg_fold");
   if (leg_fold) leg_fold.addEventListener("click", toggle_leg_box);
 
@@ -2940,6 +2955,49 @@ function boot() {
 
   install_redraw_safety_net();
   install_unload_guard();
+}
+
+/**
+ * 元に戻す / やり直す。
+ *
+ * 戻せるものが無いときは知らせるだけにする (黙って何も起きないと、
+ * 効いていないのか戻るものが無いのか分からない)。
+ */
+// 成功したときは知らせない。画面がその場で変わるので見れば分かるし、
+// 続けて押したときに知らせが流れ続けるとかえって邪魔になる。
+// (開いているポークチョップ図は、対象のレグが無くなれば sync_porkchop が閉じる)
+function undo_mission() {
+  if (!undoMission()) notify("これ以上は戻せません");
+}
+
+function redo_mission() {
+  if (!redoMission()) notify("やり直せる操作はありません");
+}
+
+/**
+ * Ctrl+Z で戻す、Ctrl+Y (Ctrl+Shift+Z) でやり直す。
+ *
+ * 文字を打っている最中は、その欄の中の取り消しを横取りしない
+ * (ミッション名を打ち間違えたときは、まず欄の中で直せる方が早い)。
+ */
+function install_history_keys() {
+  document.addEventListener("keydown", (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key !== "z" && key !== "y") return;
+
+    const t = e.target;
+    const typing =
+      t &&
+      (t.tagName === "TEXTAREA" ||
+        (t.tagName === "INPUT" && /^(text|search|url|email|password|number)$/.test(t.type)) ||
+        t.isContentEditable);
+    if (typing) return;
+
+    e.preventDefault();
+    if (key === "y" || (key === "z" && e.shiftKey)) redo_mission();
+    else undo_mission();
+  });
 }
 
 /**

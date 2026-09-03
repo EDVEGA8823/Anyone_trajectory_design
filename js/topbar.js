@@ -24,6 +24,9 @@ const ICON = {
   image: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M5 17l4.5-4.5 3 3 3-2.5L20 17"/>',
   link: '<path d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1.2 1.2"/><path d="M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.2-1.2"/>',
   keyboard: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M8 14h8"/>',
+  // 元に戻す/やり直す。左右対称の矢印にして、向きだけで意味が通るようにする
+  undo: '<path d="M4 9h10.5a5 5 0 0 1 0 10H9"/><path d="M7.5 5.5 4 9l3.5 3.5"/>',
+  redo: '<path d="M20 9H9.5a5 5 0 0 0 0 10H15"/><path d="M16.5 5.5 20 9l-3.5 3.5"/>',
   settings: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
   feedback: '<path d="M20 14.5a2.5 2.5 0 0 1-2.5 2.5H9l-4.5 3.5V6.5A2.5 2.5 0 0 1 7 4h10.5A2.5 2.5 0 0 1 20 6.5z"/>',
   // Xのロゴだけは輪郭が細かいので塗りで描く
@@ -255,6 +258,46 @@ export function initTopbar() {
  * export_image, share_link, shortcuts, settings, feedback) と language。
  * 登録されていないボタンは「準備中」と出すだけになる。
  */
+// --- 元に戻す / やり直す ---
+// ミッション名の隣に置く。保存や共有 (右のまとまり) とは性質が違い、
+// 「いま書いているもの」に効く操作なので、名前のそばの方が探しやすい。
+let history_handlers = {};
+let undo_btn = null;
+let redo_btn = null;
+
+function make_history_button(kind, label, hint) {
+  const btn = el("button", "topbar-btn topbar-btn--icon", svg(kind));
+  btn.type = "button";
+  btn.title = label + "\n" + hint;
+  btn.setAttribute("aria-label", label);
+  btn.disabled = true;
+  btn.onclick = () => {
+    const fn = history_handlers[kind];
+    if (fn) fn();
+  };
+  return btn;
+}
+
+export function initHistoryButtons() {
+  const host = document.getElementById("topbar_history");
+  if (!host) return;
+  host.innerHTML = "";
+  undo_btn = make_history_button("undo", "元に戻す", "Ctrl+Z");
+  redo_btn = make_history_button("redo", "やり直す", "Ctrl+Y / Ctrl+Shift+Z");
+  host.appendChild(undo_btn);
+  host.appendChild(redo_btn);
+}
+
+export function setHistoryHandlers(h) {
+  history_handlers = h || {};
+}
+
+/** 戻せる/やり直せるかに合わせてボタンを押せる状態にする */
+export function setHistoryState({ undo, redo }) {
+  if (undo_btn) undo_btn.disabled = !undo;
+  if (redo_btn) redo_btn.disabled = !redo;
+}
+
 export function setTopbarHandlers(h) {
   handlers = { ...handlers, ...h };
 }

@@ -127,6 +127,24 @@ body {
   color: #ffffff;
 }
 
+/* 元に戻す / やり直す。ミッション名のすぐ隣に小さく置く */
+.topbar-history {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+/* アイコンだけのボタンは、文字のぶんの余白を詰めて正方形にする */
+.topbar-btn--icon {
+  padding: 7px;
+}
+.topbar-btn:disabled {
+  color: var(--gray-500);
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+
 .topbar-actions {
   position: relative;
   margin-left: auto;

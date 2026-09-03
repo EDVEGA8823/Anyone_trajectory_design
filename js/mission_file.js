@@ -6,6 +6,7 @@ import { updateAfterAdd } from './event.js';
 import { isSmallBody, smallBody, smallBodyNumber, smallBodiesForSave } from './small_bodies.js';
 import { normalizeBody } from './bodies.js';
 import { confirmDialog } from './dialog.js';
+import { resetHistory } from './history.js';
 
 // ミッションの保存と読込。
 //
@@ -169,9 +170,6 @@ export function readMissionFile(file) {
  * ミッションだけでなく、選択位置・チェック・ロケット・名前も入れ替える。
  */
 export function loadMissionData(data, filename) {
-  const mission = State.mission_sequence;
-  if (!mission) return false;
-
   if (data && data.format && data.format !== FORMAT) {
     notify("このアプリの保存ファイルではないようです");
     return false;
@@ -180,6 +178,42 @@ export function loadMissionData(data, filename) {
     // 新しい版で増えた項目は読み飛ばされるだけなので、断ったうえで読む
     notify("新しい版のファイルです。読めない項目があるかもしれません");
   }
+
+  // 空のミッションは「戻れる先」としては正しいが、ファイルとしては中身が
+  // 無いということなので、読み込みのときだけここで断る
+  if (!data || !Array.isArray(data.nodes) || data.nodes.length === 0 || !applyMissionData(data)) {
+    notify("読み込めませんでした (シーケンスが入っていません)");
+    return false;
+  }
+
+  markMissionSaved(); // 読み込んだ直後は、ファイルと画面の中身が同じ
+  resetHistory(); // 別のミッションになったので、ここより前へは戻さない
+  notify("「" + (filename ?? data.name ?? "ミッション") + "」を読み込みました");
+  return true;
+}
+
+/**
+ * missionData() の形をした中身で、画面の状態をまるごと入れ替える。
+ *
+ * ファイルの読込 (loadMissionData) と、元に戻す/やり直す (js/history.js) が
+ * 共有する。どちらも「その時点の設計に丸ごと戻す」という同じ操作なので、
+ * 入れ替えの手順を2か所に書くと必ず食い違う。
+ *
+ * ファイル特有の話 (形式の確認・保存済みの印・読み込んだという知らせ) は
+ * 呼ぶ側が持つ。ここは状態の入れ替えだけを行う。
+ *
+ * @param {object} data 入れ替える中身
+ * @param {object} [opts]
+ * @param {boolean} [opts.keepSelection] 選んでいるノードを保つか
+ *        (元に戻すときは、見ていた場所から目が離れないように保つ。
+ *         ファイルを開くときは前のミッションの選択を引き継ぐ理由が無いので外す)
+ * @returns {boolean} 入れ替えられたか
+ */
+export function applyMissionData(data, { keepSelection = false } = {}) {
+  const mission = State.mission_sequence;
+  if (!mission) return false;
+
+  const prev_selected = State.selected_sequence;
 
   // 小天体を先に取り込む (節が指す天体番号は、この並び順で決まる)
   const bodies = Array.isArray(data.bodies) ? data.bodies.map(normalizeBody).filter(Boolean) : [];
@@ -193,13 +227,10 @@ export function loadMissionData(data, filename) {
     if (num >= 0) node.planet = num;
   }
 
-  if (!mission.restore(data)) {
-    notify("読み込めませんでした (シーケンスが入っていません)");
-    return false;
-  }
+  if (!mission.restore(data)) return false;
 
-  // どのノードも選ばずに開く (前回選んでいた位置を引き継ぐ理由が無いため)
-  State.selected_sequence = -1;
+  // 選択は節の番号で持っているので、節が減っていれば末尾に寄せる
+  State.selected_sequence = keepSelection ? Math.min(prev_selected, mission.count - 1) : -1;
   State.editing_sequence = -1;
   State.checked.clear();
   State.tmp_date = mission.date(0) ?? State.tmp_date;
@@ -216,9 +247,6 @@ export function loadMissionData(data, filename) {
 
   update_plot();
   updateAfterAdd(); // 一覧・操作パネル・時刻欄・マーカーをまとめて作り直す
-
-  markMissionSaved(); // 読み込んだ直後は、ファイルと画面の中身が同じ
-  notify("「" + (filename ?? data.name ?? "ミッション") + "」を読み込みました");
   return true;
 }
 

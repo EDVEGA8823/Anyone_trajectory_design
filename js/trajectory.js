@@ -2969,7 +2969,10 @@ export class Mission {
    * @returns {boolean} 読めたか
    */
   restore(data) {
-    if (!data || !Array.isArray(data.nodes) || data.nodes.length === 0) return false;
+    // 節が1つも無い状態 (新規作成の直後) も、戻れる先として正しい形なので
+    // 受け取る。「読めないファイル」かどうかの判断は呼ぶ側が持つ
+    // (js/mission_file.js の loadMissionData)。
+    if (!data || !Array.isArray(data.nodes)) return false;
 
     const nodes = data.nodes;
     const num = (v, fallback) => (typeof v === "number" && isFinite(v) ? v : fallback);
@@ -2977,7 +2980,7 @@ export class Mission {
 
     this.#m_count = nodes.length;
     this.#m_types = nodes.map((n) => Sequence_Type[n.type] ?? Sequence_Type.None);
-    this.#m_types[0] = Sequence_Type.Launch; // 先頭は常に打上げ
+    if (this.#m_count > 0) this.#m_types[0] = Sequence_Type.Launch; // 先頭は常に打上げ
     this.#m_dates = nodes.map((n, i) => num(n.date, i * MIN_NODE_GAP));
     this.#m_planet_nums = nodes.map((n) => {
       const p = Math.round(num(n.planet, -1));
