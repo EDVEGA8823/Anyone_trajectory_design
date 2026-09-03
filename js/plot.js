@@ -25,6 +25,10 @@ const CANVAS_PADDING_BOTTOM = 12;
 // canvasと、その下の統計バーとの間隔 (css/elements.css の #graph-panel > .stat-bar と揃える)
 const STAT_BAR_GAP = 10;
 
+// 縦長でも、この幅より狭いとシーケンス一覧と操作パネルを横に並べられない。
+// そこだけページを縦スクロールさせる (css/elements.css の同じ値と揃えること)
+const PORTRAIT_STACK_WIDTH = 620;
+
 // --- Z軸(黄道面からの高さ)の拡大 ---
 // 太陽系は極端に平たいので、等倍だと軌道傾斜がほとんど読み取れない。
 // 描画座標のY(=物理のz)だけを一様に引き伸ばして、上下の起伏を見えるようにする。
@@ -525,12 +529,15 @@ export function updateLayout() {
   const below = stat_bar ? stat_bar.getBoundingClientRect().height + STAT_BAR_GAP : 0;
 
   let h;
-  // CSS側のメディアクエリ (max-aspect-ratio: 1/1) と同じ閾値 (幅<=高さ) に揃える
-  if (window.innerWidth <= window.innerHeight) {
-    // 縦長ウィンドウ: #main_area は縦積みになるので、
-    // 正方形に近い形にしつつ縦の使用可能量を超えないようにする
+  // 幅の狭い縦長ウィンドウだけは、CSS側で #main_area の高さを中身に任せて
+  // ページを縦スクロールさせている。そのときは clientHeight が
+  // 「canvasの高さで決まる」ので、こちらから決めないと堂々巡りになる。
+  // 閾値は css/elements.css のメディアクエリと揃えること。
+  if (window.innerWidth <= window.innerHeight && window.innerWidth <= PORTRAIT_STACK_WIDTH) {
+    // 正方形に近い形にしつつ、縦の使用可能量を超えないようにする
     h = Math.min(w, window.innerHeight - HEADER_HEIGHT - CANVAS_PADDING - CANVAS_PADDING_BOTTOM - below);
   } else {
+    // それ以外は、割り当てられた高さをそのまま使う
     h = plot_area.clientHeight - CANVAS_PADDING - CANVAS_PADDING_BOTTOM - below;
   }
   w = Math.max(w, 50);
