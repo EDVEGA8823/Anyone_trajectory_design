@@ -1117,6 +1117,30 @@ input {
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+/* 種別を変えられない理由。「シーケンス」「天体」の下に回り込ませて、
+   閉じている間だけ出す (空のときは行ごと消えて高さを取らない) */
+.type-hint {
+  width: 100%;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+.type-hint:empty {
+  display: none;
+}
+
+/* 閉じている欄は、押せないことが見て分かるようにする。
+   既定の見た目のままだと「押せるのに反応しない」ように見えてしまう。
+   理由の文はこの部品ではなく囲みの側に付ける (無効な部品にカーソルを
+   乗せてもブラウザは説明を出さないため) */
+select:disabled,
+input:disabled {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
 select:focus,
 input:focus {
   border-color: var(--accent);

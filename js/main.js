@@ -594,16 +594,39 @@ export function change_sequence_propaty() {
   //   先頭 … 常に打上げ
   //   マヌーバ … 手動レグに付随する節 (要らなくなったら削除するか、
   //             手動ノードを自動に戻す)
+  //
+  // 理由は欄の下に文字で出す。閉じた<select>に付けた説明はカーソルを乗せても
+  // 出てこない (無効にした部品はマウスの当たり判定から外れる) し、囲む行に
+  // 付けても「乗せてみるまで気付けない」ので、見えるところに置く。
+  // 詳しい言い回しは、その行にカーソルを乗せたときの説明に回す。
   const is_maneuver = sel_type === Sequence_Type.Maneuver;
   const is_first = State.selected_sequence === 0;
-  sequence_propaty.disabled = is_maneuver || is_first;
-  sequence_propaty.title = is_first
-    ? "先頭のシーケンスは常に打上げ"
-    : is_maneuver
-    ? "マヌーバは手動モードのレグに付いてくる節なので、種別は変えられない"
-    : "";
+  const type_row = document.getElementById("sequence_type_row");
+  const type_hint = document.getElementById("sequence_type_hint");
+  const close_type = (hint, detail) => {
+    sequence_propaty.disabled = true;
+    if (type_hint) type_hint.textContent = hint;
+    if (type_row) type_row.title = detail ?? hint;
+    // 空のままだと「壊れている」ように見えるので、閉じているとわかる字を出す
+    const option = document.createElement("option");
+    option.text = "―";
+    option.value = "default";
+    option.selected = true;
+    sequence_propaty.add(option);
+  };
 
-  if (!is_first && !is_maneuver) {
+  sequence_propaty.disabled = false;
+  if (type_row) type_row.title = "";
+  if (type_hint) type_hint.textContent = "";
+
+  if (is_first) {
+    close_type("先頭のシーケンスは常に打上げです。");
+  } else if (is_maneuver) {
+    close_type(
+      "マヌーバは手動モードのレグに付いてくる節なので、種別は変えられません。",
+      "要らなくなったら、この節を削除するか、手前のノードを自動モードに戻してください"
+    );
+  } else {
     let option1 = document.createElement("option");
     option1.text = "変更";
     option1.value = "default";
@@ -631,13 +654,16 @@ export function change_sequence_propaty() {
     // 大気圏突入) は、天体を選ぶまでどれも成り立たない。空の欄を押させても
     // 仕方がないので、理由を添えて閉じておく。
     if (choices === 0) {
-      sequence_propaty.disabled = true;
-      sequence_propaty.title =
-        State.mission_sequence.planet_num(State.selected_sequence) === -1
-          ? "先に天体を選んでください"
-          : "この位置・この天体で選べる種別はありません";
-    } else {
-      sequence_propaty.title = "";
+      // 「変更」の見出しごと入れ替える
+      sequence_propaty.removeChild(option1);
+      if (State.mission_sequence.planet_num(State.selected_sequence) === -1) {
+        close_type(
+          "先に天体を選ぶと、種別を選べるようになります。",
+          "選べる種別は天体で変わる (惑星ならスイングバイ・周回軌道投入、小天体ならフライバイ・ランデブー)"
+        );
+      } else {
+        close_type("この位置・この天体で選べる種別はありません。");
+      }
     }
   }
   const sequence_type = document.getElementById("sequence_type");

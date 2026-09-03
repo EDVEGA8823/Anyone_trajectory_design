@@ -129,7 +129,10 @@
           <div class="row box alway">
             <div class="column">
               <label>シーケンス</label>
-              <div class="row">
+              <!-- 種別を変えられないときの理由は、閉じた<select>ではなく
+                   この行に付ける。無効にした部品はマウスの当たり判定から
+                   外れるので、そこに付けた説明は永久に出てこない -->
+              <div class="row" id="sequence_type_row">
                 <div class="red" id="sequence_type"></div>
                 <select id="sequence_propaty">
                   打上げ
@@ -140,6 +143,10 @@
               <label for="propaty">天体</label>
               <select id="propaty"></select>
             </div>
+            <!-- 種別を変えられないときの理由。カーソルを乗せないと出ない
+                 説明では気付けないので、閉じている間はここに出しておく
+                 (この行は幅いっぱいを取って下に回り込む) -->
+            <div class="type-hint" id="sequence_type_hint"></div>
           </div>
 
           <div class="column box">
