@@ -104,6 +104,7 @@ import {
   DEFAULT_NAME,
 } from './mission_file.js';
 import { tuneMission } from './optimize.js';
+import { exportMissionImage } from './export_image.js';
 import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
 import {
   addSmallBody,
@@ -114,7 +115,7 @@ import {
   smallBodyBase,
 } from './small_bodies.js';
 import { bodyLabel } from './bodies.js';
-import { notify, setMissionName } from './topbar.js';
+import { notify, setMissionName, missionName } from './topbar.js';
 import { confirmDialog } from './dialog.js';
 import {
   initEntryView,
@@ -2929,6 +2930,7 @@ function boot() {
     load: openMissionFile,
     add_body: openBodyPicker,
     new: new_mission,
+    export_image: () => exportMissionImage(missionName() || DEFAULT_NAME),
   });
   setBodyPickerHandlers({
     onAdd: import_small_body,
