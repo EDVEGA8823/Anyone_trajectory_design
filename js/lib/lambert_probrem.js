@@ -155,6 +155,42 @@ function lambert_probrem (
   return [ v1, v2 ];
 };
 
+/**
+ * M周の解が成り立つ最短の飛行時間 [s]。
+ *
+ * 飛行時間の式 T(x) は、多周回では x ∈ (-1, 1) に谷を持つ。その底が
+ * 「その周回数で行ける一番短い時間」で、これより短いと解が無い。
+ * 解かせて二分法で境界を挟むより、谷をそのまま求める方が速くて正確。
+ *
+ * @returns {number|undefined} 0周なら0。求められなければ undefined
+ */
+function lambert_tof_min(mu, r1, r2, M, prograde = true) {
+  if (!(M > 0)) return 0;
+  try {
+    validateGravitationalParam(mu);
+    validatePositions(r1, r2);
+  } catch (e) {
+    return undefined;
+  }
+
+  const c_norm = math.norm(math.subtract(r2, r1));
+  const r1_norm = math.norm(r1);
+  const r2_norm = math.norm(r2);
+  const s = (r1_norm + r2_norm + c_norm) / 2;
+
+  // ll の符号は lambert_probrem と同じ決め方に揃える
+  const i_h = math.cross(math.divide(r1, r1_norm), math.divide(r2, r2_norm));
+  if (!(math.norm(i_h) > COLLINEAR_TOL)) return undefined;
+  let ll = Math.sqrt(1 - Math.min(1.0, c_norm / s));
+  if (i_h[2] < 0) ll = -ll;
+  if (!prograde) ll = -ll;
+  if (Math.abs(ll) >= 1) return undefined;
+
+  const T_min = _computeTMin(ll, M, 35, 1e-12, 1e-14)[1];
+  if (!isFinite(T_min)) return undefined;
+  return T_min / Math.sqrt(2 * mu / Math.pow(s, 3));
+}
+
 const validateGravitationalParam = (mu) => {
   if (mu <= 0) throw new Error('Gravitational parameter must be positive');
 };

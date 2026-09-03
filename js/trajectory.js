@@ -730,36 +730,16 @@ export function lambert_rev_limit(r1, r2, tof, mu = MU_SUN) {
 /**
  * M周の解が成り立つ最短の飛行時間 [s]。
  *
- * 厳密な下限 T_min(M) はライブラリの内部で、外からは呼べない。飛行時間を
- * 延ばせば必ず解けるようになる (単調) ので、実際に解かせて二分法で境界を挟む。
- * 20回ほど解いても 0.5ms 程度なので、表示のために毎回求めても問題にならない。
+ * 飛行時間の式は多周回で谷を持ち、その底がこの下限そのもの。ライブラリが
+ * 谷の位置を返せるので、そのまま受け取る。以前はここで実際に解かせて
+ * 二分法で境界を挟んでいたが、80回近く解くわりに 1e-6 の幅が残り、
+ * しかも「解けるかどうか」自体が境界の近くでは当てにならなかった。
  *
  * @returns {number|undefined} 見つからなければ undefined
  */
 export function lambert_min_tof(r1, r2, revs, mu = MU_SUN, prograde = true) {
   if (revs <= 0) return 0;
-  const solvable = (tof) => {
-    try {
-      const v = lambert_probrem(mu, r1, r2, tof, revs, prograde);
-      return !!(v && v[0] && isFinite(v[0][0]));
-    } catch (e) {
-      return false;
-    }
-  };
-
-  // T ≧ M*pi が必要条件。ここから上へ広げて、解ける飛行時間を1つ見つける
-  const { s } = lambert_nondim_time(r1, r2, 1, mu);
-  let lo = revs * Math.PI * Math.sqrt(s ** 3 / (2 * mu));
-  let hi = lo * 1.5;
-  for (let k = 0; k < 40 && !solvable(hi); k++) hi *= 1.5;
-  if (!solvable(hi)) return undefined;
-
-  for (let k = 0; k < 40 && (hi - lo) / hi > 1e-6; k++) {
-    const mid = (lo + hi) / 2;
-    if (solvable(mid)) hi = mid;
-    else lo = mid;
-  }
-  return hi;
+  return lambert_tof_min(mu, r1, r2, revs, prograde);
 }
 
 // MGA-1DSMでDSMを打つ既定の位置 (レグの時間割合)
