@@ -17,7 +17,6 @@ const COLOR_NODE_NEIGHBOR = 0xa8bcdd;
 const LEG_IDLE_OPACITY = 0.4;
 
 // css/elements.css の --header-height / --canvas-padding と一致させること
-const HEADER_HEIGHT = 64;
 const CANVAS_PADDING = 24;
 // 下だけは詰める。統計バーの下に余白を残すと画面の底が空いて見えるため
 // (CSSの #graph-panel の padding-bottom と揃えること)
@@ -25,9 +24,6 @@ const CANVAS_PADDING_BOTTOM = 12;
 // canvasと、その下の統計バーとの間隔 (css/elements.css の #graph-panel > .stat-bar と揃える)
 const STAT_BAR_GAP = 10;
 
-// 縦長でも、この幅より狭いとシーケンス一覧と操作パネルを横に並べられない。
-// そこだけページを縦スクロールさせる (css/elements.css の同じ値と揃えること)
-const PORTRAIT_STACK_WIDTH = 620;
 
 // --- Z軸(黄道面からの高さ)の拡大 ---
 // 太陽系は極端に平たいので、等倍だと軌道傾斜がほとんど読み取れない。
@@ -210,6 +206,20 @@ export function initPlot() {
 
   controls.addEventListener("change", update_camera);
   window.addEventListener("resize", updateLayout);
+
+  // 成績バーの高さは中身で変わる (幅が狭いと2段に折り返す、「打ち上げ不可」の
+  // ように文字が入れ替わる)。canvasの高さはそれを引いた残りなので、
+  // 高さが動いたら取り直さないと、バーのぶんだけ図がはみ出す
+  const stat_bar = document.querySelector("#graph-panel .stat-bar");
+  if (stat_bar && window.ResizeObserver) {
+    let last = stat_bar.getBoundingClientRect().height;
+    new ResizeObserver(() => {
+      const now = stat_bar.getBoundingClientRect().height;
+      if (Math.abs(now - last) < 0.5) return;
+      last = now;
+      updateLayout();
+    }).observe(stat_bar);
+  }
 
   updateLayout();
   // CSS2DObjectのDOM要素はCSS2DRendererが一度レンダリングするまで実際の
@@ -528,18 +538,9 @@ export function updateLayout() {
   const stat_bar = plot_area.querySelector(".stat-bar");
   const below = stat_bar ? stat_bar.getBoundingClientRect().height + STAT_BAR_GAP : 0;
 
-  let h;
-  // 幅の狭い縦長ウィンドウだけは、CSS側で #main_area の高さを中身に任せて
-  // ページを縦スクロールさせている。そのときは clientHeight が
-  // 「canvasの高さで決まる」ので、こちらから決めないと堂々巡りになる。
-  // 閾値は css/elements.css のメディアクエリと揃えること。
-  if (window.innerWidth <= window.innerHeight && window.innerWidth <= PORTRAIT_STACK_WIDTH) {
-    // 正方形に近い形にしつつ、縦の使用可能量を超えないようにする
-    h = Math.min(w, window.innerHeight - HEADER_HEIGHT - CANVAS_PADDING - CANVAS_PADDING_BOTTOM - below);
-  } else {
-    // それ以外は、割り当てられた高さをそのまま使う
-    h = plot_area.clientHeight - CANVAS_PADDING - CANVAS_PADDING_BOTTOM - below;
-  }
+  // 横長でも縦長でも、太陽系ビューには枠側で高さが決まっている。
+  // その割り当てをそのまま使う
+  let h = plot_area.clientHeight - CANVAS_PADDING - CANVAS_PADDING_BOTTOM - below;
   w = Math.max(w, 50);
   h = Math.max(h, 50);
   if (renderer && labelRenderer && camera) {

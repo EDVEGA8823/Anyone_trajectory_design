@@ -725,27 +725,80 @@ body.file-drop::after {
   }
 }
 
-/* 幅が足りないときは左右に並べられない (操作パネルが読めなくなる)。
-   縦に積むと画面の高さでは足りないので、ここだけページを縦にスクロールさせる */
+/* スマホのように幅が狭いとき。左右に並べると一覧が130px程度まで細くなり、
+   天体名が1文字に潰れてしまうので、一覧の方を横に寝かせて上下3段にする。
+
+     ┌────────────┐
+     │ 太陽系ビュー  │  ← 少し低くする
+     ├────────────┤
+     │ ← シーケンス → │  ← 横に流す帯。カードを左右にスクロール
+     ├────────────┤
+     │  操作パネル   │  ← 残り全部。幅いっぱい使える
+     └────────────┘
+
+   操作パネルは幅を丸ごと使えるので、行の折り返しも素直に収まる */
 @media (max-aspect-ratio: 1/1) and (max-width: 620px) {
-  #main_area {
-    height: auto;
-  }
-  #graph-panel {
-    flex: 0 0 auto;
-  }
   #UI-panel {
-    flex: 0 0 auto;
     flex-direction: column;
-    padding: 0 16px 16px;
+    gap: 8px;
+    padding: 0 8px 8px;
+    /* 太陽系ビューを少し潰して、下の2枚に高さを回す */
+    flex: 0 0 clamp(300px, 52vh, 560px);
   }
-  /* 縦積みでは高さが中身で決まるので、一覧が潰れないよう下限を持たせる */
+
+  /* 一覧は帯の高さ (カード1枚ぶん) だけ取る */
   .sequence-panel-wrapper {
-    min-height: 260px;
+    flex: 0 0 auto;
+    min-width: 0;
   }
-  .right_panel {
+  .sequence-panel {
+    --panel-pad: 10px;
     height: auto;
-    min-height: 320px;
+    /* 横に流すのは中のカード列だけ。見出しは動かさない */
+    overflow: hidden;
+  }
+  .sequence-panel > #sequence {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px 0 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  /* カードは横に並ぶので、幅は中身ぶんだけ取る */
+  #sequence > .sequence {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 128px;
+    margin: 0;
+  }
+  /* 「+ シーケンスを追加」は、横並びでは文字を出す幅が無い。
+     カードとカードの間の細い「+」にする */
+  #sequence > .add_sequence {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    margin: 0;
+    padding: 0 4px;
+    /* 元の文字 (「+ シーケンスを追加」) を隠して、記号だけ出す */
+    font-size: 0;
+  }
+  #sequence > .add_sequence::before {
+    content: "+";
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* 操作パネルが残りを引き受ける */
+  .right_panel {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
   }
 }
 
@@ -979,6 +1032,20 @@ body.file-drop::after {
   }
   .launcher-group select {
     width: 80px;
+  }
+}
+
+/* スマホの幅では、ここまで削っても1段に収まらない (390pxで75pxはみ出して、
+   いちばん見たい「残る質量」が画面の外に出る)。折り返しを許して2段にする。
+   バーが高くなるぶんは太陽系ビューから取る (数字が読めない方が困る) */
+@media (max-aspect-ratio: 1/1) and (max-width: 620px) {
+  .row.stat-bar {
+    flex-wrap: wrap;
+    row-gap: 4px;
+    overflow-x: hidden;
+  }
+  .stat-bar .launcher-group {
+    margin-left: 0;
   }
 }
 
@@ -1559,15 +1626,6 @@ input:focus {
   background: var(--surface);
   border: 1px solid var(--border);
   cursor: grab;
-}
-/* 幅が狭くて上下に積むときだけ、枠の高さが中身で決まらなくなるので
-   幅基準の正方形にする。縦長でも左右に並べられる幅があるときは、
-   操作パネルに高さが割り当たっているのでこれは要らない
-   (入れると図が正方形に伸びて、下の欄と重なる) */
-@media (max-aspect-ratio: 1/1) and (max-width: 620px) {
-  .view-3d {
-    aspect-ratio: 1 / 1;
-  }
 }
 .view-3d canvas:active {
   cursor: grabbing;
