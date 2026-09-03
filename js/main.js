@@ -104,7 +104,7 @@ import {
   DEFAULT_NAME,
 } from './mission_file.js';
 import { tuneMission } from './optimize.js';
-import { exportMissionImage } from './export_image.js';
+import { exportMissionImage, setExportViewHooks } from './export_image.js';
 import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
 import {
   addSmallBody,
@@ -2932,6 +2932,9 @@ function boot() {
     new: new_mission,
     export_image: () => exportMissionImage(missionName() || DEFAULT_NAME),
   });
+  // 画像を作る間だけ「使っている天体だけ」に切り替えてもらう
+  // (天体名の表は main.js 側にあるので、export_image.js からは手を借りる)
+  setExportViewHooks({ setBodyVisible: toggle_visibility, restore: toggle_planet });
   setBodyPickerHandlers({
     onAdd: import_small_body,
     onRemove: remove_small_body,

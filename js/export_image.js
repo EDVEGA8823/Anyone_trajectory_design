@@ -23,10 +23,46 @@
  * 位置だけ同じ計算で投影し直して、文字はこちらで描く。
  */
 
-import { renderer, scene, camera, updateLayout, invalidate } from './plot.js';
-import { State, Sequence_Type } from './state.js';
+import {
+  renderer,
+  scene,
+  camera,
+  controls,
+  update_camera,
+  updateLayout,
+  invalidate,
+  drawingPos,
+  updateNodeMarkers,
+} from './plot.js';
+import { State, PlotState, Sequence_Type } from './state.js';
 import { JulianToDate } from './trajectory.js';
 import { notify } from './topbar.js';
+
+/**
+ * 天体の軌道と丸の出し入れは main.js が持っている (天体名の表もあちら側に
+ * あるため)。画像を作る間だけ「使っている天体だけ」に切り替えたいので、
+ * 手を貸してもらう。直に import すると main.js と輪になるので、渡してもらう。
+ */
+let hooks = { setBodyVisible: null, restore: null };
+
+/**
+ * @param {{setBodyVisible:(i:number,on:boolean)=>void, restore:()=>void}} h
+ */
+export function setExportViewHooks(h) {
+  hooks = { ...hooks, ...h };
+}
+
+// 軌道全体を入れたときの余白。1.0で画面いっぱいなので、少し広げて端を空ける
+const FIT_MARGIN = 1.12;
+
+// この濃さより薄いラベルは出さない。画面では薄く残しておけば邪魔にならないが、
+// 紙のように動かせない絵では、薄い文字が20個並ぶとただの汚れになる。
+// (目盛りのラベルは、引くほど薄くなるよう画面側で濃さが決まっている)
+const LABEL_MIN_OPACITY = 0.25;
+
+// 節に打つ丸の大きさ [出力px] と、番号を置く距離
+const NODE_R = 6;
+const NODE_LABEL_GAP = 11;
 
 // 出力の大きさ (設計上の px)。実際にはこの SCALE 倍で描く
 const W = 1400;
@@ -58,6 +94,8 @@ function palette() {
     textMuted: get("--text-muted", "#6b7280"),
     accent: get("--accent", "#3b6fe0"),
     badge: get("--gray-800", "#1f2937"),
+    // 節の丸と番号。太陽系ビューで選択中の節に使っている色に合わせる
+    node: "#1f4fd8",
   };
 }
 
@@ -89,21 +127,93 @@ function clipText(ctx, text, max) {
    ================================================================== */
 
 /**
- * 太陽系ビューを、画面とは別の大きさで描き直して取り込む。
- *
- * preserveDrawingBuffer を切ってあるので、描いた内容は画面へ出した時点で
- * 消える。描いてから写すまでを同じ処理の中で済ませること。
- *
- * @returns {{image: HTMLCanvasElement, labels: Array}} 絵と、その上に載せる文字
+ * ミッションが使っている天体の番号。
+ * 画像では、この天体の軌道と名前だけを出す (全部出すと軌道の線と名前で
+ * 埋まって、どれがこのミッションの舞台なのか分からなくなる)。
  */
-function captureView(width, height) {
+function usedBodies(mission) {
+  const set = new Set();
+  for (let i = 0; i < mission.count; i++) {
+    const n = mission.planet_num(i);
+    if (n >= 0) set.add(n);
+  }
+  return set;
+}
+
+/** 各ノードの位置 (描画座標)。天体を持たないマヌーバも含む */
+function nodePoints(mission) {
+  const out = [];
+  for (let i = 0; i < mission.count; i++) {
+    const p = mission.get_s_c_pos(i);
+    out.push(p == undefined ? undefined : drawingPos(p));
+  }
+  return out;
+}
+
+/**
+ * 軌道全体が入るカメラ距離を求める。
+ *
+ * カメラは常に原点 (太陽) を向いているので、原点から一番遠い点までの
+ * 距離を半径とする球が入れば足りる。視野角は縦に決まっているため、
+ * 横長の絵では横の視野の方が広い。狭い方に合わせる。
+ */
+function fitDistance(mission, aspect) {
+  let r = 0;
+  const see = (p) => {
+    if (p == undefined) return;
+    const d = Math.hypot(p.x, p.y, p.z);
+    if (d > r) r = d;
+  };
+  for (let i = 0; i < mission.count; i++) {
+    for (const p of mission.get_trajectory(i) || []) see(p);
+  }
+  for (const p of nodePoints(mission)) see(p);
+  if (!(r > 0)) return undefined;
+
+  const v_half = (camera.fov * Math.PI) / 360;
+  const h_half = Math.atan(Math.tan(v_half) * aspect);
+  const half = Math.min(v_half, h_half);
+  return (r / Math.sin(half)) * FIT_MARGIN;
+}
+
+/**
+ * 太陽系ビューを、画面とは別の大きさ・別の画角で描き直して取り込む。
+ *
+ * 画面と違うのは3点。
+ *   ・軌道全体が入るところまで引く (画面の縮尺は人が触っているもので、
+ *     画像に残したいのは設計の全体像なので)
+ *   ・使っている天体の軌道と名前だけを出す
+ *   ・節の丸は画面用のものを伏せ、こちらで濃く描き直して番号を振る
+ *
+ * 描画バッファを保持しない設定なので、描いた内容は画面へ出た時点で消える。
+ * 描いてから写すまでを同じ処理の中で済ませること。
+ *
+ * @returns {{image: HTMLCanvasElement, labels: Array, nodes: Array}}
+ */
+function captureView(mission, width, height) {
   const canvas = renderer.domElement;
   const aspect_before = camera.aspect;
+  const pos_before = camera.position.clone();
+
+  // 使っている天体だけにする
+  const used = usedBodies(mission);
+  if (hooks.setBodyVisible) {
+    for (let i = 0; i < PlotState.orbit_lines.length; i++) hooks.setBodyVisible(i, used.has(i));
+  }
+  // 画面用の節の丸は伏せる (このあと自前で濃く描く)
+  updateNodeMarkers([]);
+  for (const m of PlotState.marker_spheres) m.visible = false;
 
   // 画面のレイアウトを揺らさないよう、canvasのCSSサイズには触らない (第3引数false)
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
+  const dist = fitDistance(mission, camera.aspect);
+  if (dist > 0) camera.position.setLength(dist);
   camera.updateProjectionMatrix();
+  // 目盛りの濃さ・天体の丸の大きさ・Y軸の目盛りの向きは、どれもカメラ距離で
+  // 決まる。引いた状態に合わせ直さないと、近くで見ていたときの濃い目盛りが
+  // そのまま出て、10AUまで引いた絵が「1AU」の文字で埋まる
+  update_camera();
   renderer.render(scene, camera);
 
   const image = document.createElement("canvas");
@@ -111,23 +221,36 @@ function captureView(width, height) {
   image.height = canvas.height;
   image.getContext("2d").drawImage(canvas, 0, 0);
 
-  // ラベルは canvas に写らないので、同じ投影で位置だけ求めておく。
+  // canvasに写らないもの (HTMLのラベル) と、自前で描く節の位置。
   // カメラを戻す前に済ませること
-  const labels = collectLabels(width, height);
+  const names = new Set([...used].map((n) => State.planet_list[n]));
+  const labels = collectLabels(width, height, names);
+  const nodes = [];
+  nodePoints(mission).forEach((p, i) => {
+    if (p == undefined) return;
+    const v = p.clone().project(camera);
+    if (v.z < -1 || v.z > 1) return;
+    nodes.push({ n: i + 1, x: (v.x * 0.5 + 0.5) * width, y: (-v.y * 0.5 + 0.5) * height });
+  });
 
   camera.aspect = aspect_before;
+  camera.position.copy(pos_before);
   camera.updateProjectionMatrix();
-  updateLayout(); // 画面用の大きさに戻す
+  update_camera(); // 目盛りと丸の大きさも画面用に戻す
+  if (hooks.restore) hooks.restore(); // 天体の出し入れと節の丸を画面用に戻す
+  updateLayout(); // canvasの大きさを画面用に戻す
   invalidate();
 
-  return { image, labels };
+  return { image, labels, nodes };
 }
 
 /**
  * 太陽系ビューに重ねている HTML のラベル (天体名・「1AU」) を、
  * 指定した大きさの画面に投影したときの位置と見た目で書き出す。
+ *
+ * @param {Set<string>} names 出してよい天体名 (目盛りのラベルはここに関係なく残す)
  */
-function collectLabels(width, height) {
+function collectLabels(width, height, names) {
   const out = [];
   const v = new THREE.Vector3();
   scene.updateMatrixWorld();
@@ -140,11 +263,14 @@ function collectLabels(width, height) {
     const el = obj.element;
     const text = (el.textContent || "").trim();
     if (!text) return;
+    // 天体名は、このミッションが使っているものだけ
+    if (el.classList.contains("label_planet") && names && !names.has(text)) return;
     const cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden") return;
-    // 目盛りのラベルは、その軸が真横を向くと薄くなる。薄いものは省く
+    // 目盛りのラベルは、引くほど・その軸が真横を向くほど薄くなる。
+    // うっすらとしか出ないものは省く
     const opacity = parseFloat(cs.opacity);
-    if (!(opacity > 0.08)) return;
+    if (!(opacity > LABEL_MIN_OPACITY)) return;
 
     v.setFromMatrixPosition(obj.matrixWorld);
     v.project(camera);
@@ -159,6 +285,7 @@ function collectLabels(width, height) {
       color: cs.color,
       font: (cs.fontWeight || 400) + " " + cs.fontSize + " " + FONT,
       opacity,
+      planet: el.classList.contains("label_planet"),
     });
   });
   return out;
@@ -256,13 +383,43 @@ function drawView(ctx, c, shot, x, y) {
   ctx.clip();
   ctx.drawImage(shot.image, x, y, VIEW_W, VIEW_H);
 
+  // 節の丸。画面では選択に応じて濃さが変わるが、画像では全部を同じ濃さで
+  // 出して、番号で順番が追えるようにする
+  ctx.textBaseline = "middle";
+  for (const n of shot.nodes) {
+    const cx = x + n.x;
+    const cy = y + n.y;
+    ctx.beginPath();
+    ctx.arc(cx, cy, NODE_R, 0, Math.PI * 2);
+    ctx.fillStyle = c.node;
+    ctx.fill();
+    // 軌道の線と重なっても粒が分かるよう、白で縁取る
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+
+    // 番号は右横。線の上に乗っても読めるよう、白で縁を付けてから塗る
+    ctx.font = "700 14px " + FONT;
+    ctx.textAlign = "left";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.strokeText(String(n.n), cx + NODE_LABEL_GAP, cy);
+    ctx.fillStyle = c.node;
+    ctx.fillText(String(n.n), cx + NODE_LABEL_GAP, cy);
+  }
+
   // ラベルは canvas に写らないので、ここで描き足す
   ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
   for (const l of shot.labels) {
     ctx.globalAlpha = l.opacity;
-    ctx.fillStyle = l.color;
     ctx.font = l.font;
+    // 天体名は軌道の線に重なりやすいので、こちらも白で縁を付ける
+    if (l.planet) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.strokeText(l.text, x + l.x, y + l.y);
+    }
+    ctx.fillStyle = l.color;
     ctx.fillText(l.text, x + l.x, y + l.y);
   }
   ctx.globalAlpha = 1;
@@ -403,7 +560,7 @@ export async function exportMissionImage(name) {
   ctx.fillStyle = c.bg;
   ctx.fillRect(0, 0, W, H);
 
-  const shot = captureView(VIEW_W, VIEW_H);
+  const shot = captureView(mission, VIEW_W, VIEW_H);
 
   drawHeader(ctx, c, name || "無題のミッション", txt("duration"));
   const body_y = PAD + HEAD_H + GAP;
