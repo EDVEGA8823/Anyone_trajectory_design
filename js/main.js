@@ -2947,7 +2947,7 @@ function boot() {
     setHistoryState(state);
     setMissionDirty(state.dirty);
   });
-  install_history_keys();
+  install_shortcut_keys();
 
   const leg_fold = document.getElementById("leg_fold");
   if (leg_fold) leg_fold.addEventListener("click", toggle_leg_box);
@@ -2981,15 +2981,32 @@ function redo_mission() {
 }
 
 /**
- * Ctrl+Z で戻す、Ctrl+Y (Ctrl+Shift+Z) でやり直す。
+ * キーボードの割り当て。
+ *   Ctrl+S … 保存      Ctrl+O … 読込
+ *   Ctrl+Z … 元に戻す  Ctrl+Y (Ctrl+Shift+Z) … やり直す
  *
- * 文字を打っている最中は、その欄の中の取り消しを横取りしない
- * (ミッション名を打ち間違えたときは、まず欄の中で直せる方が早い)。
+ * 保存と読込は、ブラウザ側の同じ割り当て (ページを保存 / ファイルを開く) を
+ * 横取りする。この画面でその2つが要る場面は無く、押した人が期待するのは
+ * ミッションの保存・読込のほうなので。
+ *
+ * 元に戻す/やり直すは、文字を打っている最中だけ横取りしない。ミッション名を
+ * 打ち間違えたときは、まず欄の中で直せる方が早いため。
  */
-function install_history_keys() {
+function install_shortcut_keys() {
   document.addEventListener("keydown", (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
     const key = e.key.toLowerCase();
+
+    if (key === "s") {
+      e.preventDefault();
+      saveMissionFile();
+      return;
+    }
+    if (key === "o") {
+      e.preventDefault();
+      openMissionFile();
+      return;
+    }
     if (key !== "z" && key !== "y") return;
 
     const t = e.target;

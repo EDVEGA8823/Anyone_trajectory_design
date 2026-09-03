@@ -128,7 +128,8 @@ body {
 }
 
 /* 保存していない変更があることの目印。編集中の書類によくある点の印。
-   名前の欄の幅を動かさないよう、場所を取らない大きさにする */
+   出ていないときも場所は空けておく (display:none で消すと、右隣の
+   戻る/進むの矢印が保存のたびに横へずれてしまう) */
 .topbar-dirty {
   flex: 0 0 auto;
   width: 7px;
@@ -136,6 +137,10 @@ body {
   margin-left: -4px;
   border-radius: 50%;
   background: var(--warn);
+  visibility: hidden;
+}
+.topbar-dirty.is-dirty {
+  visibility: visible;
 }
 /* 保存ボタン側にも、同じ色の小さな点を右上に添える */
 .topbar-btn--dirty {

@@ -57,8 +57,8 @@ const ACTIONS = [
     where: "both",
     primary: true,
   },
-  { id: "save", label: "保存", icon: "save", hint: "いまのミッションをファイルに保存する", where: "both" },
-  { id: "load", label: "読込", icon: "load", hint: "保存したミッションを読み込む", where: "both" },
+  { id: "save", label: "保存", icon: "save", hint: "いまのミッションをファイルに保存する (Ctrl+S)", where: "both" },
+  { id: "load", label: "読込", icon: "load", hint: "保存したミッションを読み込む (Ctrl+O)", where: "both" },
   { id: "share_x", label: "Xで共有", icon: "x", hint: "いまのミッションをXに投稿する", where: "both", compact: true },
   { id: "help", label: "ヘルプ", icon: "help", hint: "使い方のドキュメントを開く", where: "both", compact: true },
   { sep: true },
@@ -304,8 +304,10 @@ export function setHistoryState({ undo, redo }) {
  * 場所を取らない印にしておく。
  */
 export function setMissionDirty(dirty) {
+  // 消すのは見た目だけ。場所は空けたままにしておかないと、右隣の
+  // 戻る/進むの矢印が保存のたびに横へずれる
   const dot = document.getElementById("mission_dirty");
-  if (dot) dot.hidden = !dirty;
+  if (dot) dot.classList.toggle("is-dirty", !!dirty);
   // 保存ボタンにも印を回す (どこを押せば消えるのかが分かるように)
   const save = document.querySelector('.topbar-btn[data-id="save"]');
   if (save) save.classList.toggle("topbar-btn--dirty", !!dirty);
