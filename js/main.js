@@ -87,6 +87,7 @@ import {
   initHistoryButtons,
   setHistoryHandlers,
   setHistoryState,
+  setMissionDirty,
 } from './topbar.js';
 import { initHistory, resetHistory, undoMission, redoMission } from './history.js';
 import {
@@ -2940,7 +2941,12 @@ function boot() {
   // (見張りの開始時に「いまの状態」を基準として覚えるため)
   initHistoryButtons();
   setHistoryHandlers({ undo: undo_mission, redo: redo_mission });
-  initHistory(setHistoryState);
+  // 戻せる/やり直せるかと「保存していない変更があるか」は、どれも
+  // 設計の中身が変わったときに一緒に変わるので、同じ合図で受け取る
+  initHistory((state) => {
+    setHistoryState(state);
+    setMissionDirty(state.dirty);
+  });
   install_history_keys();
 
   const leg_fold = document.getElementById("leg_fold");

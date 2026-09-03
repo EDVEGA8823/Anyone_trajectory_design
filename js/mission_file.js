@@ -6,7 +6,7 @@ import { updateAfterAdd } from './event.js';
 import { isSmallBody, smallBody, smallBodyNumber, smallBodiesForSave } from './small_bodies.js';
 import { normalizeBody } from './bodies.js';
 import { confirmDialog } from './dialog.js';
-import { resetHistory } from './history.js';
+import { resetHistory, refreshHistoryState } from './history.js';
 
 // ミッションの保存と読込。
 //
@@ -41,6 +41,9 @@ function snapshot() {
 /** いまの中身を「保存済み」として覚える (保存・読込・新規作成のあとに呼ぶ) */
 export function markMissionSaved() {
   saved_snapshot = snapshot();
+  // 未保存の目印を消すのを呼ぶ側に任せると、いつか付けっぱなしになる。
+  // 「保存済みにする」と「目印を付け直す」は必ず一緒に起きるのでここで呼ぶ
+  refreshHistoryState();
 }
 
 /**

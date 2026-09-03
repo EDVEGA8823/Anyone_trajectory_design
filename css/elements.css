@@ -127,6 +127,31 @@ body {
   color: #ffffff;
 }
 
+/* 保存していない変更があることの目印。編集中の書類によくある点の印。
+   名前の欄の幅を動かさないよう、場所を取らない大きさにする */
+.topbar-dirty {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+/* 保存ボタン側にも、同じ色の小さな点を右上に添える */
+.topbar-btn--dirty {
+  position: relative;
+}
+.topbar-btn--dirty::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
 /* 元に戻す / やり直す。ミッション名のすぐ隣に小さく置く */
 .topbar-history {
   display: flex;

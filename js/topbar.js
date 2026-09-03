@@ -298,6 +298,19 @@ export function setHistoryState({ undo, redo }) {
   if (redo_btn) redo_btn.disabled = !redo;
 }
 
+/**
+ * 保存していない変更があることの目印を出し入れする。
+ * 名前の隣に点を置く。文字を足すと名前の欄が動いてしまうので、
+ * 場所を取らない印にしておく。
+ */
+export function setMissionDirty(dirty) {
+  const dot = document.getElementById("mission_dirty");
+  if (dot) dot.hidden = !dirty;
+  // 保存ボタンにも印を回す (どこを押せば消えるのかが分かるように)
+  const save = document.querySelector('.topbar-btn[data-id="save"]');
+  if (save) save.classList.toggle("topbar-btn--dirty", !!dirty);
+}
+
 export function setTopbarHandlers(h) {
   handlers = { ...handlers, ...h };
 }

@@ -1,4 +1,4 @@
-import { missionData, applyMissionData } from './mission_file.js';
+import { missionData, applyMissionData, missionHasUnsavedChanges } from './mission_file.js';
 
 // 元に戻す / やり直す。
 //
@@ -46,8 +46,18 @@ function current() {
   return { key: JSON.stringify(rest), data: rest };
 }
 
+// 戻せる/やり直せるかと、保存していない変更があるかを知らせる。
+// この3つは「設計の中身が変わった」ときにまとめて変わるので、同じ合図で運ぶ。
 function notifyChange() {
-  if (on_change) on_change({ undo: canUndo(), redo: canRedo() });
+  if (on_change) on_change({ undo: canUndo(), redo: canRedo(), dirty: missionHasUnsavedChanges() });
+}
+
+/**
+ * 手数は変わっていないが、保存したかどうかが変わったときに呼ぶ
+ * (保存した直後など)。目印を付け直すためだけのもの。
+ */
+export function refreshHistoryState() {
+  notifyChange();
 }
 
 /**

@@ -44,6 +44,9 @@
     </div>
     <input class="topbar-name" id="mission_name" value="無題のミッション" spellcheck="false" autocomplete="off"
       aria-label="ミッション名" title="ミッションの名前。保存や共有のときの見出しになる" />
+    <!-- 保存していない変更があることの目印。名前のすぐ隣に出す -->
+    <span class="topbar-dirty" id="mission_dirty" hidden aria-hidden="true"
+      title="保存していない変更があります"></span>
     <!-- 元に戻す / やり直す。中身は js/topbar.js が入れる -->
     <div class="topbar-history" id="topbar_history"></div>
     <div class="topbar-actions" id="topbar_actions"></div>
