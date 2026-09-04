@@ -143,6 +143,28 @@ const FIX_DV_HINT =
 const ALPHA_HINT = "軌道面の中で、天体が進む向きを0度として測った角";
 const DELTA_HINT = "軌道面からどれだけ上を向けるか (上向きが正、±90度)";
 
+/**
+ * 「この先どの天体に、どれだけの速さで着くか」の1行。
+ *
+ * スイングバイで曲げられる角度はこのV∞で決まってしまう。しかもV∞は着く
+ * 前の飛び方で決まる量なので、スイングバイの節を開いてから見たのでは遅い。
+ * そこへ向かう区間を組んでいる間、ずっと見えているようにする。
+ * (V∞を育てるために同じ天体へ何度も戻る設計では、これ自体が区間の目標)
+ */
+function arrivalVinfRow(mission, i, prefix = "") {
+  const a = mission.leg_arrival_vinf(i);
+  if (a == undefined) return null;
+  const name = State.planet_list[a.planet];
+  return [
+    // 惑星名は短いので見出しに入れてしまう。小天体の長い名前は説明の側へ
+    prefix + (name && name.length <= 5 ? name + "での V∞" : "着くときの V∞"),
+    a.vinf.toFixed(3) + " km/s",
+    null,
+    (name ? name : "次の天体") + "に着くときの、その天体から見た速さ。\n" +
+      "スイングバイで曲げられる角度は、この速さと近づく高さで決まる。",
+  ];
+}
+
 // シーケンス一覧の1枚。ノードの数だけ縦に並ぶので2行に収める。
 //   1行目: [チェック] [1. 打上げ]            [ゴミ箱]
 //   2行目: 天体名                            日付
@@ -1334,10 +1356,10 @@ export function renderLaunchControls() {
   if (is_auto) {
     // 自動でも向きは決まっているので、ビューと同じ量を数字でも並べる
     const angles = mission.get_launch_angles();
-    const rows = [
-      ["脱出速度 V∞", vinf.toFixed(3) + " km/s"],
-      ["打上げエネルギー", (vinf * vinf).toFixed(2) + " km²/s²", null, null, true],
-    ];
+    const rows = [["脱出速度 V∞", vinf.toFixed(3) + " km/s"]];
+    const arrive = arrivalVinfRow(mission, i);
+    if (arrive) rows.push(arrive);
+    rows.push(["打上げエネルギー", (vinf * vinf).toFixed(2) + " km²/s²", null, null, true]);
     if (angles) {
       rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°", null, ALPHA_HINT, true]);
       rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°", null, DELTA_HINT, true]);
@@ -1390,6 +1412,8 @@ export function renderLaunchControls() {
   const rows = [];
   const dsm = mission.get_dsm_info(i + 1);
   if (dsm) rows.push([FIX_DV_LABEL, (dsm.dv * 1000).toFixed(1) + " m/s", null, FIX_DV_HINT]);
+  const arrive_launch = arrivalVinfRow(mission, i);
+  if (arrive_launch) rows.push(arrive_launch);
   rows.push(["打上げエネルギー", (vinf * vinf).toFixed(2) + " km²/s²", null, null, true]);
   container.appendChild(makeReadout(rows));
 }
@@ -1598,6 +1622,8 @@ export function renderLegControls() {
   // 縦を詰めたいので横一列に並べる。
   // 遠日点は多周回のときは「軌道の取り方」のボタンに出ているので繰り返さない
   const rows = [["飛行時間", tof_days.toFixed(0) + " 日"]];
+  const arrive_leg = arrivalVinfRow(mission, i);
+  if (arrive_leg) rows.push(arrive_leg);
   if (wanted === 0 && info && info.aphelion != undefined) {
     rows.push(["遠日点", (info.aphelion / AU).toFixed(2) + " AU"]);
   }
@@ -1777,8 +1803,12 @@ export function renderEncounterControls() {
       );
       const dsm = mission.get_dsm_info(i + 1);
       if (dsm) rows.push([FIX_DV_LABEL, ms(dsm.dv), null, FIX_DV_HINT]);
+      const arrive_dep = arrivalVinfRow(mission, i);
+      if (arrive_dep) rows.push(arrive_dep);
     } else {
       rows.push(["出発ΔV", ms(info.dv)]);
+      const arrive_dep = arrivalVinfRow(mission, i);
+      if (arrive_dep) rows.push(arrive_dep);
       const angles = mission.get_launch_angles(i);
       if (angles) {
         rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°", null, ALPHA_HINT, true]);
@@ -1951,8 +1981,10 @@ export function renderManeuverControls() {
 
   const norm = (v) => Math.hypot(v[0], v[1], v[2]);
   // 主役は噴く量。前後の速さや太陽からの距離は、確かめるときだけのものなので畳む
+  const arrive_dsm = arrivalVinfRow(mission, i);
   const tiles = [
     ["ΔV", (dsm.dv * 1000).toFixed(1), "m/s", true],
+    ...(arrive_dsm ? [[arrive_dsm[0], arrive_dsm[1].replace(" km/s", ""), "km/s", false]] : []),
     ["太陽からの距離", (norm(dsm.r) / AU).toFixed(3), "AU", false],
     ["噴射前の速さ", norm(dsm.v_before).toFixed(3), "km/s", false, true],
     ["噴射後の速さ", norm(dsm.v_after).toFixed(3), "km/s", false, true],
@@ -2242,6 +2274,8 @@ export function renderOrbitControls() {
       if (info) rows.push(["脱出ΔV", (info.dv * 1000).toFixed(1) + " m/s"]);
       const dsm = mission.get_dsm_info(i + 1);
       if (dsm) rows.push([FIX_DV_LABEL, (dsm.dv * 1000).toFixed(0) + " m/s", null, FIX_DV_HINT]);
+      const arrive_esc = arrivalVinfRow(mission, i);
+      if (arrive_esc) rows.push(arrive_esc);
       if (rows.length > 0) readout.appendChild(makeReadout(rows));
       return;
     }
@@ -2250,6 +2284,8 @@ export function renderOrbitControls() {
     // 近点/遠点/離心率/周期は周回軌道(近景)の話であって遠景の絵とは
     // 対応しないので、ここには出さない。
     const rows = [["脱出速度 V∞", mission.get_v_inf(i).toFixed(3) + " km/s"]];
+    const arrive_far = arrivalVinfRow(mission, i);
+    if (arrive_far) rows.push(arrive_far);
     if (angles) {
       rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°", null, ALPHA_HINT, true]);
       rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°", null, DELTA_HINT, true]);
@@ -2518,7 +2554,21 @@ export function renderSwingbyControls() {
         info.rp != undefined
           ? (info.rp - R).toFixed(0) + " km" + (info.rp_clamped ? " (下限)" : "")
           : "-";
+      // 入りと出のV∞は、この節でいちばん大事な量。曲げられる角度がこれで
+      // 決まるので、畳まずに先頭に置く (無推力なら2つは同じ大きさになる)
       const rows = [
+        [
+          "入ってくる V∞",
+          info.v_inf_in.toFixed(3) + " km/s",
+          null,
+          "この天体から見た、近づいてくる速さ。曲げられる角度はこれで決まる",
+        ],
+        [
+          "出ていく V∞",
+          info.v_inf_out.toFixed(3) + " km/s",
+          null,
+          "この天体から見た、離れていく速さ。噴かなければ入りと同じ大きさになる",
+        ],
         ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°", null, "重力で進む向きがどれだけ曲がるか"],
         ["近点高度", rpText, null, "天体の表面からいちばん近づく高さ。低いほど大きく曲がる"],
         [
@@ -2536,8 +2586,11 @@ export function renderSwingbyControls() {
           "この高さでは重力だけで曲げきれない角度。噴射で補うので近点ΔVが重くなる",
         ]);
       }
-      rows.push(["入ってくる速さ", info.v_inf_in.toFixed(3) + " km/s", null, null, true]);
-      rows.push(["出ていく速さ", info.v_inf_out.toFixed(3) + " km/s", null, null, true]);
+      // 同じ天体へ戻ってV∞を育てる設計では、次にいくつになるかが要る。
+      // 戻り先が同じ天体だと名前だけでは見分けが付かないので「次の」を付ける
+      const next_auto = arrivalVinfRow(State.mission_sequence, i, "次の");
+      if (next_auto) rows.push(next_auto);
+
       container.appendChild(makeReadout(rows));
     } else {
       const readout = document.createElement("div");
@@ -2602,16 +2655,20 @@ export function renderSwingbyControls() {
     // 手動は無推力なので侵入速度と脱出速度は同じ大きさになり(1行にまとめる)、
     // 目的地への到達は直後のマヌーバ(DSM)のΔVが担う。
     if (info) {
-      const rows = [["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°", null, "重力で進む向きがどれだけ曲がるか"]];
+      const rows = [
+        [
+          "通り過ぎる V∞",
+          info.v_inf_in.toFixed(3) + " km/s",
+          null,
+          "この天体から見た速さ。噴かないので入りと出は同じ大きさで、\n曲げられる角度はこの速さと近点高度だけで決まる",
+        ],
+        ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°", null, "重力で進む向きがどれだけ曲がるか"],
+      ];
       const dsm = State.mission_sequence.get_dsm_info(i + 1);
       if (dsm) rows.push([FIX_DV_LABEL, (dsm.dv * 1000).toFixed(1) + " m/s", null, FIX_DV_HINT]);
-      rows.push([
-        "通り過ぎる速さ",
-        info.v_inf_in.toFixed(3) + " km/s",
-        null,
-        "噴射しないので、入ってくる速さと出ていく速さは同じ",
-        true,
-      ]);
+      // 手動スイングバイの先にも次の天体がある。そこでのV∞も設計の的
+      const next_row = arrivalVinfRow(State.mission_sequence, i, "次の");
+      if (next_row) rows.push(next_row);
       // B面ビューの赤い線は天体中心からの半径なので、その値も添えておく
       rows.push([
         "近点半径",

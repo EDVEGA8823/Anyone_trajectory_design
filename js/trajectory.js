@@ -2464,6 +2464,33 @@ export class Mission {
     return this.#m_leg_info[i] ?? null;
   }
 
+  /**
+   * ノードiから飛んでいって、次に天体と出会うときの相対速度 (V∞) [km/s]。
+   * {vinf, node, planet} を返す (天体に会わずに終わるなら undefined)。
+   *
+   * スイングバイで軌道をどれだけ曲げられるかは、この速度と近点高度だけで
+   * 決まる。しかもV∞は天体に着く前の飛び方で決まってしまう量なので、
+   * 「スイングバイの節を選んでから」では遅く、そこへ向かう区間を組んで
+   * いる間に見えている必要がある。V∞を育てるために同じ天体へ何度も戻る
+   * ような設計 (VILM) では、これ自体が区間の目標になる。
+   *
+   * 途中のマヌーバ(深宇宙の一点)は飛ばして、天体を持つ最初のノードまで辿る。
+   * 手動モードの区間は「打上げ→マヌーバ→スイングバイ」のようにノードが
+   * 分かれるので、隣だけを見ると天体に行き当たらない。
+   */
+  leg_arrival_vinf(i) {
+    if (i < 0) return undefined;
+    for (let k = i + 1; k < this.#m_count; k++) {
+      if (this.#m_planet_nums[k] == undefined || this.#m_planet_nums[k] == -1) continue;
+      // ノードkに着いたときの速度は、ひとつ手前のノードの区間が持っている
+      const v_arr = this.#m_s_c_vel[k - 1] != undefined ? this.#m_s_c_vel[k - 1][1] : undefined;
+      const v_pla = this.#m_planet_vel[k];
+      if (v_arr == undefined || v_pla == undefined) return undefined;
+      return { vinf: math.norm(math.subtract(v_arr, v_pla)), node: k, planet: this.#m_planet_nums[k] };
+    }
+    return undefined;
+  }
+
   /** そのレグで指定の周回数に必要な最短飛行時間 [日] (解けなければ undefined) */
   leg_min_days(i, revs) {
     if (revs <= 0) return 0;
