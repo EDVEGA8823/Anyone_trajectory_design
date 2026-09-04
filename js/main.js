@@ -105,7 +105,7 @@ import {
 } from './mission_file.js';
 import { tuneMission } from './optimize.js';
 import { exportMissionImage, setExportViewHooks } from './export_image.js';
-import { copyShareLink, initShareLink } from './share_link.js';
+import { copyShareLink, shareOnX, initShareLink } from './share_link.js';
 import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
 import {
   addSmallBody,
@@ -2933,6 +2933,7 @@ function boot() {
     new: new_mission,
     export_image: () => exportMissionImage(missionName() || DEFAULT_NAME),
     share_link: copyShareLink,
+    share_x: () => shareOnX(missionName() || DEFAULT_NAME),
   });
   // 画像を作る間だけ「使っている天体だけ」に切り替えてもらう
   // (天体名の表は main.js 側にあるので、export_image.js からは手を借りる)

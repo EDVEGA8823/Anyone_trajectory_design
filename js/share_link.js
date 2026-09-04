@@ -1,5 +1,5 @@
 /**
- * ミッションをURLにして共有する。
+ * ミッションを人に渡す。URLにして配るのと、Xへ投稿するのと2通り。
  *
  * 置き場所を持たないアプリ (GitHub Pages の静的ファイル) なので、設計そのものを
  * URLに詰める。保存ファイルと同じJSONを縮めて載せるだけで、サーバーは要らない。
@@ -24,9 +24,16 @@
  * 縮んだときだけ圧縮する。どちらかは先頭の1文字 (z/r) で分かるようにしてある。
  */
 
-import { missionData, applyMissionData, confirmDiscard, markMissionSaved } from './mission_file.js';
+import {
+  missionData,
+  applyMissionData,
+  confirmDiscard,
+  markMissionSaved,
+  DEFAULT_NAME,
+} from './mission_file.js';
 import { resetHistory } from './history.js';
 import { notify } from './topbar.js';
+import { renderMissionImage } from './export_image.js';
 
 // フラグメントに置く名前。数字は形式の版で、serialize() の形が変わっても
 // 古いリンクを見分けられるようにしておく
@@ -229,4 +236,84 @@ export function initShareLink() {
   // 開いた直後。まだ何も作っていないので黙って入れる
   loadFromHash(false);
   window.addEventListener("hashchange", () => loadFromHash(true));
+}
+
+/* ==================================================================
+   Xへ投稿する
+   ==================================================================
+   Xの投稿画面をURLで開く仕組み (intent) には、画像を渡す口が無い。
+   文字とURLしか載せられないので、絵を添えるには別の道が要る。
+
+     ・navigator.share が画像を扱えるなら、端末の共有シートに投げる。
+       そこからXを選べば、文字・URL・画像がまとめて入る (スマホはこちら)
+     ・扱えないなら、画像をクリップボードへ入れてから投稿画面を開き、
+       貼り付けてもらう。文字とURLは埋まった状態で開く
+
+   どちらも駄目なら、文字とURLだけで開く (絵は「画像で保存」に回ってもらう)。
+   ================================================================== */
+
+// 投稿の本文。ミッション名は既定のままなら入れない (「無題のミッション」は情報にならない)
+function postText(name) {
+  const head = name && name !== DEFAULT_NAME ? "「" + name + "」\n" : "";
+  return head + "#だれでも軌道設計 でミッションを作成しました";
+}
+
+/** Xの投稿画面を、本文とURLを入れた状態で開く */
+function openIntent(text, url) {
+  const q = "text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(url);
+  window.open("https://x.com/intent/post?" + q, "_blank", "noopener");
+}
+
+/** 画像をクリップボードへ。入れられたか */
+async function imageToClipboard(blob) {
+  if (!navigator.clipboard || !navigator.clipboard.write || typeof ClipboardItem === "undefined") return false;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * いまのミッションをXへ投稿する。
+ *
+ * 画像を作る間に押された合図 (ユーザー操作) の有効期限が切れると
+ * navigator.share が断られるので、作ってすぐ呼ぶこと。
+ *
+ * @param {string} [name] ミッション名
+ */
+export async function shareOnX(name) {
+  const url = await missionShareUrl();
+  if (!url) {
+    notify("共有するシーケンスがありません");
+    return false;
+  }
+  const text = postText(name);
+  const made = await renderMissionImage(name); // 作れなくても文字とURLでは出せる
+
+  // 端末の共有シートに画像ごと渡せるなら、それが一番きれいに収まる
+  if (made && typeof File === "function" && navigator.canShare && navigator.share) {
+    const file = new File([made.blob], made.filename, { type: "image/png" });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ text, url, files: [file] });
+        return true;
+      } catch (e) {
+        // 共有をやめただけなら、こちらから追い打ちはしない
+        if (e && e.name === "AbortError") return false;
+        // 共有シートが使えなかった場合は下の手に回る
+      }
+    }
+  }
+
+  // 画像を貼れる状態にしてから投稿画面を開く
+  const copied = made ? await imageToClipboard(made.blob) : false;
+  openIntent(text, url);
+  notify(
+    copied
+      ? "Xの投稿画面を開きました (画像はコピー済み。本文に貼り付けてください)"
+      : "Xの投稿画面を開きました (画像を入れるときは「画像で保存」から)"
+  );
+  return true;
 }

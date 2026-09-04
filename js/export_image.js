@@ -522,18 +522,23 @@ function safe_name(name) {
 }
 
 /**
- * いまの設計を画像にして保存する。
- * @param {string} [name] ミッション名 (画像の見出しとファイル名に使う)
+ * いまの設計を1枚の画像に描いて返す。
+ *
+ * 保存 (exportMissionImage) と、Xへの投稿に添える絵の両方がこれを使う。
+ * 同じ絵を2通りに描き分けると必ず食い違うので、作るのはここ1箇所にする。
+ *
+ * @param {string} [name] ミッション名 (画像の見出しに使う)
+ * @returns {Promise<{blob: Blob, filename: string}|undefined>}
  */
-export async function exportMissionImage(name) {
+export async function renderMissionImage(name) {
   const mission = State.mission_sequence;
   if (!mission || mission.count === 0) {
     notify("画像にするシーケンスがありません");
-    return false;
+    return undefined;
   }
   if (!renderer || !camera || !scene) {
     notify("太陽系ビューがまだ準備できていません");
-    return false;
+    return undefined;
   }
 
   // 文字が読み込まれる前に描くと、別の書体で焼き付いてしまう
@@ -571,17 +576,28 @@ export async function exportMissionImage(name) {
   const blob = await new Promise((r) => out.toBlob(r, "image/png"));
   if (!blob) {
     notify("画像を作れませんでした");
-    return false;
+    return undefined;
   }
-  const url = URL.createObjectURL(blob);
+  return { blob, filename: safe_name(name) };
+}
+
+/**
+ * いまの設計を画像にして保存する。
+ * @param {string} [name] ミッション名 (画像の見出しとファイル名に使う)
+ */
+export async function exportMissionImage(name) {
+  const made = await renderMissionImage(name);
+  if (!made) return false;
+
+  const url = URL.createObjectURL(made.blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = safe_name(name);
+  a.download = made.filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   // すぐ消すとダウンロードが始まらない環境があるので、少し置いてから片付ける
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  notify("「" + a.download + "」を保存しました");
+  notify("「" + made.filename + "」を保存しました");
   return true;
 }
