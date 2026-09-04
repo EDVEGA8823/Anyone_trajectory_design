@@ -1081,18 +1081,17 @@ export function updateControlPanelDisplay() {
     }
   }
 
-  // 時刻の枠は選択と関係なく使える。動かす相手が居ない (シーケンスが1つも
-  // 無い) ときだけ隠す。中の微調整ボタンも同じ扱いにしないと、キーボードでは
-  // 動かせるのにボタンだけ消えている、というちぐはぐな見た目になる
-  const has_nodes = !!State.mission_sequence && State.mission_sequence.count > 0;
+  // 時刻の枠は、選択とも、シーケンスがあるかどうかとも関係なく常に出す。
+  //   節を選んでいるとき … その節の日付 (変えると設計が変わる)
+  //   選んでいないとき   … 太陽系ビューが見ている時刻 (設計は変わらない)
+  // 後者は起動直後 (シーケンスが1つも無い状態) でも意味がある。惑星の並びを
+  // 見て回れるうえ、最初のシーケンスはこの時刻に置かれるため。
+  // 中の微調整ボタンも同じ扱いにする (キーボードでは動かせるのにボタンだけ
+  // 消えている、というちぐはぐな見た目にしないため)。
   const time_box = document.getElementsByClassName("time-box");
-  for (let i = 0; i < time_box.length; i++) {
-    time_box[i].style.display = has_nodes ? "flex" : "none";
-  }
+  for (let i = 0; i < time_box.length; i++) time_box[i].style.display = "flex";
   const time_actions = document.getElementsByClassName("time-actions");
-  for (let i = 0; i < time_actions.length; i++) {
-    time_actions[i].style.display = has_nodes ? "flex" : "none";
-  }
+  for (let i = 0; i < time_actions.length; i++) time_actions[i].style.display = "flex";
 
   const is_swingby =
     State.selected_sequence != -1 &&

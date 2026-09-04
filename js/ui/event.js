@@ -290,8 +290,8 @@ function update_edit_target_label() {
   if (n == -1 || !State.mission_sequence || n >= State.mission_sequence.count) {
     // 節を触っていないときの時刻は、太陽系ビューが見ている時刻。
     // 日付欄に数字だけ出ていると節の日付と紛らわしいので、そう書いておく
-    const has_nodes = !!State.mission_sequence && State.mission_sequence.count > 0;
-    edit_target.textContent = has_nodes ? "見ている時刻" : "";
+    // (シーケンスが1つも無い起動直後も同じ。惑星の並びを見て回れる)
+    edit_target.textContent = "見ている時刻";
     edit_target.classList.remove("other");
     return;
   }
