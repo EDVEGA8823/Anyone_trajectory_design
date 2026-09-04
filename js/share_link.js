@@ -264,6 +264,22 @@ function openIntent(text, url) {
   window.open("https://x.com/intent/post?" + q, "_blank", "noopener");
 }
 
+/**
+ * 端末の共有シートに任せてよいか。
+ *
+ * スマホの共有シートにはXが並ぶので、そこから選んでもらうのが一番きれいに
+ * 収まる (文字・URL・画像がまとめて入る)。
+ * 一方デスクトップの共有シートはメールやBluetoothが並ぶだけでXが居ないことが
+ * 多く、「Xで共有」と書いたボタンの行き先としては外れになる。canShare は
+ * デスクトップでも true を返すので、これだけを頼りにすると必ずそちらへ
+ * 流れてしまう。行き先がXだと分かっている投稿画面の方へ回す。
+ */
+function preferSystemShare() {
+  const uad = navigator.userAgentData;
+  if (uad && typeof uad.mobile === "boolean") return uad.mobile;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 /** 画像をクリップボードへ。入れられたか */
 async function imageToClipboard(blob) {
   if (!navigator.clipboard || !navigator.clipboard.write || typeof ClipboardItem === "undefined") return false;
@@ -292,8 +308,8 @@ export async function shareOnX(name) {
   const text = postText(name);
   const made = await renderMissionImage(name); // 作れなくても文字とURLでは出せる
 
-  // 端末の共有シートに画像ごと渡せるなら、それが一番きれいに収まる
-  if (made && typeof File === "function" && navigator.canShare && navigator.share) {
+  // スマホなら、端末の共有シートに画像ごと渡すのが一番きれいに収まる
+  if (made && preferSystemShare() && typeof File === "function" && navigator.canShare && navigator.share) {
     const file = new File([made.blob], made.filename, { type: "image/png" });
     if (navigator.canShare({ files: [file] })) {
       try {
