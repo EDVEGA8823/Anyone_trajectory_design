@@ -1,11 +1,11 @@
-import { State } from './state.js';
-import { launcher_list } from './launchers.js';
-import { notify, missionName, setMissionName } from './topbar.js';
-import { update_plot, reload_small_bodies } from './main.js';
-import { updateAfterAdd } from './event.js';
-import { isSmallBody, smallBody, smallBodyNumber, smallBodiesForSave } from './small_bodies.js';
-import { normalizeBody } from './bodies.js';
-import { confirmDialog } from './dialog.js';
+import { State } from '../core/state.js';
+import { launcher_list } from '../core/launchers.js';
+import { notify, missionName, setMissionName } from '../ui/topbar.js';
+import { update_plot, reload_small_bodies } from '../main.js';
+import { updateAfterAdd } from '../ui/event.js';
+import { isSmallBody, smallBody, smallBodyNumber, smallBodiesForSave } from '../core/small_bodies.js';
+import { normalizeBody } from '../core/bodies.js';
+import { confirmDialog } from '../ui/dialog.js';
 import { resetHistory, refreshHistoryState } from './history.js';
 
 // ミッションの保存と読込。

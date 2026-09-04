@@ -11,7 +11,7 @@ import {
   bodyLabel,
   bodySubLabel,
   normalizeBody,
-} from './bodies.js';
+} from '../core/bodies.js';
 import { notify } from './topbar.js';
 
 // 天体を追加する画面。

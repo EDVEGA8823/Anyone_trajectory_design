@@ -1,4 +1,4 @@
-import { State, User_Mode, PlotState, Sequence_Type } from './state.js';
+import { State, User_Mode, PlotState, Sequence_Type } from '../core/state.js';
 import {
   change_sequence,
   change_sequence_propaty,
@@ -9,11 +9,11 @@ import {
   updateControlPanelDisplay,
   update_plot,
   update_sequence_times,
-} from './main.js';
-import { camera, controls, createLine, getZScale } from './plot.js';
-import { coast_anomalies, kepler_equation, solve_kepler, MU_SUN } from './trajectory.js';
-import { buildOrbitSamples, pickAnomaly } from './orbit_pick.js';
-import { JulianToDate, DateToJulian } from './trajectory.js';
+} from '../main.js';
+import { camera, controls, createLine, getZScale } from '../view/plot.js';
+import { coast_anomalies, kepler_equation, solve_kepler, MU_SUN } from '../core/trajectory.js';
+import { buildOrbitSamples, pickAnomaly } from '../view/orbit_pick.js';
+import { JulianToDate, DateToJulian } from '../core/trajectory.js';
 
 let date_time, sequence, confirm_time, cancel_time, v_inf, C3, total_dv, sequence_panel, plot_area, edit_target;
 

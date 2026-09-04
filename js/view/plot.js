@@ -1,6 +1,6 @@
-import { State, PlotState } from './state.js';
-import { AU } from './trajectory.js';
-import { makeRenderLoop } from './view3d.js';
+import { State, PlotState } from '../core/state.js';
+import { AU } from '../core/trajectory.js';
+import { makeRenderLoop } from '../panel/view3d.js';
 
 export let renderer, scene, camera, sun, labelRenderer, controls;
 

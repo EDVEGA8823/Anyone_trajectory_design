@@ -1,4 +1,4 @@
-import { launch_frame } from './trajectory.js';
+import { launch_frame } from '../core/trajectory.js';
 import { createVectorView } from './vector_view.js';
 
 // 「天体を離れる瞬間の、天体に対する相対速度」を見る遠景3Dビューのひな型。

@@ -189,7 +189,7 @@ const nextFrame = () =>
  * 渡したミッション自体は触らない。複製の上で試して、結果を serialize した
  * 形で返す。採用するかどうかは呼ぶ側が決める。
  *
- * @param {import('./trajectory.js').Mission} mission いまの設計
+ * @param {import('../core/trajectory.js').Mission} mission いまの設計
  * @param {object} [opts]
  * @param {string} [opts.launcher] 打上げ能力の見積もりに使う機種
  * @param {number} [opts.budget_ms] 使ってよい時間 [ms]

@@ -1,0 +1,300 @@
+/* だれでも軌道設計 — ミッションの成績バー
+
+   css/ は index.html に書いた順で読み込まれる。同じ強さの規則は後勝ちなので、
+   順番を入れ替えたり <link> の並びを変えたりしないこと。 */
+
+/* ==================================================================
+   Stat tiles (打上げエネルギー / ΔV / ロケットと質量)
+   ================================================================== */
+/* 太陽系ビューの下に置いたので横幅には余裕がある。左から「見出し → 成績 →
+   (右端に寄せて) ロケットと質量」の順に並べる。
+   2段になると太陽系ビューの高さをそのぶん食うので、折り返しは禁止。
+   代わりに、幅が足りなくなったら下のメディアクエリで添え物から順に消す */
+.row.stat-bar {
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 6px 10px;
+  overflow-x: auto;
+}
+.row.stat-group {
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  gap: 6px;
+  min-width: 0;
+}
+/* ロケットと質量は「打ち上げ側の話」でひとまとまりなので右端に寄せる */
+.stat-bar .launcher-group {
+  margin-left: auto;
+}
+
+/* バーの見出し。値の並びと混ざらないよう、縦線で区切る。
+   ミッション期間はここに添える (ΔVや質量のような「設計の成績」ではなく、
+   ミッション全体がどれだけ長いかという枠組みの話なので) */
+.stat-bar-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  align-self: stretch;
+  flex: 0 0 auto;
+  padding-right: 14px;
+  border-right: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.stat-bar-sub {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 縦を詰めるため、項目名の下に「値 + 単位」を1行に並べる2行組みにする */
+.value_box {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  justify-content: start;
+  flex: 0 0 auto;
+  column-gap: 3px;
+  margin: 0;
+  padding: 3px 6px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.value_box .title {
+  grid-column: 1 / -1;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+}
+
+.value_box .value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.15;
+  /* 桁が変わっても枠の幅が動かないように */
+  font-variant-numeric: tabular-nums;
+}
+
+.value_box .unit {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.15;
+}
+
+/* 項目名に添える補足 (「燃料込み」など)。大文字化されると読みにくいので戻す */
+.value_box .title .sub {
+  margin-left: 3px;
+  font-size: 8px;
+  font-weight: 500;
+  text-transform: none;
+  opacity: 0.85;
+}
+
+/* 脱出速度と打上げエネルギーは同じ量の言い換え (C3 = V∞²) なので1つの枠にまとめ、
+   中を縦線で仕切る。添えているほう (エネルギー) は数字を小さく淡くして、
+   どちらを見ればよいかが一目で分かるようにする */
+.energy-box {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.stat-cell {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  justify-content: start;
+  column-gap: 3px;
+}
+.stat-cell .title {
+  grid-column: 1 / -1;
+}
+.stat-cell--sub {
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+}
+.stat-cell--sub .value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* 数値ではなく「打ち上げ不可」などの文字を出すとき */
+.value_box .value.as-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+/* 「打ち上げ不可」のような文字にも段階の色を効かせる (後述の lvl-* より前に
+   置くと色が上書きされてしまうので、ここでは色を指定し直さない) */
+.value_box .value.as-text.lvl-bad {
+  color: var(--danger);
+}
+
+/* 打上げ質量 → 残る質量 をつなぐ矢印 */
+.stat-bar .mass-arrow {
+  flex: 0 0 auto;
+  color: var(--gray-400);
+  font-size: 13px;
+}
+
+/* 値の大きさによる色分け。数字は常に色を付け、注意すべき側 (warn/bad) だけ
+   枠と背景も染めて、パネルを見た瞬間に苦しい項目が目に入るようにする */
+/* 値そのものに付く場合と、質量のように .value の中の span に付く場合がある */
+.value_box .value.lvl-good,
+.value_box .value .lvl-good {
+  color: var(--good);
+}
+.value_box .value.lvl-warn,
+.value_box .value .lvl-warn {
+  color: var(--warn);
+}
+.value_box .value.lvl-bad,
+.value_box .value .lvl-bad {
+  color: var(--danger);
+}
+.value_box.lvl-good {
+  background: var(--good-soft);
+}
+.value_box.lvl-warn {
+  background: var(--warn-soft);
+  border-color: var(--warn-border);
+}
+.value_box.lvl-bad {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+/* 表の値そのものではない (外挿・近似で埋めた) ときは枠を破線にする */
+.value_box.approx {
+  border-style: dashed;
+}
+
+/* 打上げロケットの選択。他の数値と同じ枠に入れ、上に項目名を出す */
+.select-box {
+  padding: 2px 6px;
+}
+/* 幅が足りなくなったら、意味が薄いものから順に落として1段を守る。
+   (捨てる順: 補足の文字 → 打上げエネルギー → バーの見出し → 余白と文字の大きさ)
+   閾値は「太陽系ビューの幅 ≒ ウィンドウの半分」から決めている */
+@media (max-width: 1580px) {
+  .stat-bar .value_box .title .sub {
+    display: none;
+  }
+}
+@media (max-width: 1450px) {
+  .stat-cell--sub {
+    display: none;
+  }
+}
+@media (max-width: 1260px) {
+  .stat-bar-title {
+    display: none;
+  }
+}
+@media (max-width: 1010px) {
+  .row.stat-bar {
+    gap: 8px;
+    padding: 6px 8px;
+  }
+  .row.stat-group {
+    gap: 4px;
+  }
+  .launcher-group select {
+    width: 92px;
+  }
+}
+@media (max-width: 950px) {
+  .row.stat-bar {
+    gap: 4px;
+    padding: 6px;
+  }
+  /* 縦の余白はそのまま (ここを変えるとバーの高さが動く) */
+  .stat-bar .value_box {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  .stat-bar .value_box .value {
+    font-size: 12px;
+  }
+  .launcher-group select {
+    width: 80px;
+  }
+}
+
+
+.launcher-group select {
+  grid-column: 1 / -1;
+  /* バーの高さを他の枠に合わせるため、選択欄の高さは明示しておく
+     (既定だと文字の大きさに対して余白が大きく、この枠だけ背が高くなる) */
+  width: 132px;
+  height: 20px;
+  margin: 0;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+/* スマホの幅。ここまで削っても1段に収まらない (390pxで64pxはみ出して、
+   いちばん見たい「残る質量」が画面の外に出る)。2段にすると太陽系ビューが
+   そのぶん低くなるので、横に詰めて1段を守る。
+     ・ロケットの見出しは「打ち上げロケット」だと選択欄より広くて、そこが
+       枠の幅を決めてしまう。短くして選択欄の幅だけで済むようにする
+     ・打上げ質量 → 残る質量 はひとつながりなので、枠を繋げて1つに見せる
+       (間の矢印と、内側の枠線・余白のぶんが浮く) */
+@media (max-aspect-ratio: 1/1) and (max-width: 620px) {
+  .row.stat-bar {
+    gap: 3px;
+    padding: 6px 3px;
+  }
+  /* 枠線で区切りは付いているので、枠の内側の余白は最小限でよい */
+  .stat-bar .value_box {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+  .stat-bar .select-box {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+  .stat-bar .select-box .title {
+    font-size: 0;
+  }
+  .stat-bar .select-box .title::before {
+    content: "ロケット";
+    font-size: 9px;
+  }
+  .launcher-group select {
+    width: 80px;
+  }
+  .mass-group {
+    gap: 0;
+  }
+  .stat-bar .mass-arrow {
+    /* JS が inline style で出し入れするので、こちらから消すには !important が要る */
+    display: none !important;
+  }
+  #wet_box {
+    border-right: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  #dry_box {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}

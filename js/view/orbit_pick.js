@@ -16,7 +16,7 @@
  * 折れ線の刻みは描画と共有する (trajectory.js の orbit_anomalies)。
  */
 
-import { AU, get_planets_pos_E, orbit_anomalies } from './trajectory.js';
+import { AU, get_planets_pos_E, orbit_anomalies } from '../core/trajectory.js';
 
 // 当たり判定に使う折れ線の細かさ。描画用(100点)より細かくして、
 // カーソルに寄せたときの形の誤差を小さくする。区間の中は線形に補間するので、

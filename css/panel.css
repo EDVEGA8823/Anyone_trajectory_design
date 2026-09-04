@@ -1,0 +1,764 @@
+/* だれでも軌道設計 — 操作パネルの中身 (入力欄・読み値・3Dプレビュー・ボタン)
+
+   css/ は index.html に書いた順で読み込まれる。同じ強さの規則は後勝ちなので、
+   順番を入れ替えたり <link> の並びを変えたりしないこと。 */
+
+/* ==================================================================
+   Form controls
+   ================================================================== */
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+select,
+input {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+/* 種別を変えられない理由。「シーケンス」「天体」の下に回り込ませて、
+   閉じている間だけ出す (空のときは行ごと消えて高さを取らない) */
+.type-hint {
+  width: 100%;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+.type-hint:empty {
+  display: none;
+}
+
+/* 閉じている欄は、押せないことが見て分かるようにする。
+   既定の見た目のままだと「押せるのに反応しない」ように見えてしまう。
+   理由の文はこの部品ではなく囲みの側に付ける (無効な部品にカーソルを
+   乗せてもブラウザは説明を出さないため) */
+select:disabled,
+input:disabled {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+select:focus,
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.column {
+  display: flex;
+  flex-flow: column;
+  gap: 6px;
+  justify-content: center;
+  min-width: 0;
+}
+.row {
+  display: flex;
+  flex-flow: row wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 0;
+}
+.row_right {
+  display: flex;
+  flex-flow: row;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  padding: 12px;
+  margin: 0;
+}
+
+/* 時刻を編集している対象ノードの表示 */
+.row.time-head {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+/* 時刻の微調整と 変更/キャンセル を同じ行に収める */
+.row.time-actions {
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.row.date-nudge {
+  gap: 3px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.date-nudge button {
+  min-width: 30px;
+  height: 26px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.date-nudge button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.date-nudge-unit {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.edit-target {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+/* 選択中シーケンス以外のノードを編集しているときは目立たせる */
+.edit-target.other {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* ==================================================================
+   時刻の枠に出す軌道上の節目 (近日点/遠日点/昇交点/降交点)
+   ================================================================== */
+.leg-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.leg-event {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--gray-300);
+  background: var(--surface);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.leg-event-name {
+  font-weight: 600;
+  color: var(--text);
+  flex: 0 0 auto;
+}
+.leg-event-date {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.leg-event-r {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+/* 選んで固定できる行 (マヌーバのみ) */
+.leg-event.pinnable {
+  cursor: pointer;
+}
+.leg-event.pinnable:hover {
+  background: var(--surface-muted);
+}
+.leg-event.pinned {
+  background: var(--accent-soft);
+}
+.leg-event.pinned .leg-event-name {
+  color: var(--accent-strong);
+}
+.leg-event-pin {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+/* 種類ごとに色分け (近日点=近い/赤, 遠日点=遠い/青, 交点=緑) */
+.leg-event--perihelion {
+  border-left-color: var(--danger);
+}
+.leg-event--aphelion {
+  border-left-color: var(--accent);
+}
+.leg-event--ascending_node,
+.leg-event--descending_node {
+  border-left-color: #4caf82;
+}
+.leg-event-empty {
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+/* ==================================================================
+   打上げ (V∞ビュー)
+   ================================================================== */
+/* B面の箱と同じく、縦の余りを引き受けてプレビューを大きく取る。
+   min-height: 0 は付けない (#orbit_box の説明を参照) */
+#launch_box {
+  flex: 1 1 auto;
+}
+.launch-field {
+  gap: 2px;
+}
+.launch-field label,
+.launch-field input {
+  text-transform: none; /* V∞ や α をそのまま出す */
+  line-height: 1.2;
+}
+.launch-field input {
+  padding: 5px 8px;
+  font-size: 13px;
+  width: 100%;
+}
+/* 「脱出速度 V∞ [km/s]」は118px幅だと2行になってしまうので、この欄だけ
+   ラベルを少し小さくして1行に収める */
+.param-field--vinf label {
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+/* ==================================================================
+   最終軌道 (ミッションの終端)
+   ================================================================== */
+/* 到達した軌道の種類 (太陽周回 / 太陽系脱出) を一言で出す見出し */
+.end-summary {
+  align-self: flex-start;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f6b4f;
+  background: #e4f4ec;
+  border: 1px solid #9fd8bf;
+}
+.end-summary.escaping {
+  color: #8a4bc0;
+  background: #f2e9fb;
+  border-color: #cfaee8;
+}
+
+/* ==================================================================
+   マヌーバ (DSM)
+   ================================================================== */
+.maneuver-readout {
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-start;
+}
+/* 主役のΔVだけ少し目立たせる */
+.maneuver-readout .value_box.primary {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.maneuver-readout .value_box.primary .title,
+.maneuver-readout .value_box.primary .unit {
+  color: var(--accent-strong);
+}
+
+/* ==================================================================
+   操作パネルの3Dプレビュー (スイングバイのB面ビュー / 打上げのV∞ビュー)
+   ================================================================== */
+/* プレビューの箱が縦の余りを引き受けて、プレビューを大きく取る。
+   min-height: 0 は付けない。付けると画面が低いときに箱が中身より小さく
+   潰され、絶対配置のcanvasが箱の外へはみ出して下の箱と重なる
+   (縦長の画面で操作パネルが低くなったときに実際そうなった)。
+   縮められる下限が中身の高さになるよう、既定の auto のままにして、
+   入り切らないぶんは操作パネル側をスクロールさせる */
+#swingby_box {
+  flex: 1 1 auto;
+}
+
+/* 幅が足りないときは数値欄がプレビューの下に回る */
+.view-row {
+  align-items: stretch;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* プレビューは残りの幅・高さいっぱいまで広げる (マウスでの操作対象なので
+   なるべく大きく取る)。flex-basisは折り返しの閾値も兼ねる: これに数値欄の
+   幅が足せなくなったら数値欄がプレビューの下に回る */
+/* canvasは絶対配置にして枠の大きさに影響を与えないようにする。
+   こうしないと「canvasが大きい → 枠が縮まない」の循環で高さが決まらない。
+   実サイズ(正方形)は各ビューが枠の幅と高さの小さい方から決める。 */
+.view-3d {
+  flex: 1 1 150px;
+  min-width: 0;
+  /* マウスで触る図なので、これ以上は縮めない。画面が低いときは
+     パネル側をスクロールさせる (小さすぎる図は操作できない) */
+  min-height: 200px;
+  position: relative;
+}
+
+.view-3d canvas {
+  display: block;
+  box-sizing: content-box;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: grab;
+}
+.view-3d canvas:active {
+  cursor: grabbing;
+}
+
+/* 3Dビューの隅に出す太陽方向の目印 (js/view3d.js の makeSunCompass)。
+   矢印の向きは毎フレーム回すので、位置と見た目だけをここで決める。
+   位置はJS側が canvas の左下に合わせて入れる */
+.sun-compass {
+  position: absolute;
+  transform: translateY(-100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  color: #e0a800; /* 太陽の黄色。他の線 (β・遠点の橙) より黄色寄りにする */
+  pointer-events: none;
+  user-select: none;
+}
+.sun-compass svg {
+  display: block;
+  /* 回転はJSが style.transform で与える */
+}
+.sun-compass span {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* 太陽が視線とほぼ同じ向き (画面の奥/手前) のときは、矢印の向きに意味が無い */
+.sun-compass.edge-on {
+  opacity: 0.4;
+}
+
+/* 凡例はプレビューの下に横一列で並べる */
+.view-legend {
+  display: flex;
+  flex-flow: row wrap;
+  column-gap: 12px;
+  row-gap: 3px;
+  width: 100%;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.view-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.view-legend i {
+  width: 10px;
+  height: 2px;
+  flex: 0 0 auto;
+  border-radius: 1px;
+}
+.view-legend .sw-orbit {
+  background: #1a1c20;
+}
+/* 破線で描いているものは凡例も破線にする */
+.view-legend .sw-coast {
+  background: repeating-linear-gradient(to right, #8a8f99 0 3px, transparent 3px 5px);
+}
+.view-legend .sw-rp {
+  background: #d6543f;
+}
+.view-legend .sw-b {
+  background: #3b6fe0;
+}
+.view-legend .sw-beta {
+  background: #e0a03b;
+}
+.view-legend .sw-dv {
+  background: #9b4fd8;
+}
+.view-legend .sw-porbit {
+  background: #4caf82;
+}
+.view-legend .sw-vinf {
+  background: #ff8c1a;
+}
+.view-legend .sw-alpha {
+  background: #3b6fe0;
+}
+.view-legend .sw-delta {
+  background: #e0a03b;
+}
+.view-legend .sw-ra {
+  background: #e0a03b;
+}
+.view-legend .sw-horizon {
+  background: #8a8f99;
+}
+.view-legend .sw-track {
+  background: #2a5bd7;
+}
+
+/* プレビューを広く取るため、右側の数値・入力欄は細い1カラムにする */
+.swingby-controls,
+.launch-controls {
+  flex: 0 0 118px;
+  width: 118px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 見出しと自動/手動の切り替えを1行にまとめる */
+.swingby-head {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.swingby-mode {
+  gap: 4px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+}
+
+.mode-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 3px 12px;
+  flex: 0 0 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.mode-btn:hover {
+  border-color: var(--gray-300);
+}
+.mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+/* 近景/遠景のように「同じ節の中で見せ方だけ切り替える」タブ。
+   自動/手動 (mode-btn) は設計そのものの分岐で見出しの横に置くのに対し、
+   こちらは見出しの下に専用の行を取り、下線で選択中を示す控えめな見た目に
+   することで、両方並んでいても取り違えないようにする。 */
+.view-tabs {
+  gap: 2px;
+  flex-wrap: nowrap;
+  /* .row の既定は space-between で、タブが2枚だと左右の端に離れて
+     しまう。タブは並んでいてこそ切り替えだと分かるので左に寄せる */
+  justify-content: flex-start;
+  border-bottom: 1px solid var(--border);
+}
+.view-tab {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 4px 10px 6px;
+  margin-bottom: -1px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.view-tab:hover {
+  color: var(--text);
+}
+.view-tab.active {
+  color: var(--accent-strong);
+  border-bottom-color: var(--accent);
+}
+
+.swingby-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+/* 幅が狭いので、項目名と値は横並びではなく上下に積む */
+.swingby-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.swingby-readout-row {
+  flex-flow: column nowrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+}
+.swingby-readout-row span:first-child {
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+.swingby-readout-row span:last-child {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.25;
+}
+/* 統計バーと同じ4段階で、読み値そのものにも色を付ける */
+.swingby-readout-row span.lvl-good {
+  color: var(--good);
+}
+.swingby-readout-row span.lvl-warn {
+  color: var(--warn);
+}
+.swingby-readout-row span.lvl-bad {
+  color: var(--danger);
+}
+
+.swingby-inputs {
+  gap: 4px;
+}
+
+/* --- 周回軌道投入 / 軌道脱出 --- */
+/* プレビューの横に、入力欄と結果を縦に積む (他のビューと同じ細い1カラム) */
+/* 大気圏突入とマヌーバは入力欄が少なく、枠の高さがプレビューの大きさを
+   決めてしまう。マウスで触る図なので下限を与えて小さくしすぎない */
+.entry-only .view-3d,
+.maneuver-only .view-3d {
+  min-height: 260px;
+}
+
+.orbit-controls {
+  flex: 0 0 118px;
+  width: 118px;
+  min-width: 0;
+  gap: 8px;
+}
+.orbit-inputs {
+  min-width: 0;
+}
+.orbit-readout {
+  min-width: 0;
+}
+
+/* 打上げ・スイングバイと同じく、縦の余りを引き受けてプレビューを大きく取る。
+   これが無いと (打上げ/スイングバイだけの特別扱いのままだと)、周回軌道投入・
+   軌道脱出のプレビューだけ小さいまま伸びず、大きさが揃わなかった。
+
+   min-height: 0 は付けない。付けると画面が低いときに箱が中身より小さく潰され、
+   右の欄が箱の外へはみ出して凡例や下の箱と重なってしまう (縮められる下限が
+   中身の高さになるよう、min-heightは既定のautoのままにする)。 */
+#orbit_box {
+  flex: 1 1 auto;
+}
+
+/* 再出発のときだけ3Dビューが入るので、そのときだけ縦の余りを引き受ける。
+   フライバイ・ランデブーでは読み値の数行しか無く、伸ばすと空白が空くだけ */
+#encounter_box.has-view {
+  flex: 1 1 auto;
+}
+
+/* 投入(減速)か脱出(加速)かをひと目で分かるようにする印 */
+.orbit-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+}
+.orbit-badge.brake {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.orbit-badge.boost,
+.orbit-badge.safe {
+  color: var(--good);
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+/* 大気圏突入の警告バッジ。突入速度が実績や研究の範囲をどれだけ超えているか */
+.orbit-badge.caution {
+  color: var(--warn);
+  border-color: var(--warn-border);
+  background: var(--warn-soft);
+}
+.orbit-badge.risk {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* rp / β の欄。クリックすると3Dビューにマウス用のハンドルが出る。
+   その場で押せると伝わるよう、常時うっすら枠を見せ、動かし方の矢印も
+   薄く出しておく (選択中はどちらも濃くなる) */
+.param-field {
+  gap: 2px;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+/* input と label はブラウザの既定スタイルでそれぞれ text / default の
+   カーソルを持ち、.param-field の cursor:pointer は (継承ではなく既定側が
+   勝ってしまうため) そのままでは効かない。個別に上書きする。
+   inputはクリックすれば数値も編集できるが、ハンドルを出す操作を
+   兼ねているのでポインタのままにする */
+.param-field input,
+.param-field label {
+  cursor: pointer;
+}
+.param-field:hover {
+  background: var(--surface-muted);
+  border-color: var(--gray-300);
+}
+.param-field.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.param-field.active label {
+  color: var(--accent-strong);
+}
+/* ハンドルで「どう動かせるか」をラベルの脇に示す。選択前は薄く出して
+   「ここは掴める」ことに気付きやすくし、選択中ははっきり見せる */
+.param-field label::after {
+  margin-left: 4px;
+  font-weight: 700;
+  opacity: 0.55; /* 選択中は下の .active label で文字色ごと濃くなる */
+}
+.param-field.active label::after {
+  opacity: 1;
+}
+.param-field--rp label::after {
+  content: "\2195"; /* 上下矢印 = 半径方向に伸び縮み */
+}
+.param-field--beta label::after {
+  content: "\21BB"; /* 回転矢印 = B面内で回す */
+}
+.param-field--vinf label::after {
+  content: "\2195"; /* 上下矢印 = V∞の向きに伸び縮み */
+}
+.param-field--alpha label::after,
+.param-field--delta label::after {
+  content: "\21BB"; /* 回転矢印 = 向きを回す */
+}
+.param-field--orbit_rp label::after,
+.param-field--orbit_ra label::after {
+  content: "\2195"; /* 上下矢印 = 近点/遠点の向きに伸び縮み */
+}
+.param-field--gamma label::after {
+  content: "\21BB"; /* 回転矢印 = 突入点まわりに入射方向を回す */
+}
+.param-field--dv label::after {
+  content: "\2195"; /* 上下矢印 = ΔVの向きに伸び縮み */
+}
+/* rp や β を大文字化すると別の記号に見えてしまうのでそのまま出す */
+.swingby-inputs label {
+  margin-top: 2px;
+  text-transform: none;
+  line-height: 1.2;
+}
+.swingby-inputs input {
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+/* シーケンス種別バッジ */
+.red {
+  display: inline-flex;
+  align-items: center;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.blue {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* ==================================================================
+   Buttons
+   ================================================================== */
+button {
+  font-family: var(--font);
+}
+
+#confirm_time,
+#cancel_time {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 34px;
+  padding: 0 16px;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+#confirm_time {
+  background: var(--accent);
+  color: #ffffff;
+}
+#confirm_time:hover {
+  background: var(--accent-strong);
+}
+#cancel_time {
+  background: var(--surface);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+#cancel_time:hover {
+  background: var(--gray-150);
+  color: var(--text);
+}

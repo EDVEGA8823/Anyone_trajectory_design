@@ -1,4 +1,4 @@
-import { planet_radius, entry_interface_radius } from './trajectory.js';
+import { planet_radius, entry_interface_radius } from '../core/trajectory.js';
 import {
   squareGridGeometry,
   makeLine,

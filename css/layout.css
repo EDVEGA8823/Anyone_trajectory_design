@@ -1,0 +1,407 @@
+/* だれでも軌道設計 — 画面全体の骨組みと、枠 (パネル) の共通の見た目
+
+   css/ は index.html に書いた順で読み込まれる。同じ強さの規則は後勝ちなので、
+   順番を入れ替えたり <link> の並びを変えたりしないこと。 */
+
+/* ==================================================================
+   Page layout
+   ================================================================== */
+#main_area {
+  margin: 0;
+  display: flex;
+  flex-direction: row;
+  height: calc(100vh - var(--header-height));
+}
+
+#graph-panel {
+  position: relative;
+  flex: 1 1 0;
+  /* canvasの幅はJS側で実測値から決めるため、min-width:auto のままだと
+     「canvasが大きい → パネルが縮まない → canvasも縮まない」で固まってしまい、
+     ウィンドウを狭めたときにUIパネル側が潰れる原因になっていた */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* 上から canvas → 統計バー。canvasを上端に置くことで、絶対配置している
+     ラベルの層 (CSS2DRenderer) とのずれが出ない */
+  justify-content: flex-start;
+  align-items: center;
+  /* 下だけ詰める (統計バーの下が空いて見えるのを防ぐ)。
+     js/view/plot.js の CANVAS_PADDING_BOTTOM と揃えること */
+  padding: var(--canvas-padding) var(--canvas-padding) 12px;
+}
+
+/* 数値のまとめは太陽系ビューの下に置く。操作パネル側の縦を空けるため
+   (3Dビューはマウスで触る図なので、そちらに高さを回したい) */
+#graph-panel > .stat-bar {
+  width: 100%;
+  margin-top: 10px;
+  flex: 0 0 auto;
+}
+
+/* 太陽系ビューの上に浮かせる小さな道具ボタン。CSS2DRendererの層(ラベル)が
+   canvasの上に重なるので、それより手前に出す */
+.view-tool {
+  position: absolute;
+  top: calc(var(--canvas-padding) + 10px);
+  right: calc(var(--canvas-padding) + 10px);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+/* display:flex が [hidden] の既定を上書きしてしまうので明示的に消す */
+.view-tool[hidden] {
+  display: none;
+}
+.view-tool:hover {
+  border-color: var(--gray-300);
+  color: var(--text);
+}
+.view-tool.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.view-tool svg {
+  display: block;
+  flex: 0 0 auto;
+}
+.view-tool-label {
+  font-variant-numeric: tabular-nums;
+}
+
+#plot {
+  display: block;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  background: var(--surface);
+}
+
+#UI-panel {
+  flex: 1 1 0;
+  display: flex;
+  gap: 14px;
+  padding: 12px 16px 12px 0;
+  /* 操作パネルが読めなくなるまで潰れないよう下限を設ける。
+     足りない分はグラフ側(min-width:0)から取る */
+  min-width: 440px;
+  overflow-x: auto;
+}
+
+/* ==================================================================
+   Cards / panels
+   ================================================================== */
+.sequence-panel-wrapper {
+  flex: 1 1 0;
+  display: flex;
+  max-width: 1000px;
+  /* B面プレビューを大きく取るため、シーケンス一覧側の下限を詰めている */
+  min-width: 170px;
+  flex-flow: column;
+  gap: 10px;
+}
+
+/* 「ミッションシーケンス」「操作パネル」の見出し。太陽系ビューの下のバーと同じく
+   枠の中に入れて仕切り線で区切る。中身は縦に長くスクロールするので、
+   見出しは上に貼り付けたままにして、どの枠を見ているかが常に分かるようにする。
+   枠の左右の余白 (--panel-pad) の分だけ外側へ広げ、線を枠いっぱいに引く。
+   枠の上の余白は0にしてある (負のmarginで持ち上げると、その分だけ中身が
+   見出しの上へはみ出して見えてしまうため) */
+.panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 calc(-1 * var(--panel-pad));
+  padding: 9px var(--panel-pad);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+/* 見出しの文字。横にボタンを置くと、幅の狭い画面で見出しが2行に折り返して
+   帯の高さが変わってしまうので、折り返さずに詰める */
+.panel-head-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 「自動調整」。見出しの横に置いて、この一覧に対する操作だと分かるようにする。
+   数秒かかることがあるので、走っている間は文字を差し替えて押せなくする */
+.tune-btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+  /* 見出しと並べても入るように詰める。幅の狭い画面では見出しの方が
+     先に省略されるので、こちらは読める大きさを保つ */
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.tune-btn:hover:not(:disabled) {
+  border-color: var(--gray-300);
+  color: var(--text);
+}
+.tune-btn:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.tune-btn.is-busy {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 選択解除ボタン。押せることが伝わるよう普段からうっすら枠を見せておく。
+   絶対配置にして通常の流れから外し、出し入れしても見出しの高さ (=下の線の
+   位置) が変わらないようにする */
+.panel-close {
+  position: absolute;
+  top: 50%;
+  right: var(--panel-pad);
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.panel-close:hover {
+  background: var(--surface-muted);
+  border-color: var(--gray-300);
+  color: var(--text);
+}
+/* 仕切り線は枠の端まで伸ばさず、中身の左右に揃える。
+   (下の帯そのものは枠いっぱいに広げてある。スクロールした中身が
+    見出しの左右から覗かないようにするため) */
+.panel-head::after {
+  content: "";
+  position: absolute;
+  left: var(--panel-pad);
+  right: var(--panel-pad);
+  bottom: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+/* 見出しに「自動調整」が並ぶぶん、すき間を詰めて題字が省略されにくくする */
+.sequence-panel .panel-head {
+  gap: 6px;
+}
+
+.sequence-panel {
+  --panel-pad: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  /* 上下は見出しと一括操作が持つので0 (.panel-head の説明を参照) */
+  padding: 0 var(--panel-pad);
+  overflow-y: auto;
+  z-index: 1;
+  height: 100%;
+}
+/* カードの一覧。見出しとの間の余白はここで持つ */
+.sequence-panel > #sequence {
+  flex: 0 0 auto;
+  padding: 6px 0 0;
+}
+/* 一括操作は枠の下に貼り付ける (カードを選んで下までスクロールしても消えない
+   ように)。下の余白は帯の内側に持たせてある。外側のmarginにすると、貼り付いて
+   いる間だけ余白が無視されて位置が16pxずれるため */
+.panel-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  flex: 0 0 auto;
+  /* 中身が短いときは枠の下端まで下げる */
+  margin: auto calc(-1 * var(--panel-pad)) 0;
+  padding: 0 var(--panel-pad) var(--panel-pad);
+  background: var(--surface);
+}
+
+.right_panel {
+  flex: 2.2 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.bold_box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  margin: 0;
+  min-width: 0;
+}
+
+/* 縦の余裕に合わせてB面プレビューが縮むので、通常はスクロールしない。
+   それでも入り切らない場合の逃げ道として overflow-y は残してある */
+.control-panel {
+  --panel-pad: 10px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  max-width: 1000px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  /* 上は見出しが持つので0 (.panel-head の説明を参照) */
+  padding: 0 var(--panel-pad) var(--panel-pad);
+  overflow-y: auto;
+}
+.control-panel > .box {
+  padding: 8px 10px;
+}
+
+/* 縦長の画面 (タブレットを縦に持つ / ウィンドウを細長くする)。
+   横並びのままだと太陽系ビューが縦に潰れるので、上下に分ける。
+
+     ┌────────────────┐
+     │   太陽系ビュー    │
+     ├────────┬───────┤
+     │ シーケンス │ 操作  │
+     └────────┴───────┘
+
+   下の2枚は左右に並べたまま残す。縦に積むと1枚あたりが低くなりすぎて、
+   どちらもスクロールしないと読めなくなるため。
+   高さは横長のときと同じく画面いっぱいに収め、はみ出しは枠の中で
+   スクロールさせる (ページ全体が伸びると太陽系ビューが上へ流れてしまう) */
+@media (max-aspect-ratio: 1/1) {
+  #main_area {
+    flex-direction: column;
+    height: calc(100vh - var(--header-height));
+  }
+  /* 太陽系ビューは残りを取る。canvasの大きさは js/view/plot.js が
+     ここに割り当てられた高さから決める */
+  #graph-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  /* 下の帯。画面の高さに応じて伸ばすが、低すぎても高すぎても使いにくいので挟む */
+  #UI-panel {
+    flex: 0 0 clamp(240px, 34vh, 420px);
+    min-height: 0;
+    /* 縦長では横幅の下限を外す (440pxだと狭い画面で横スクロールが出る) */
+    min-width: 0;
+    padding: 0 16px 12px;
+  }
+}
+
+/* スマホのように幅が狭いとき。左右に並べると一覧が130px程度まで細くなり、
+   天体名が1文字に潰れてしまうので、一覧の方を横に寝かせて上下3段にする。
+
+     ┌────────────┐
+     │ 太陽系ビュー  │  ← 少し低くする
+     ├────────────┤
+     │ ← シーケンス → │  ← 横に流す帯。カードを左右にスクロール
+     ├────────────┤
+     │  操作パネル   │  ← 残り全部。幅いっぱい使える
+     └────────────┘
+
+   操作パネルは幅を丸ごと使えるので、行の折り返しも素直に収まる */
+@media (max-aspect-ratio: 1/1) and (max-width: 620px) {
+  #UI-panel {
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 8px 8px;
+    /* 太陽系ビューを少し潰して、下の2枚に高さを回す */
+    flex: 0 0 clamp(300px, 52vh, 560px);
+  }
+
+  /* 一覧は帯の高さ (カード1枚ぶん) だけ取る */
+  .sequence-panel-wrapper {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .sequence-panel {
+    --panel-pad: 10px;
+    height: auto;
+    /* 横に流すのは中のカード列だけ。見出しは動かさない */
+    overflow: hidden;
+  }
+  .sequence-panel > #sequence {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px 0 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  /* カードは横に並ぶので、幅は中身ぶんだけ取る */
+  #sequence > .sequence {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 128px;
+    margin: 0;
+  }
+  /* 「+ シーケンスを追加」は、横並びでは文字を出す幅が無い。
+     カードとカードの間の細い「+」にする */
+  #sequence > .add_sequence {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    margin: 0;
+    padding: 0 4px;
+    /* 元の文字 (「+ シーケンスを追加」) を隠して、記号だけ出す */
+    font-size: 0;
+  }
+  #sequence > .add_sequence::before {
+    content: "+";
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* 操作パネルが残りを引き受ける */
+  .right_panel {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
+  }
+}

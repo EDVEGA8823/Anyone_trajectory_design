@@ -73,57 +73,85 @@
 - **lambert-orbit** (`js/lib/lambert_probrem.js`) — ランベール問題ソルバ (Izzo 2015)。
   精度検証の上で3か所を修正済み (`a6fcf2e`)。
   多周回の最短飛行時間を直接求める `lambert_tof_min` を追加した (`trajectory.js` の `lambert_min_tof` が包む)
-- 打上げ能力の表と補間は `pykep` からの移植 (`js/launchers.js`)
+- 打上げ能力の表と補間は `pykep` からの移植 (`js/core/launchers.js`)
 - 小天体データは MPC 由来 (`data/bodies/`、GitHub Actions で月1更新)
 - Google Analytics (gtag.js)
 
 ## ファイル構成
 
+役割ごとにフォルダを分けてある。`js/main.js` だけは index.html が読む入口なので直下に置く。
+
 ```
 index.html              全体のDOM構造 (太陽系ビュー + シーケンス一覧 + 操作パネル)
-css/elements.css        スタイル定義 (縦長・スマホ幅のレイアウトもここ)
 PROJECT_OVERVIEW.md     このファイル
 
+css/                    index.html に書いた順で読み込む。並べ替えると後勝ちが崩れる
+  tokens.css              色・寸法・影などの土台となる変数
+  topbar.css              画面上部のバーとメニュー
+  layout.css              画面全体の骨組みと、枠 (パネル) の共通の見た目
+  stat.css                ミッションの成績バー
+  sequence.css            ミッションシーケンスの一覧
+  panel.css               操作パネルの中身 (入力欄・読み値・3Dプレビュー・ボタン)
+  overlay.css             太陽系ビューに重なるもの (天体ラベル・ポークチョップ図)
+  modal.css               画面を覆って出るもの (確認ダイアログ・天体を追加する画面)
+  fold.css                折りたためる箱と「高度な情報」
+
 js/
-  state.js              全体状態 (State, PlotState) と節の種別 (Sequence_Type)
-  trajectory.js         軌道力学の計算コアと Mission クラス
-  event.js              入力の受け口 (一覧の操作、日時、3Dビューのドラッグ)
-  main.js               UIのオーケストレーション。操作パネル各節の描画もここ
-  history.js            元に戻す / やり直す (設計を丸ごとスナップショット)
-  mission_file.js       ミッションの保存と読込 (JSON)
-  share_link.js         共有URLの生成・復元と、Xへの投稿
-  export_image.js       設計を1枚のPNGにする (太陽系ビュー + 成績 + シーケンス)
-  topbar.js             画面上部のバーとメニュー、通知トースト
-  dialog.js             はい/いいえを尋ねる小さな画面
+  main.js               入口。UIのオーケストレーションと操作パネル各節の描画
 
-  plot.js               太陽系ビュー (three.js)。軸・グリッド・天体・軌道線・カメラ
-  orbit_pick.js         太陽系ビューで軌道の線を掴むための当たり判定
-  view3d.js             操作パネルの小さな3Dビューの共通部品
-  vector_view.js        「大きさ + 2つの角度」のベクトルをマウスで操るひな型
-  vinf_view.js          天体を離れる瞬間の相対速度を見る遠景ビューのひな型
-  launch_view.js          打上げ (vinf_view のひな型を使う)
-  escape_view.js          軌道脱出の遠景 (同上)
-  departure_view.js       再出発 (同上)
-  bplane.js             スイングバイのB面ビュー
-  orbit_view.js         周回軌道投入 / 軌道脱出の近景ビュー
-  entry_view.js         大気圏突入のビュー
-  dsm_view.js           手動マヌーバのビュー
+  core/                 軌道力学と、その材料になるデータ。画面を知らない層
+    state.js              全体状態 (State, PlotState) と節の種別 (Sequence_Type)
+    trajectory.js         軌道力学の計算コアと Mission クラス
+    bodies.js             小天体データの読み込み (data/bodies/)
+    small_bodies.js       取り込んだ小天体の置き場
+    launchers.js          打上げ能力の表と補間 (pykep 移植)
 
-  porkchop.js           ポークチョップ図 (出発日と到着日の総当たり)
-  opt_problem.js        自動調整の定式化 (目的関数・設計変数・範囲)
-  optimize.js           自動調整のソルバ (有限差分の勾配 + Nelder-Mead)
-  launchers.js          打上げ能力の表と補間 (pykep 移植)
-  bodies.js             小天体データの読み込み
-  small_bodies.js       取り込んだ小天体の置き場
-  body_picker.js        天体を追加する画面
-  lib/math.js           外部ライブラリ
-  lib/lambert_probrem.js 外部ライブラリ (ランベール問題ソルバ)
+  view/                 太陽系ビュー (画面左の大きい方)
+    plot.js               three.js のシーン。軸・グリッド・天体・軌道線・カメラ
+    orbit_pick.js         軌道の線を掴むための当たり判定
+
+  panel/                操作パネルに並ぶ小さな3Dビュー。節ごとに独立したシーン
+    view3d.js             共通部品 (正方形キャンバス・ハンドル・カメラ)
+    vector_view.js        「大きさ + 2つの角度」のベクトルをマウスで操るひな型
+    vinf_view.js          天体を離れる瞬間の相対速度を見る遠景ビューのひな型
+    launch_view.js          打上げ         (vinf_view を使う)
+    escape_view.js          軌道脱出の遠景 (同上)
+    departure_view.js       再出発         (同上)
+    bplane.js             スイングバイのB面ビュー
+    orbit_view.js         周回軌道投入 / 軌道脱出の近景ビュー
+    entry_view.js         大気圏突入のビュー
+    dsm_view.js           手動マヌーバのビュー
+
+  ui/                   画面部品と入力の受け口
+    event.js              一覧の操作、日時、太陽系ビューのドラッグ
+    topbar.js             上部のバーとメニュー、通知トースト
+    dialog.js             はい/いいえを尋ねる小さな画面
+    body_picker.js        天体を追加する画面
+    porkchop.js           ポークチョップ図 (出発日と到着日の総当たり)
+
+  mission/              設計そのものを出し入れするもの
+    mission_file.js       保存と読込 (JSON)
+    history.js            元に戻す / やり直す
+    share_link.js         共有URLの生成・復元と、Xへの投稿
+    export_image.js       設計を1枚のPNGにする
+
+  opt/                  自動調整
+    opt_problem.js        定式化 (目的関数・設計変数・範囲)
+    optimize.js           ソルバ (有限差分の勾配 + Nelder-Mead)
+
+  lib/                  外部ライブラリ。index.html が古典スクリプトとして読む
+    math.js
+    lambert_probrem.js
 
 data/bodies/            小天体の軌道要素 (index.json + まとまりごとのJSON)。README.md に仕様
 tools/build_bodies.py   MPC の配布ファイルから data/bodies/ を作る
 tools/check_bodies.py   作ったデータの検査
 textures/hipp8.jpg      (現状未使用)
 ```
+
+依存の向きは `core` → `view`/`panel` → `ui`/`mission`/`opt` → `main` を基本とする。
+例外は `ui/event.js` と `mission/mission_file.js` の2つで、操作や読込のあとに画面全体を
+描き直させるために `main.js` を逆に呼んでいる (`from '../main.js'`)。
 
 ## 主要な仕組み
 

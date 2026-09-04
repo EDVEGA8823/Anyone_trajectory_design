@@ -57,7 +57,7 @@
  *   天体の並び・種別          … ミッションの骨格そのもので、設計変数ではない
  */
 
-import { Sequence_Type } from './state.js';
+import { Sequence_Type } from '../core/state.js';
 import {
   Mission,
   MIN_NODE_GAP,
@@ -67,8 +67,8 @@ import {
   final_mass,
   SPACECRAFT_ISP,
   G0,
-} from './trajectory.js';
-import { launcher_mass, launch_declination, launcher_list } from './launchers.js';
+} from '../core/trajectory.js';
+import { launcher_mass, launch_declination, launcher_list } from '../core/launchers.js';
 
 const TWO_PI = 2 * Math.PI;
 

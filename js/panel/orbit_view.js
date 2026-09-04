@@ -1,4 +1,4 @@
-import { planet_radius, planet_mu, min_flyby_rp } from './trajectory.js';
+import { planet_radius, planet_mu, min_flyby_rp } from '../core/trajectory.js';
 import {
   makeLine,
   makeDashedLine,

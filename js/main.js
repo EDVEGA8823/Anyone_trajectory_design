@@ -1,4 +1,4 @@
-import { State, Sequence_Type, PlotState } from './state.js';
+import { State, Sequence_Type, PlotState } from './core/state.js';
 import {
   get_planet_elements,
   get_orbit,
@@ -10,7 +10,7 @@ import {
   planet_radius,
   SPACECRAFT_ISP,
   final_mass,
-} from './trajectory.js';
+} from './core/trajectory.js';
 import {
   initPlot,
   update_planets,
@@ -35,45 +35,45 @@ import {
   updateNodeMarkers,
   getZScale,
   setZScale,
-} from './plot.js';
-import { initEvents, Update_time, delete_sequence, delete_checked, updateAfterAdd } from './event.js';
-import { launcher_list, launcher_mass, launch_declination } from './launchers.js';
-import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './bplane.js';
+} from './view/plot.js';
+import { initEvents, Update_time, delete_sequence, delete_checked, updateAfterAdd } from './ui/event.js';
+import { launcher_list, launcher_mass, launch_declination } from './core/launchers.js';
+import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './panel/bplane.js';
 import {
   initLaunchView,
   updateLaunchView,
   setLaunchViewHandlers,
   setLaunchActiveHandle,
   invalidateLaunchView,
-} from './launch_view.js';
+} from './panel/launch_view.js';
 import {
   initOrbitView,
   updateOrbitView,
   setOrbitViewHandlers,
   setOrbitActiveHandle,
   invalidateOrbitView,
-} from './orbit_view.js';
+} from './panel/orbit_view.js';
 import {
   initEscapeView,
   updateEscapeView,
   invalidateEscapeView,
   setEscapeViewHandlers,
   setEscapeActiveHandle,
-} from './escape_view.js';
+} from './panel/escape_view.js';
 import {
   initDepartureView,
   updateDepartureView,
   invalidateDepartureView,
   setDepartureViewHandlers,
   setDepartureActiveHandle,
-} from './departure_view.js';
+} from './panel/departure_view.js';
 import {
   initDsmView,
   updateDsmView,
   setDsmViewHandlers,
   setDsmActiveHandle,
   invalidateDsmView,
-} from './dsm_view.js';
+} from './panel/dsm_view.js';
 import {
   openPorkchop,
   updatePorkchopTarget,
@@ -82,7 +82,7 @@ import {
   setPorkchopHandlers,
   porkchopNote,
   closePorkchop,
-} from './porkchop.js';
+} from './ui/porkchop.js';
 import {
   initTopbar,
   setTopbarHandlers,
@@ -90,8 +90,8 @@ import {
   setHistoryHandlers,
   setHistoryState,
   setMissionDirty,
-} from './topbar.js';
-import { initHistory, resetHistory, undoMission, redoMission, recordHistory } from './history.js';
+} from './ui/topbar.js';
+import { initHistory, resetHistory, undoMission, redoMission, recordHistory } from './mission/history.js';
 import {
   saveMissionFile,
   openMissionFile,
@@ -102,11 +102,11 @@ import {
   missionData,
   applyMissionData,
   DEFAULT_NAME,
-} from './mission_file.js';
-import { tuneMission } from './optimize.js';
-import { exportMissionImage, setExportViewHooks } from './export_image.js';
-import { copyShareLink, shareOnX, initShareLink } from './share_link.js';
-import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
+} from './mission/mission_file.js';
+import { tuneMission } from './opt/optimize.js';
+import { exportMissionImage, setExportViewHooks } from './mission/export_image.js';
+import { copyShareLink, shareOnX, initShareLink } from './mission/share_link.js';
+import { openBodyPicker, setBodyPickerHandlers } from './ui/body_picker.js';
 import {
   addSmallBody,
   smallBody,
@@ -114,17 +114,17 @@ import {
   smallBodiesWithout,
   resetSmallBodies,
   smallBodyBase,
-} from './small_bodies.js';
-import { bodyLabel } from './bodies.js';
-import { notify, setMissionName, missionName } from './topbar.js';
-import { confirmDialog } from './dialog.js';
+} from './core/small_bodies.js';
+import { bodyLabel } from './core/bodies.js';
+import { notify, setMissionName, missionName } from './ui/topbar.js';
+import { confirmDialog } from './ui/dialog.js';
 import {
   initEntryView,
   updateEntryView,
   setEntryViewHandlers,
   setEntryActiveHandle,
   invalidateEntryView,
-} from './entry_view.js';
+} from './panel/entry_view.js';
 
 /* ==================================================================
    画面のあちこちで使う呼び名と説明

@@ -32,9 +32,9 @@ import {
   DEFAULT_NAME,
 } from './mission_file.js';
 import { resetHistory } from './history.js';
-import { notify } from './topbar.js';
+import { notify } from '../ui/topbar.js';
 import { renderMissionImage } from './export_image.js';
-import { confirmDialog } from './dialog.js';
+import { confirmDialog } from '../ui/dialog.js';
 
 // フラグメントに置く名前。数字は形式の版で、serialize() の形が変わっても
 // 古いリンクを見分けられるようにしておく

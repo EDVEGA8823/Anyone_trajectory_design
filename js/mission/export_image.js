@@ -33,10 +33,10 @@ import {
   invalidate,
   drawingPos,
   updateNodeMarkers,
-} from './plot.js';
-import { State, PlotState, Sequence_Type } from './state.js';
-import { JulianToDate } from './trajectory.js';
-import { notify } from './topbar.js';
+} from '../view/plot.js';
+import { State, PlotState, Sequence_Type } from '../core/state.js';
+import { JulianToDate } from '../core/trajectory.js';
+import { notify } from '../ui/topbar.js';
 
 /**
  * 天体の軌道と丸の出し入れは main.js が持っている (天体名の表もあちら側に

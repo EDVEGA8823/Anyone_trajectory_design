@@ -1,4 +1,4 @@
-import { MU_SUN, get_planet_elements, get_planets_pos, JulianToDate, lambert_min_tof } from './trajectory.js';
+import { MU_SUN, get_planet_elements, get_planets_pos, JulianToDate, lambert_min_tof } from '../core/trajectory.js';
 
 // ポークチョップ図。
 //

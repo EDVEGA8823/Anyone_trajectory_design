@@ -1,0 +1,118 @@
+/* だれでも軌道設計 — 折りたためる箱と「高度な情報」
+
+   css/ は index.html に書いた順で読み込まれる。同じ強さの規則は後勝ちなので、
+   順番を入れ替えたり <link> の並びを変えたりしないこと。 */
+
+/* ==================================================================
+   折りたためる箱
+   ==================================================================
+   分かりにくい設定 (多周回など) は既定で畳んでおき、見出しを押すと開く。
+   畳んだ状態でも、見出しの右のバッジで今の設定が読めるようにする。 */
+/* 見出しの右に操作を並べたい箱では、見出しは行の中に入れ子になる。
+   直の子とは限らないので子孫で当てる (幅だけは直の子のときの見た目を保つ) */
+.fold .fold-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fold > .fold-head {
+  width: 100%;
+}
+.fold .fold-head label {
+  cursor: pointer;
+}
+.fold > .fold-head .orbit-badge {
+  margin-left: auto;
+}
+/* 周回数はボタンの選択状態で読めるので、バッジは注意のときだけ出す */
+#leg_badge:empty {
+  display: none;
+}
+.fold-mark {
+  display: flex;
+  align-items: center;
+  color: var(--gray-400);
+  transition: transform 0.15s ease;
+}
+.fold:not(.closed) .fold-head .fold-mark {
+  transform: rotate(90deg);
+}
+.fold.closed > .fold-body {
+  display: none;
+}
+.fold > .fold-body {
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* ==================================================================
+   高度な情報
+   ==================================================================
+   操作パネルの読み取りのうち、設計を決めるのに要らないものを畳んでおく箱。
+   畳んだときの見出しは、周回数の箱 (.fold) と同じ小さな三角にして、
+   「押すと開く」ことが一目で分かるように見た目を揃える。 */
+.adv {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* 上の読み取りと地続きに見えないよう、細い線で区切る */
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--gray-200);
+}
+/* 値の箱を横に並べる欄 (マヌーバ・最終軌道は同じ .maneuver-readout) では
+   行の幅いっぱいを取る */
+.maneuver-readout > .adv {
+  flex: 1 0 100%;
+}
+.adv-head {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+.adv-head:hover {
+  color: var(--text);
+}
+.adv:not(.closed) .adv-head .fold-mark {
+  transform: rotate(90deg);
+}
+.adv.closed > .adv-body {
+  display: none;
+}
+.adv-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* 値の箱を畳む版 (マヌーバ・最終軌道) */
+.adv-tiles {
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+/* 読み取りを横に並べる版 (縦を詰めたいとき) */
+.swingby-readout--inline {
+  flex-flow: row wrap;
+  column-gap: 16px;
+  row-gap: 2px;
+}
+.swingby-readout--inline .swingby-readout-row {
+  width: auto;
+}

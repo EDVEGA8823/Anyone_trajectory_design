@@ -1,4 +1,4 @@
-import { launch_frame } from './trajectory.js';
+import { launch_frame } from '../core/trajectory.js';
 import { createVectorView } from './vector_view.js';
 
 // 打上げ操作パネル用の小さな3Dビュー。

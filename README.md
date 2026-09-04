@@ -7,4 +7,4 @@ https://edvega8823.github.io/Anyone_trajectory_design/
     - three.js | Copyright © 2010-2024 three.js authors | github.com/mrdoob/three.js
 
 - 移植したデータ
-    - js/launchers.js の打上げ能力の表と補間は pykep (pykep/trajopt/_launchers.py) の移植 | Copyright (c) 2023-2026 Dario Izzo / Advanced Concepts Team, ESA | MPL-2.0 | github.com/esa/pykep
+    - js/core/launchers.js の打上げ能力の表と補間は pykep (pykep/trajopt/_launchers.py) の移植 | Copyright (c) 2023-2026 Dario Izzo / Advanced Concepts Team, ESA | MPL-2.0 | github.com/esa/pykep

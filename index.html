@@ -5,7 +5,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/elements.css" />
+  <!-- 読み込む順に意味がある。同じ強さの規則は後に書いたほうが勝つので、
+       並べ替えると見た目が変わる (メディアクエリの上書きが特に効く) -->
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/topbar.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/stat.css" />
+  <link rel="stylesheet" href="css/sequence.css" />
+  <link rel="stylesheet" href="css/panel.css" />
+  <link rel="stylesheet" href="css/overlay.css" />
+  <link rel="stylesheet" href="css/modal.css" />
+  <link rel="stylesheet" href="css/fold.css" />
   <script src="https://unpkg.com/three@0.142.0/build/three.min.js"></script>
   <script src="https://unpkg.com/three@0.142.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://unpkg.com/three@0.142.0/examples/js/renderers/CSS2DRenderer.js"></script>
@@ -47,7 +57,7 @@
     <!-- 保存していない変更があることの目印。名前のすぐ隣に出す -->
     <span class="topbar-dirty" id="mission_dirty" aria-hidden="true"
       title="保存していない変更があります"></span>
-    <!-- 元に戻す / やり直す。中身は js/topbar.js が入れる -->
+    <!-- 元に戻す / やり直す。中身は js/ui/topbar.js が入れる -->
     <div class="topbar-history" id="topbar_history"></div>
     <div class="topbar-actions" id="topbar_actions"></div>
   </header>
