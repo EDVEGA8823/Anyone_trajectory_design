@@ -93,31 +93,75 @@ def jupiter():
 
 
 def ryugu():
-    """④ はやぶさ2風 小惑星ランデブー"""
-    return [
+    """④ はやぶさ2風 小惑星ランデブー (実際の日付、1年同期のΔVEGA)"""
+    import os as _os
+    revs = _os.environ.get("REVS", "2")
+    steps = [
         ("リュウグウを天体の一覧に追加する", "__D.addBody('popular','Ryugu')", None, None),
         ("シーケンスを3つ用意する", "__D.add(3)", None, None),
         ("2番目を地球のスイングバイに",
          "(async()=>{await __D.pick(1); await __D.body('地球'); await __D.type('スイングバイ');})()", None, None),
         ("3番目をリュウグウのランデブーに",
          "(async()=>{await __D.pick(2); await __D.body('Ryugu'); await __D.type('ランデブー');})()", None, None),
-        ("日付を置く",
-         "__D.dates(['2014-12-03','2016-12-17','2018-03-12'])", "ryugu-auto", None),
+        ("はやぶさ2の実際の日付に",
+         "__D.dates(['2014-12-03','2015-12-03','2018-06-27'])", "ryugu-auto", None),
         ("シーケンス一覧", "__D.deselect()", "ryugu-types", ".sequence-panel"),
         ("地球→地球は自動では解けない", "__D.pick(0)", "ryugu-auto-panel", ".control-panel"),
         ("打上げを手動モードにする",
          "(async()=>{await __D.pick(0); await __D.mode(false);})()", None, None),
-        ("噴射の日付を1年後 (遠日点) に",
-         "__D.dates(['2014-12-03','2015-12-15',undefined,undefined])", None, None),
-        ("打上げの向きと速さを置く",
-         "(async()=>{await __D.pick(0); await __D.field('脱出速度', 4.7); await __D.field('方位角', 0); await __D.field('仰角', 0);})()",
-         None, None),
-        ("自動調整で詰める", "__D.tune()", "ryugu-tuned", None),
-        ("噴射の節 (0 m/s で済む)", "__D.pick(1)", "ryugu-dsm", ".control-panel"),
-        ("地球スイングバイの節", "__D.pick(2)", "ryugu-flyby", ".control-panel"),
-        ("ランデブーの節", "__D.pick(3)", "ryugu-rendezvous", ".control-panel"),
-        ("全体", "__D.deselect()", "ryugu-final", None),
+        ("噴射の日付を3か月後に",
+         "__D.dates(['2014-12-03','2015-03-05',undefined,undefined])", None, None),
+        ("打上げの向きと速さを置く (1年で地球に戻る値)",
+         "(async()=>{await __D.pick(0); await __D.field('脱出速度', 4.0); await __D.field('方位角', 94); await __D.field('仰角', 0);})()",
+         "ryugu-set", ".control-panel"),
+        ("直行のままのランデブー", "__D.pick(3)", "ryugu-direct-leg", ".control-panel"),
+    ]
+    if revs != "0":
+        steps += [
+            ("リュウグウまでの区間を%s周回にする" % revs, "__D.revs(2, %s)" % revs, None, None),
+            ("区間の周回数の欄", "(async()=>{await __D.pick(2); document.getElementById('leg_fold').click();})()",
+             "ryugu-revs", ".control-panel"),
+            ("ランデブーの節", "__D.pick(3)", "ryugu-rendezvous", ".control-panel"),
+            ("噴射の節", "__D.pick(1)", "ryugu-dsm", ".control-panel"),
+            ("地球スイングバイの節", "__D.pick(2)", "ryugu-flyby", ".control-panel"),
+            ("全体", "__D.deselect()", "ryugu-final", None),
+        ]
+    return steps
+
+
+
+def mercury_direct():
+    """② の前振り: 金星を使わずに水星へ直行してみる"""
+    return [
+        ("シーケンスを2つ用意する", "__D.add(2)", None, None),
+        ("2番目を水星の周回軌道投入に",
+         "(async()=>{await __D.pick(1); await __D.body('水星'); await __D.type('周回軌道投入');})()", None, None),
+        ("いちばん安く行ける日付にする",
+         "__D.dates(['1973-12-13','1974-03-23'])", "mercury-direct", None),
+        ("打上げの節", "__D.pick(0)", "mercury-direct-launch", ".control-panel"),
+        ("成績バー", "__D.deselect()", "mercury-direct-stat", ".stat-bar"),
     ]
 
 
-SCENARIOS = {"basics": basics, "mars": mars, "mercury": mercury, "jupiter": jupiter, "ryugu": ryugu}
+def jupiter_direct():
+    """③ の前振り: 地球スイングバイを使わずに木星へ直行してみる"""
+    return [
+        ("シーケンスを2つ用意する", "__D.add(2)", None, None),
+        ("2番目を木星の周回軌道投入に",
+         "(async()=>{await __D.pick(1); await __D.body('木星'); await __D.type('周回軌道投入');})()", None, None),
+        ("いちばん安く行ける日付にする",
+         "__D.dates(['2011-08-05','2015-06-05'])", "jupiter-direct", None),
+        ("打上げの節", "__D.pick(0)", "jupiter-direct-launch", ".control-panel"),
+        ("成績バー", "__D.deselect()", "jupiter-direct-stat", ".stat-bar"),
+    ]
+
+
+SCENARIOS = {
+    "basics": basics,
+    "mars": mars,
+    "mercury_direct": mercury_direct,
+    "mercury": mercury,
+    "jupiter_direct": jupiter_direct,
+    "jupiter": jupiter,
+    "ryugu": ryugu,
+}

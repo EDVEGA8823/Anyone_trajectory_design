@@ -22,17 +22,18 @@
   <main>
     <h1>④ 小惑星に横づけする</h1>
     <p class="lead">
-      はやぶさ2が向かった小惑星リュウグウへ、地球スイングバイを使って行きます。
-      通り過ぎるのではなく<strong>速度を合わせて並んで進む</strong>ので、惑星に行くのとは勝手が違います。
+      はやぶさ2が向かった小惑星リュウグウへ。実際の打上げ日・地球スイングバイ日・到着日を
+      そのまま入れて再現します。通り過ぎるのではなく<strong>速度を合わせて並んで進む</strong>ので、
+      惑星に行くのとは勝手が違います。
     </p>
 
     <div class="aim">
       <h3>ここで覚えること</h3>
       <ul>
         <li>掲載されていない天体を一覧に追加する</li>
+        <li>1年で地球に戻ってくる軌道 (ΔVEGA / EDVEGA)</li>
+        <li>太陽を何周してから着くかを選ぶ (区間の周回数)</li>
         <li>フライバイとランデブーの違い</li>
-        <li>噴射なしで地球に戻る「共鳴」の軌道</li>
-        <li>小天体はスイングバイに使えない</li>
       </ul>
     </div>
 
@@ -59,12 +60,12 @@
 
     <ol class="steps">
       <li>
-        <p>シーケンスを3つ作ります。</p>
+        <p>シーケンスを3つ作ります。すべてはやぶさ2の実際の日付です。</p>
         <table>
           <tr><th>番号</th><th>種別</th><th>天体</th><th>日付</th></tr>
           <tr><td>1</td><td>打上げ</td><td>地球</td><td>2014/12/03</td></tr>
-          <tr><td>2</td><td>スイングバイ</td><td>地球</td><td>2016/12/17</td></tr>
-          <tr><td>3</td><td>ランデブー</td><td>(162173) Ryugu</td><td>2018/03/12</td></tr>
+          <tr><td>2</td><td>スイングバイ</td><td>地球</td><td>2015/12/03</td></tr>
+          <tr><td>3</td><td>ランデブー</td><td>(162173) Ryugu</td><td>2018/06/27</td></tr>
         </table>
         <figure class="seq">
           <img src="img/ryugu-types.png" alt="リュウグウを含むシーケンス" />
@@ -76,74 +77,130 @@
       </li>
     </ol>
 
+    <figure>
+      <img src="img/ryugu-auto.png" alt="日付を入れた直後" />
+      <figcaption>線は引けますが、総ΔVが 72186 m/s。まともな軌道になっていません。</figcaption>
+    </figure>
+
     <p>
-      打上げ日ははやぶさ2の実際の日付です。地球スイングバイは実機が2015年12月 (打上げの1年後) でしたが、
-      ここでは<strong>2年後</strong>にしています。理由は後で説明します。
+      打上げのちょうど<strong>1年後</strong>に地球へ戻ってくる、という並びです。
+      チュートリアル③のJunoは2年でしたが、はやぶさ2は1年で戻りました。
     </p>
 
-    <h2>また地球から地球</h2>
+    <h2>1年で戻るということ</h2>
     <figure class="panel">
       <img src="img/ryugu-auto-panel.png" alt="自動モードでは解けない" />
-      <figcaption>チュートリアル③と同じ壁です。地球から地球へは自動では解けません。</figcaption>
+      <figcaption>脱出速度が 0.015 km/s。地球から出ていないことになっています。</figcaption>
     </figure>
 
+    <p>
+      チュートリアル③と同じ壁です。出発点と到着点が同じ場所なので、
+      自動モードは「その場から動かない」という答えを返してきます。
+    </p>
     <p>
       同じ手を使います。打上げの節を<strong>手動</strong>にして、噴射の節を後ろに付け、
-      その日付を1年後 (2015/12/15、遠日点のあたり) に。
-      打上げの脱出速度を 4.7 km/s、角度は両方0にしてから、<strong>自動調整</strong>を押します。
+      その日付を3か月後 (2015/03/05) にします。
     </p>
 
-    <figure>
-      <img src="img/ryugu-tuned.png" alt="自動調整の後" />
-      <figcaption>整った軌道。地球の軌道の少し外側を2年かけて1周し、地球に戻ってきます。</figcaption>
-    </figure>
+    <ol class="steps">
+      <li>
+        <p>
+          打上げの節に戻り、<strong>脱出速度 4.0 km/s</strong>、<strong>方位角 α = 94度</strong>、仰角 δ = 0 を入れます。
+        </p>
+        <figure class="panel">
+          <img src="img/ryugu-set.png" alt="1年で戻る打上げの設定" />
+          <figcaption>α 94度 — 地球が進む向きから、ほぼ真横に飛び出します。</figcaption>
+        </figure>
+      </li>
+    </ol>
 
-    <h2>噴射が 0 になる</h2>
-    <figure class="panel">
-      <img src="img/ryugu-dsm.png" alt="噴射の節が0 m/s" />
-      <figcaption>ΔV 0.0 m/s。噴射の節はあるのに、何も噴いていません。</figcaption>
-    </figure>
-
-    <p>
-      チュートリアル③のJunoでは662 m/s必要だった深宇宙の噴射が、ここでは<strong>0</strong>です。
-      種明かしは打上げの脱出速度 5.0 km/s にあります。
-      この速さで地球を出ると、探査機の公転周期がちょうど<strong>2年</strong>になります。
-      2年後、探査機が1周して戻ってきたとき、地球も2周して同じ場所にいる。
-      何もしなくても再会できるのです。
-    </p>
-
-    <p>
-      チュートリアル②でマリナー10号が水星と会った仕組みと同じ、<strong>共鳴</strong>です。
-      軌道の周期を天体の周期の整数倍にすると、燃料を使わずに再会できます。
-    </p>
-
-    <div class="note real">
-      <strong>実機が1年で戻った理由</strong>
-      はやぶさ2の地球スイングバイは打上げの<strong>1年後</strong>でした。
-      1年で戻る軌道は打上げの脱出速度がもっと小さくて済むので、打ち上げられる質量が増えます。
-      その代わり、そのままでは地球に戻ってきたときの速さが足りません。
-      そこではやぶさ2はイオンエンジンで少しずつ加速し、戻ってきたときの速さを育てました。
-      これがEDVEGA (Electric Delta-V Earth Gravity Assist) で、日本が実証した手法です。
-      この道具は連続噴射を扱えないので、噴射なしで成立する2年の共鳴を使いました。
+    <div class="note">
+      <strong>なぜ真横なのか</strong>
+      1年後に地球と同じ場所へ戻るには、探査機の公転周期がちょうど1年でなければなりません。
+      公転周期は軌道の大きさ (=速さの大きさ) だけで決まるので、
+      <strong>地球と同じ速さのまま、向きだけを変えて出る</strong>必要があります。
+      それが「ほぼ真横」の意味です。α = 0 (前向き) では速くなりすぎて、1年では戻ってきません。
+      軌道の形だけが地球と変わり、周期は同じ。だから1年後に同じ場所で再会できます。
     </div>
 
-    <h2>スイングバイとランデブー</h2>
-    <figure class="panel">
-      <img src="img/ryugu-flyby.png" alt="地球スイングバイの読み値" />
-      <figcaption>地球スイングバイ。近点ΔV 0、噴射なしで58度曲げています。</figcaption>
-    </figure>
-
+    <h2>直行では届かない</h2>
     <p>
-      地球のそばを通ることで軌道が曲げられ、リュウグウの軌道に届くようになります。ここも噴射は0です。
+      地球スイングバイまではつながりました。では、その先のリュウグウは。
+      3番目の節 (ランデブー) を選んでみてください。
     </p>
 
     <figure class="panel">
-      <img src="img/ryugu-rendezvous.png" alt="ランデブーの読み値" />
-      <figcaption>ランデブー。到着ΔV 687 m/s。「この先 天体と一緒に進む」。</figcaption>
+      <img src="img/ryugu-direct-leg.png" alt="直行のままのランデブー" />
+      <figcaption>到着ΔV 41867 m/s。桁が違います。</figcaption>
     </figure>
 
     <p>
-      最後がランデブーです。<strong>到着ΔV 687 m/s</strong> は、リュウグウに速度を合わせて
+      <strong>41867 m/s</strong>。総ΔVは84 km/sを超え、残る質量は0です。まったく話になりません。
+    </p>
+    <p>
+      理由は、地球を出てからリュウグウに着くまでの<strong>937日 (2年7か月) という長さ</strong>にあります。
+      この道具は既定で「太陽をまわらずに直接向かう」軌道を解きます。
+      2年7か月かけてまっすぐ向かう、という軌道は、いったん太陽系のはるか外まで出て
+      戻ってくるような無茶なものになってしまうのです。
+    </p>
+
+    <h2>太陽を2周してから着く</h2>
+    <p>
+      本当のはやぶさ2は、この2年7か月のあいだ<strong>太陽のまわりを2周</strong>しています。
+      操作パネルのいちばん下、<strong>「区間の周回数」</strong>を開いて、<strong>2周</strong>を選んでください。
+    </p>
+
+    <figure class="panel">
+      <img src="img/ryugu-revs.png" alt="区間の周回数を2周にする" />
+      <figcaption>
+        同じ2点を同じ日数で結ぶ軌道でも、途中で太陽を何周するかによってまったく別の軌道になります。
+      </figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="img/ryugu-rendezvous.png" alt="2周にした後のランデブー" />
+      <figcaption>到着ΔV 780 m/s。41867 から 780 へ、50分の1以下になりました。</figcaption>
+    </figure>
+
+    <p>
+      <strong>41867 → 780 m/s</strong>。日付は1日も変えていません。
+      変えたのは「途中で太陽を何周するか」という、それだけです。
+    </p>
+
+    <div class="note">
+      <strong>周回数はどう決まるか</strong>
+      周回数ごとに、成立するのに必要な最短の飛行時間が決まっています。
+      短すぎる区間では多周回の解が存在せず、ボタンが押せません
+      (カーソルを乗せると「何日以上必要か」が出ます)。
+      逆に、区間が長いのに直行のままだと、この例のようにとんでもない軌道になります。
+      <strong>長い区間を見たら、まず周回数を疑ってください。</strong>
+    </div>
+
+    <h2>噴射とスイングバイを読む</h2>
+    <figure class="panel">
+      <img src="img/ryugu-dsm.png" alt="噴射の節" />
+      <figcaption>深宇宙での噴射は 41 m/s。ごくわずかです。</figcaption>
+    </figure>
+
+    <p>
+      噴射の節を見ると <strong>41 m/s</strong>。地球に戻ってくるときの速さを微調整しているだけです。
+      この「戻ってくるときの速さを噴射で作る」のがΔVEGAで、
+      はやぶさ2はこれをイオンエンジンでやりました (EDVEGA)。
+    </p>
+
+    <figure class="panel">
+      <img src="img/ryugu-flyby.png" alt="地球スイングバイの節" />
+      <figcaption>地球スイングバイ。近点ΔV 7.5 m/s — ほぼ重力だけで63度曲げています。</figcaption>
+    </figure>
+
+    <p>
+      地球のそばを高度16000 kmで通り、63度曲げられて、リュウグウの軌道へ向かいます。
+      近点ΔVは7.5 m/s。ほとんど<strong>重力だけ</strong>です。
+    </p>
+
+    <h2>ランデブーとフライバイ</h2>
+    <p>
+      最後がランデブーです。<strong>到着ΔV 780 m/s</strong> は、リュウグウに速度を合わせて
       並んで進むために要る噴射です。ここを<strong>フライバイ</strong>に変えてみてください。
       ΔVは0になります — 通り過ぎるだけなら、何もしなくていいのです。
     </p>
@@ -162,13 +219,22 @@
 
     <table>
       <tr><th>項目</th><th>この設計</th><th>実際のはやぶさ2</th></tr>
-      <tr><td>打上げ</td><td class="num">2014/12/04</td><td class="num">2014/12/03</td></tr>
-      <tr><td>打上げエネルギー C3</td><td class="num">25.2 km²/s²</td><td class="num">22.4 km²/s²</td></tr>
-      <tr><td>地球スイングバイ</td><td class="num">2016/12/03</td><td class="num">2015/12/03</td></tr>
-      <tr><td>リュウグウ到着</td><td class="num">2018/04/23</td><td class="num">2018/06/27</td></tr>
-      <tr><td>深宇宙での噴射</td><td class="num">0 m/s (2年共鳴)</td><td class="num">イオンエンジンで約1 km/s</td></tr>
-      <tr><td>総ΔV</td><td class="num">688 m/s</td><td class="num">—</td></tr>
+      <tr><td>打上げ</td><td class="num">2014/12/03</td><td class="num">2014/12/03</td></tr>
+      <tr><td>打上げエネルギー C3</td><td class="num">16.0 km²/s²</td><td class="num">22.4 km²/s²</td></tr>
+      <tr><td>地球スイングバイ</td><td class="num">2015/12/03</td><td class="num">2015/12/03</td></tr>
+      <tr><td>スイングバイの高度</td><td class="num">約16000 km</td><td class="num">3090 km</td></tr>
+      <tr><td>リュウグウ到着</td><td class="num">2018/06/27</td><td class="num">2018/06/27</td></tr>
+      <tr><td>深宇宙での噴射</td><td class="num">41 m/s (1回)</td><td class="num">イオンエンジンで連続</td></tr>
+      <tr><td>総ΔV</td><td class="num">828 m/s</td><td class="num">—</td></tr>
     </table>
+
+    <div class="note real">
+      <strong>実際のはやぶさ2との違い</strong>
+      実機はイオンエンジンで少しずつ加速しました。この道具は連続噴射を扱えないので、
+      1回の噴射に置き換えています。そのぶん打上げの脱出速度が実機より小さく (C3 16 対 22.4)、
+      スイングバイの高度も違います。
+      骨格 — 1年で地球に戻り、その重力を借りて、太陽を2周してリュウグウに追いつく — は同じです。
+    </div>
 
     <h2>この先</h2>
     <p>
