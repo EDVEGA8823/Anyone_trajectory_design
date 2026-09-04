@@ -29,17 +29,31 @@ def mars():
          "(async()=>{await __D.pick(2); await __D.type('軌道脱出');})()", None, None),
         ("4番目を地球への大気圏突入に",
          "(async()=>{await __D.pick(3); await __D.body('地球'); await __D.type('大気圏突入');})()", None, None),
-        ("日付を入れる",
+        ("日付を入れる (帰りはあとで詰める)",
          "__D.dates(['2026-10-30','2027-09-15','2030-08-25','2031-08-20'])", "mars-all", None),
         ("シーケンス一覧", "__D.deselect()", "mars-types", ".sequence-panel"),
         ("打上げの節", "__D.pick(0)", "mars-launch", ".control-panel"),
+
+        # --- 周回軌道をフォボスの高さに ---
         ("周回軌道投入の節", "__D.pick(1)", "mars-insert", ".control-panel"),
         ("遠点を下げると投入ΔVが増える", "__D.orbit(200, 10000)", "mars-insert2", ".control-panel"),
-        ("元の大きな楕円に戻す", "__D.orbit(200, 64528)", None, None),
-        ("軌道脱出の節", "__D.pick(2)", "mars-escape", ".control-panel"),
+        ("フォボスと同じ高さの円軌道にする", "__D.orbit(5980, 5980)", "mars-phobos", ".control-panel"),
+        ("この時点の成績", "__D.deselect()", "mars-stat-before", ".stat-bar"),
+
+        # --- ポークチョップ図で帰りの窓を探す ---
+        ("軌道脱出の節を選ぶ", "__D.pick(2)", "mars-escape-before", ".control-panel"),
+        ("ポークチョップ図を開く", "__D.porkchop()", "mars-pc", ".pc-window"),
+        ("色を「到着の速さ」に変える", "__D.pcMetric('到着の速さ')", "mars-pc-arrive", ".pc-window"),
+        ("図の◇を押したのと同じ日付にする",
+         "(async()=>{await __D.pcMetric('打上げエネルギー'); await __D.pcClose();"
+         "await __D.dates([undefined,undefined,'2030-11-03','2031-09-19']);})()", None, None),
+        ("軌道脱出の節 (詰めた後)", "__D.pick(2)", "mars-escape", ".control-panel"),
+        ("成績 (詰めた後)", "__D.deselect()", "mars-stat", ".stat-bar"),
+
         ("大気圏突入の節", "__D.pick(3)", "mars-entry", ".control-panel"),
         ("全体", "__D.deselect()", "mars-final", None),
     ]
+
 
 
 def mercury():
@@ -134,10 +148,10 @@ def mercury_direct():
     """② の前振り: 金星を使わずに水星へ直行してみる"""
     return [
         ("シーケンスを2つ用意する", "__D.add(2)", None, None),
-        ("2番目を水星の周回軌道投入に",
-         "(async()=>{await __D.pick(1); await __D.body('水星'); await __D.type('周回軌道投入');})()", None, None),
+        ("2番目を水星のスイングバイに (通過するだけ)",
+         "(async()=>{await __D.pick(1); await __D.body('水星'); await __D.type('スイングバイ');})()", None, None),
         ("いちばん安く行ける日付にする",
-         "__D.dates(['1973-12-13','1974-03-23'])", "mercury-direct", None),
+         "__D.dates(['1973-12-03','1974-03-13'])", "mercury-direct", None),
         ("打上げの節", "__D.pick(0)", "mercury-direct-launch", ".control-panel"),
         ("成績バー", "__D.deselect()", "mercury-direct-stat", ".stat-bar"),
     ]
@@ -147,10 +161,10 @@ def jupiter_direct():
     """③ の前振り: 地球スイングバイを使わずに木星へ直行してみる"""
     return [
         ("シーケンスを2つ用意する", "__D.add(2)", None, None),
-        ("2番目を木星の周回軌道投入に",
-         "(async()=>{await __D.pick(1); await __D.body('木星'); await __D.type('周回軌道投入');})()", None, None),
+        ("2番目を木星のスイングバイに (通過するだけ)",
+         "(async()=>{await __D.pick(1); await __D.body('木星'); await __D.type('スイングバイ');})()", None, None),
         ("いちばん安く行ける日付にする",
-         "__D.dates(['2011-08-05','2015-06-05'])", "jupiter-direct", None),
+         "__D.dates(['2011-07-16','2014-01-22'])", "jupiter-direct", None),
         ("打上げの節", "__D.pick(0)", "jupiter-direct-launch", ".control-panel"),
         ("成績バー", "__D.deselect()", "jupiter-direct-stat", ".stat-bar"),
     ]

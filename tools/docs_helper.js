@@ -98,6 +98,35 @@
       await D.field("遠点高度", ra_alt);
     },
 
+    // ポークチョップ図を開く (いま選んでいる節の「出発日と到着日を探す」)
+    async porkchop() {
+      const btn = [...document.querySelectorAll(".pc-open")].find((b) => !b.disabled && b.offsetParent !== null);
+      if (!btn) throw new Error("「出発日と到着日を探す」が押せない");
+      btn.click();
+      // 計算が終わる (くるくるが消える) まで待つ
+      for (let i = 0; i < 60; i++) {
+        await wait(400);
+        const sp = document.querySelector(".pc-spinner");
+        if (sp && getComputedStyle(sp).display === "none") break;
+      }
+      await wait(1200);
+    },
+
+    // 図の色で塗る量を切り替える
+    async pcMetric(label_part) {
+      const sel = document.querySelector(".pc-window select");
+      const opt = [...sel.options].find((o) => o.textContent.includes(label_part));
+      sel.value = opt.value;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      await wait(1500);
+    },
+
+    async pcClose() {
+      const b = document.querySelector(".pc-close");
+      if (b) b.click();
+      await wait(500);
+    },
+
     // 区間の周回数
     async revs(i, n) {
       State.mission_sequence.set_leg_revs(i, n);
