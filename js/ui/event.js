@@ -56,11 +56,7 @@ export function initEvents() {
   // 通常の時刻変更と同じ経路(Update_time)を通るので、前後の最小間隔でのクリップも
   // チェックしたノードの追従も同じように効く。
   document.querySelectorAll(".date-nudge button").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (State.editing_sequence == -1) return;
-      State.tmp_date += Number(btn.dataset.days);
-      Update_time();
-    });
+    btn.addEventListener("click", () => nudgeTime(Number(btn.dataset.days)));
   });
 
   sequence_panel.addEventListener("click", handleSequencePanelClick);
@@ -137,9 +133,14 @@ export function stepSelection(delta) {
   else selectSequence(cur + delta);
 }
 
-/** 時刻を決まった日数だけずらす (時刻の枠の -10/-1/+1/+10 と同じ) */
+/**
+ * 時刻を決まった日数だけずらす (時刻の枠の -10/-1/+1/+10 と同じ)。
+ *
+ * 何も選んでいないときは、どの節の日付でもなく「太陽系ビューが見ている
+ * 時刻」が動く。惑星をドラッグしたときと同じで、ミッションは変わらない
+ * (相手が -1 のとき Mission.set_date は何もしない)。
+ */
 export function nudgeTime(days) {
-  if (State.editing_sequence == -1) return;
   State.tmp_date += days;
   Update_time();
 }
@@ -152,8 +153,10 @@ export function nudgeTime(days) {
 export function stepEditTarget(delta) {
   const mission = State.mission_sequence;
   if (!mission || mission.count === 0) return;
-  const cur = State.editing_sequence === -1 ? default_edit_target() : State.editing_sequence;
-  const next = Math.min(Math.max((cur === -1 ? 0 : cur) + delta, 0), mission.count - 1);
+  // 相手が居ない (何も選んでいない) ときは、動かす起点が無いので何もしない
+  const cur = State.editing_sequence === -1 ? State.selected_sequence : State.editing_sequence;
+  if (cur === -1) return;
+  const next = Math.min(Math.max(cur + delta, 0), mission.count - 1);
   if (next === State.editing_sequence) return;
   set_edit_target(next);
   update_edit_target_label();
@@ -248,29 +251,17 @@ export function updateAfterAdd() {
   change_sequence_propaty();
   toggle_planet();
   // シーケンスを選び直したら時刻編集の対象も選択中ノードに戻す。
-  // 何も選んでいないときは先頭の節を相手にする (相手が居ないと時刻の欄も
-  // キーボードも黙って効かなくなり、壊れているように見えるため)。
-  // どの節を動かしているかは、時刻の見出しの右の札に出る。
+  // 何も選んでいないときは相手なし (-1) のまま。この状態の時刻は
+  // 「太陽系ビューが見ている時刻」であって、どの節の日付でもない。
   State.editing_sequence = -1;
-  const target = State.selected_sequence != -1 ? State.selected_sequence : default_edit_target();
-  set_edit_target(target);
-  if (target != -1) {
+  set_edit_target(State.selected_sequence);
+  if (State.selected_sequence != -1) {
     Update_time();
     confirm_time.style.visibility = "hidden";
     cancel_time.style.visibility = "hidden";
   }
   update_edit_target_label();
   renderLegEvents();
-}
-
-/**
- * 何も選んでいないときに時刻を動かす相手。
- * 先頭 (打上げ) にしてある。何も選ばずに触るなら、まず動かしたくなるのは
- * 打上げ日だろうという見当と、番号で言い当てられる唯一の節だから。
- */
-function default_edit_target() {
-  const mission = State.mission_sequence;
-  return mission && mission.count > 0 ? 0 : -1;
 }
 
 // 時刻編集の対象ノードを切り替える。
@@ -297,7 +288,10 @@ function update_edit_target_label() {
   if (!edit_target) return;
   const n = State.editing_sequence;
   if (n == -1 || !State.mission_sequence || n >= State.mission_sequence.count) {
-    edit_target.textContent = "";
+    // 節を触っていないときの時刻は、太陽系ビューが見ている時刻。
+    // 日付欄に数字だけ出ていると節の日付と紛らわしいので、そう書いておく
+    const has_nodes = !!State.mission_sequence && State.mission_sequence.count > 0;
+    edit_target.textContent = has_nodes ? "見ている時刻" : "";
     edit_target.classList.remove("other");
     return;
   }
@@ -347,8 +341,11 @@ export function Update_time() {
     })
     .replaceAll("/", "-");
   
-  confirm_time.style.visibility = "Visible";
-  cancel_time.style.visibility = "Visible";
+  // 節の日付を変えているときだけ出す。表示時刻を動かしているだけのときは
+  // 確定するものも取り消すものも無い
+  const editing_node = State.editing_sequence != -1;
+  confirm_time.style.visibility = editing_node ? "Visible" : "hidden";
+  cancel_time.style.visibility = editing_node ? "Visible" : "hidden";
   update_plot();
   // ノードの丸 (と「マヌーバ未実行時の軌道」) を置き直す。
   // これは update_plot ではなく toggle_planet の仕事なので、ここで呼ぶ。
