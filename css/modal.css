@@ -532,3 +532,143 @@
   border-color: var(--border);
   cursor: default;
 }
+
+/* ==================================================================
+   キーボード操作の一覧 (js/ui/shortcuts.js)
+   ==================================================================
+   確認ダイアログと同じ「画面を覆って出るもの」だが、読むための画面なので
+   幅を広く取り、キーと説明を左右に並べる。 */
+.ks-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 72;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(23, 24, 26, 0.42);
+}
+.ks-window {
+  width: min(560px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.ks-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ks-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.ks-close {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ks-close:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+.ks-body {
+  padding: 6px 14px 12px;
+  overflow-y: auto;
+}
+.ks-group {
+  padding: 10px 0 2px;
+}
+.ks-group + .ks-group {
+  border-top: 1px solid var(--border);
+}
+.ks-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  padding-bottom: 4px;
+}
+/* キーは幅を決め打ちにして、説明の頭を縦に揃える (一覧として読めるように) */
+.ks-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 0;
+}
+.ks-keys {
+  flex: 0 0 190px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 4px;
+}
+/* 「Ctrl+Shift+Z」のようなひとまとまりは、途中で折り返さない */
+.ks-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.ks-desc {
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ks-keys kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--text);
+}
+.ks-plus,
+.ks-or {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.ks-or {
+  padding: 0 2px;
+}
+.ks-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* 狭い画面ではキーと説明を上下に積む (168pxを取ると説明が潰れる) */
+@media (max-width: 480px) {
+  .ks-row {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ks-keys {
+    flex: 0 0 auto;
+  }
+}

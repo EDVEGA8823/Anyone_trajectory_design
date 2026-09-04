@@ -36,7 +36,20 @@ import {
   getZScale,
   setZScale,
 } from './view/plot.js';
-import { initEvents, Update_time, delete_sequence, delete_checked, updateAfterAdd } from './ui/event.js';
+import {
+  initEvents,
+  Update_time,
+  delete_sequence,
+  delete_checked,
+  updateAfterAdd,
+  addSequenceAt,
+  stepSelection,
+  stepEditTarget,
+  nudgeTime,
+  confirmTimeEdit,
+  cancelOrDeselect,
+} from './ui/event.js';
+import { installShortcutKeys, setShortcutHandlers, openShortcuts } from './ui/shortcuts.js';
 import { launcher_list, launcher_mass, launch_declination } from './core/launchers.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './panel/bplane.js';
 import {
@@ -3105,6 +3118,7 @@ function boot() {
     export_image: () => exportMissionImage(missionName() || DEFAULT_NAME),
     share_link: copyShareLink,
     share_x: () => shareOnX(missionName() || DEFAULT_NAME),
+    shortcuts: openShortcuts,
   });
   // 画像を作る間だけ「使っている天体だけ」に切り替えてもらう
   // (天体名の表は main.js 側にあるので、export_image.js からは手を借りる)
@@ -3271,35 +3285,73 @@ function init_tune_button() {
   };
 }
 
+/**
+ * キーボードでできることを登録する。
+ *
+ * どのキーが何に当たるかは js/ui/shortcuts.js の一覧が持っていて、ここは
+ * 「その名前で何をするか」だけを渡す。画面に出す説明も同じ一覧から作るので、
+ * 割り当てを変えても説明が古いまま残ることがない。
+ */
 function install_shortcut_keys() {
-  document.addEventListener("keydown", (e) => {
-    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
-    const key = e.key.toLowerCase();
+  setShortcutHandlers({
+    select_prev: () => stepSelection(-1),
+    select_next: () => stepSelection(1),
+    escape: cancelOrDeselect,
 
-    if (key === "s") {
-      e.preventDefault();
-      saveMissionFile();
-      return;
-    }
-    if (key === "o") {
-      e.preventDefault();
-      openMissionFile();
-      return;
-    }
-    if (key !== "z" && key !== "y") return;
+    day_back: () => nudgeTime(-1),
+    day_fwd: () => nudgeTime(1),
+    day_back10: () => nudgeTime(-10),
+    day_fwd10: () => nudgeTime(10),
+    edit_prev: () => stepEditTarget(-1),
+    edit_next: () => stepEditTarget(1),
+    confirm_time: confirmTimeEdit,
 
-    const t = e.target;
-    const typing =
-      t &&
-      (t.tagName === "TEXTAREA" ||
-        (t.tagName === "INPUT" && /^(text|search|url|email|password|number)$/.test(t.type)) ||
-        t.isContentEditable);
-    if (typing) return;
+    add: add_sequence_by_key,
+    delete: delete_selected_by_key,
+    undo: undo_mission,
+    redo: redo_mission,
 
-    e.preventDefault();
-    if (key === "y" || (key === "z" && e.shiftKey)) redo_mission();
-    else undo_mission();
+    tune: () => {
+      // ボタンと同じ道を通す。走っている間の見た目 (「調整中…」) や
+      // 二重起動の防止がボタン側にあるので、それをそのまま使う
+      const btn = document.getElementById("tune_btn");
+      if (btn && !btn.disabled) btn.click();
+    },
+    porkchop: open_porkchop_by_key,
+    z_zoom: toggle_z_zoom,
+    save: saveMissionFile,
+    load: openMissionFile,
   });
+  installShortcutKeys();
+}
+
+// 選んだシーケンスの後ろに足す。選んでいなければ末尾に足す
+function add_sequence_by_key() {
+  const mission = State.mission_sequence;
+  if (!mission) return;
+  const sel = State.selected_sequence;
+  addSequenceAt(sel === -1 ? mission.count : sel + 1);
+}
+
+// 選んだシーケンスを消す。消せない節 (マヌーバなど) は delete_sequence が断る
+function delete_selected_by_key() {
+  if (State.selected_sequence === -1) {
+    notify("消したいシーケンスを選んでください");
+    return;
+  }
+  delete_sequence(State.selected_sequence);
+}
+
+// 選んでいるシーケンスから次の天体までの地図を出す。
+// 出せない節 (次の天体が決まっていない・手動モード) では、その理由を言う
+function open_porkchop_by_key() {
+  const i = State.selected_sequence;
+  const pc = i === -1 ? null : porkchop_target(i);
+  if (!pc) {
+    notify("出発日と到着日の地図は、次の天体が決まっている自動モードの節で出せます");
+    return;
+  }
+  openPorkchop(pc);
 }
 
 /**

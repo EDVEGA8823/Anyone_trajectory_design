@@ -83,15 +83,24 @@ export function initEvents() {
   plot_area.addEventListener("touchmove", handleTouchMove);
 }
 
+/**
+ * シーケンスを1つ足す。
+ * 一覧の「+ シーケンスを追加」からも、キーボード (A) からも、ここを通す。
+ * @param {number} at 何番目に入れるか (末尾なら count)
+ */
+export function addSequenceAt(at) {
+  if (!State.mission_sequence) return;
+  // DSMが同時に挿入されると新しいノードは後ろにずれるので、実際の位置を受け取る
+  State.selected_sequence = State.mission_sequence.add(at, State.tmp_date);
+  const points = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
+  State.arcs.splice(at, 0, createLine(points, 0x0000ff));
+  clear_checks(); // ノードが増えて添字がずれるため
+  updateAfterAdd();
+}
+
 function handleSequencePanelClick(event) {
   if (event.target.className == "add_sequence") {
-    const at = Number(event.target.id);
-    // DSMが同時に挿入されると新しいノードは後ろにずれるので、実際の位置を受け取る
-    State.selected_sequence = State.mission_sequence.add(at, State.tmp_date);
-    const points = Array.from({ length: 100 }, () => new THREE.Vector3(0, 0, 0));
-    State.arcs.splice(at, 0, createLine(points, 0x0000ff));
-    clear_checks(); // ノードが増えて添字がずれるため
-    updateAfterAdd();
+    addSequenceAt(Number(event.target.id));
     return;
   }
 
@@ -102,6 +111,76 @@ function handleSequencePanelClick(event) {
 
   if (isNaN(State.selected_sequence)) State.selected_sequence = -1;
   updateAfterAdd();
+}
+
+/* ==================================================================
+   キーボードからの入口
+   ==================================================================
+   どれも、マウスで同じことをしたときと同じ道を通す。時刻なら Update_time、
+   追加なら addSequenceAt。別経路にすると、前後の最小間隔でのクリップや
+   チェックしたノードの追従といった決まりごとが片方にだけ効かなくなる。 */
+
+/** シーケンスを選ぶ (一覧の枠を押したのと同じ) */
+export function selectSequence(i) {
+  const mission = State.mission_sequence;
+  if (!mission || mission.count === 0) return;
+  State.selected_sequence = Math.min(Math.max(i, 0), mission.count - 1);
+  updateAfterAdd();
+}
+
+/** 選択を1つ動かす。まだ何も選んでいなければ、端から入る */
+export function stepSelection(delta) {
+  const mission = State.mission_sequence;
+  if (!mission || mission.count === 0) return;
+  const cur = State.selected_sequence;
+  if (cur === -1) selectSequence(delta > 0 ? 0 : mission.count - 1);
+  else selectSequence(cur + delta);
+}
+
+/** 時刻を決まった日数だけずらす (時刻の枠の -10/-1/+1/+10 と同じ) */
+export function nudgeTime(days) {
+  if (State.editing_sequence == -1) return;
+  State.tmp_date += days;
+  Update_time();
+}
+
+/**
+ * 時刻を動かす相手を前後のシーケンスに移す。
+ * 選択 (操作パネルに出ている節) とは別に持てる仕組みが元からあり、
+ * 太陽系ビューで別のノードを掴んだときにも同じことが起きている。
+ */
+export function stepEditTarget(delta) {
+  const mission = State.mission_sequence;
+  if (!mission || mission.count === 0) return;
+  const cur = State.editing_sequence === -1 ? State.selected_sequence : State.editing_sequence;
+  const next = Math.min(Math.max((cur === -1 ? 0 : cur) + delta, 0), mission.count - 1);
+  if (next === State.editing_sequence) return;
+  set_edit_target(next);
+  update_edit_target_label();
+  renderLegEvents();
+  update_plot();
+  // 相手を移しただけでは何も変えていないので、確定/取り消しは出さない
+  confirm_time.style.visibility = "hidden";
+  cancel_time.style.visibility = "hidden";
+}
+
+/** 変えた時刻を確定する (「変更」ボタンと同じ) */
+export function confirmTimeEdit() {
+  if (confirm_time.style.visibility === "hidden") return false;
+  confirm_time.click();
+  return true;
+}
+
+/**
+ * Esc。時刻を変えている途中ならそれを取り消し、そうでなければ選択を外す。
+ * 「いま何かの途中なら、まずそれをやめる」という順にしてある。
+ */
+export function cancelOrDeselect() {
+  if (cancel_time && cancel_time.style.visibility !== "hidden") {
+    cancel_time.click();
+    return;
+  }
+  if (State.selected_sequence !== -1) deselectSequence();
 }
 
 // 操作パネルの閉じるボタン。一覧の何もないところを押すのと同じ選択解除だが、
