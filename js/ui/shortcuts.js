@@ -104,6 +104,12 @@ export const SHORTCUT_GROUPS = [
         desc: "選んだシーケンスの後ろに1つ足す (選んでいなければ末尾)",
       },
       {
+        action: "new",
+        keys: [["Ctrl", "Alt", "N"]],
+        combos: [{ key: "n", ctrl: true, alt: true }],
+        desc: "新規作成 (Ctrl+N はブラウザが使うので Alt も足す)",
+      },
+      {
         action: "delete",
         keys: [["Delete"], ["Backspace"]],
         combos: [{ key: "delete" }, { key: "backspace" }],
@@ -195,8 +201,9 @@ function matches(e, c) {
   if (key !== c.key) return false;
   const ctrl = e.ctrlKey || e.metaKey;
   if (!!c.ctrl !== ctrl) return false;
+  if (!!c.alt !== e.altKey) return false;
   if (c.shift !== undefined && c.shift !== e.shiftKey) return false;
-  return !e.altKey;
+  return true;
 }
 
 function findAction(e) {

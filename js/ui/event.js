@@ -152,7 +152,7 @@ export function nudgeTime(days) {
 export function stepEditTarget(delta) {
   const mission = State.mission_sequence;
   if (!mission || mission.count === 0) return;
-  const cur = State.editing_sequence === -1 ? State.selected_sequence : State.editing_sequence;
+  const cur = State.editing_sequence === -1 ? default_edit_target() : State.editing_sequence;
   const next = Math.min(Math.max((cur === -1 ? 0 : cur) + delta, 0), mission.count - 1);
   if (next === State.editing_sequence) return;
   set_edit_target(next);
@@ -247,16 +247,30 @@ export function updateAfterAdd() {
   change_sequence();
   change_sequence_propaty();
   toggle_planet();
-  // シーケンスを選び直したら時刻編集の対象も選択中ノードに戻す
+  // シーケンスを選び直したら時刻編集の対象も選択中ノードに戻す。
+  // 何も選んでいないときは先頭の節を相手にする (相手が居ないと時刻の欄も
+  // キーボードも黙って効かなくなり、壊れているように見えるため)。
+  // どの節を動かしているかは、時刻の見出しの右の札に出る。
   State.editing_sequence = -1;
-  set_edit_target(State.selected_sequence);
-  if (State.selected_sequence != -1) {
+  const target = State.selected_sequence != -1 ? State.selected_sequence : default_edit_target();
+  set_edit_target(target);
+  if (target != -1) {
     Update_time();
     confirm_time.style.visibility = "hidden";
     cancel_time.style.visibility = "hidden";
   }
   update_edit_target_label();
   renderLegEvents();
+}
+
+/**
+ * 何も選んでいないときに時刻を動かす相手。
+ * 先頭 (打上げ) にしてある。何も選ばずに触るなら、まず動かしたくなるのは
+ * 打上げ日だろうという見当と、番号で言い当てられる唯一の節だから。
+ */
+function default_edit_target() {
+  const mission = State.mission_sequence;
+  return mission && mission.count > 0 ? 0 : -1;
 }
 
 // 時刻編集の対象ノードを切り替える。
@@ -336,6 +350,11 @@ export function Update_time() {
   confirm_time.style.visibility = "Visible";
   cancel_time.style.visibility = "Visible";
   update_plot();
+  // ノードの丸 (と「マヌーバ未実行時の軌道」) を置き直す。
+  // これは update_plot ではなく toggle_planet の仕事なので、ここで呼ぶ。
+  // 以前はドラッグの中だけで呼んでいたため、微調整ボタンやキーボードで
+  // 時刻を変えたときに丸だけが元の位置に取り残されていた。
+  toggle_planet();
   // 惑星ドラッグでの時刻変更でも、選択中がスイングバイならB面ビュー/右側の
   // 数値表示をリアルタイムに追従させる (rp・beta・近点ΔVは日付に依存するため)
   updateControlPanelDisplay();
@@ -598,7 +617,5 @@ function Dlag_planet() {
   // 前後のノードの間に収めるクランプは Mission.set_date が行う
   // (Update_time が set_date を呼ぶので、ここでは希望日付を渡すだけでよい)
   State.tmp_date = drag.base_date + dt / 86400;
-  Update_time();
-  // マーカー位置と「マヌーバ未実行時の軌道」をドラッグに追従させる
-  toggle_planet();
+  Update_time(); // 丸の追従も Update_time の中でやる
 }
