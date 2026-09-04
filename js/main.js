@@ -105,6 +105,7 @@ import {
 } from './mission_file.js';
 import { tuneMission } from './optimize.js';
 import { exportMissionImage, setExportViewHooks } from './export_image.js';
+import { copyShareLink, initShareLink } from './share_link.js';
 import { openBodyPicker, setBodyPickerHandlers } from './body_picker.js';
 import {
   addSmallBody,
@@ -2931,6 +2932,7 @@ function boot() {
     add_body: openBodyPicker,
     new: new_mission,
     export_image: () => exportMissionImage(missionName() || DEFAULT_NAME),
+    share_link: copyShareLink,
   });
   // 画像を作る間だけ「使っている天体だけ」に切り替えてもらう
   // (天体名の表は main.js 側にあるので、export_image.js からは手を借りる)
@@ -2955,6 +2957,9 @@ function boot() {
   });
   install_shortcut_keys();
   init_tune_button();
+  // 共有リンクの受け取り。履歴の見張りを始めた後に置く
+  // (リンクから開いた時点を「ここより前へは戻さない」起点にするため)
+  initShareLink();
 
   const leg_fold = document.getElementById("leg_fold");
   if (leg_fold) leg_fold.addEventListener("click", toggle_leg_box);
