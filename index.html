@@ -55,7 +55,7 @@
     <div id="graph-panel">
       <canvas id="plot"></canvas>
       <button type="button" id="z_zoom" class="view-tool"
-        title="Z軸(黄道面からの高さ)を拡大する&#10;太陽系は平たいので、等倍だと軌道の傾きがほとんど読み取れない。&#10;いま見えている軌道のうち最も黄道面から外れている量を基準に、上下だけを引き伸ばす。&#10;目盛りと軸ラベルも一緒に伸びるので、伸ばした状態でも高さは正しく読める。">
+        title="上下方向だけを引き伸ばして、軌道の傾きを見やすくします。&#10;太陽系は平たいので、そのままだと傾きがほとんど分かりません。&#10;目盛りも一緒に伸びるので、高さはそのまま読めます。">
         <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
           <ellipse cx="12" cy="12" rx="9" ry="3.2" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5" />
           <path d="M12 4.5 L12 19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
@@ -71,7 +71,7 @@
           <span>ミッションの成績</span>
           <span class="stat-bar-sub" id="duration_box" title="打上げから最後のシーケンスまでの長さ">期間 <span id="duration">-</span></span>
         </div>
-        <div class="value_box energy-box" title="地球を離れるときの双曲線余剰速度。&#10;ロケットが出せる打上げ質量は、この速度 (の2乗の打上げエネルギー) で決まる。&#10;色の目安: 約3.2km/s未満=楽 / 約5.5km/s未満=普通 / 約7.7km/s未満=苦しい / それ以上=かなり苦しい">
+        <div class="value_box energy-box" title="地球の重力を振り切った後に残る速度です。&#10;速いほど遠くへ早く行けますが、そのぶん打ち上げられる質量は減ります。&#10;目安: 3.2km/s未満=楽 / 5.5km/s未満=普通 / 7.7km/s未満=苦しい / それ以上=かなり苦しい">
           <div class="stat-cell">
             <div class="title">脱出速度</div>
             <div class="value" id="v_inf">0</div>
@@ -83,7 +83,7 @@
             <div class="unit">km²/s²</div>
           </div>
         </div>
-        <div class="value_box" title="ミッション中に探査機が出す速度変化の合計 (DSMと近点ΔV)。&#10;色の目安: 300未満=楽 / 1000未満=普通 / 2500未満=苦しい / それ以上=かなり苦しい">
+        <div class="value_box" title="探査機が自分の燃料で出す速度変化の合計です。&#10;大きいほど燃料を食うので、残る質量が減ります。&#10;目安: 300未満=楽 / 1000未満=普通 / 2500未満=苦しい / それ以上=かなり苦しい">
           <div class="title">総ΔV</div>
           <div class="value" id="total_dv">0</div>
           <div class="unit">m/s</div>
@@ -102,7 +102,7 @@
               <div class="unit">kg</div>
             </div>
             <div class="mass-arrow" id="mass_arrow" aria-hidden="true">→</div>
-            <div class="value_box mass-box" id="dry_box" title="色の目安 (打上げ質量に対して残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">
+            <div class="value_box mass-box" id="dry_box" title="打ち上げた質量のうち、燃料を使い切った後に残るぶんです。&#10;目安 (残る割合): 80%以上=楽 / 50%以上=普通 / 25%以上=苦しい / それ未満=かなり苦しい">
               <div class="title">残る質量<span class="sub">燃料抜き</span></div>
               <div class="value" id="dry_mass">-</div>
               <div class="unit">kg</div>
@@ -204,7 +204,7 @@
 
           <div class="column box encounter-only" id="encounter_box">
             <div class="row swingby-head"
-              title="小天体の重力はスイングバイに使えるほどではない (ケレスでさえ曲げ角は1度に満たない)。&#10;そのため速度を変えるぶんは全部自前のΔVになる。&#10;フライバイ: 通り過ぎるだけ。入ってきた速度と出ていく速度の差を払う&#10;ランデブー: 天体に速度を合わせる。先へ向かうなら出発ぶんも要る">
+              title="小天体は重力が小さすぎて、スイングバイでは軌道を曲げられません。&#10;向きも速さも、すべて自分の燃料で変えることになります。&#10;フライバイ: 通り過ぎるだけ&#10;ランデブー: 天体に速度を合わせて一緒に進む&#10;再出発: そこから次の目的地へ飛び立つ">
               <label id="encounter_title">フライバイ</label>
               <div class="row swingby-mode" id="encounter_mode"></div>
               <span class="orbit-badge" id="encounter_badge"></span>
@@ -235,13 +235,13 @@
 
           <div class="column box orbit-only" id="orbit_box">
             <div class="row swingby-head"
-              title="近点で軌道接線方向に噴射する前提。&#10;ΔVは (V∞, 近点半径, 遠点半径) だけで決まり、軌道面の向きや到着位相には依らないため、&#10;3Dビューの向きは代表的な姿で描いている。">
+              title="いちばん近づく点で噴射して、周回軌道に入る (または周回軌道から飛び立つ) シーケンスです。&#10;必要なΔVは軌道の高さだけで決まり、どちら向きに回るかには寄らないので、&#10;3Dビューは代表的な姿で描いています。">
               <label id="orbit_title">周回軌道</label>
               <div class="row swingby-mode" id="orbit_mode"></div>
               <span class="orbit-badge" id="orbit_badge"></span>
             </div>
             <div class="row view-tabs" id="orbit_view_mode"
-              title="近景: 周回軌道から双曲線に乗り移る、天体のすぐそばの様子&#10;遠景: 天体から十分離れて落ち着いたあとの脱出速度 V∞ (打上げビューと同じ見方)"></div>
+              title="近景: 天体のすぐそば。周回軌道の高さを決めます&#10;遠景: 天体を離れた後の飛ぶ向きと速さ (打上げと同じ見方)"></div>
             <div class="row view-row">
               <div class="view-3d">
                 <canvas id="orbit_canvas"></canvas>
@@ -255,7 +255,7 @@
             <div class="view-legend" id="orbit_legend_near">
               <span><i class="sw-b"></i>周回軌道</span>
               <span><i class="sw-orbit"></i>双曲線軌道</span>
-              <span><i class="sw-coast"></i>ΔV未実施</span>
+              <span><i class="sw-coast"></i>噴射しない場合</span>
               <span><i class="sw-rp"></i>近点 r<sub>p</sub></span>
               <span><i class="sw-ra"></i>遠点 r<sub>a</sub></span>
               <span><i class="sw-dv"></i>近点ΔV</span>
@@ -270,7 +270,7 @@
 
           <div class="column box entry-only" id="entry_box">
             <div class="row swingby-head"
-              title="無限遠から突入高度まで落ちてくる間のエネルギー保存で決まる。&#10;突入速度 = √(V∞² + 2μ/r) なので、V∞ が 0 でもその高さの脱出速度は残る。&#10;3Dビューは入射V∞の向きを、実際の公転方向・天の北極に対して描いている。&#10;軌道面 (どちら側から回り込むか) は突入速度に影響しないので代表的な面を採った。">
+              title="大気に飛び込んでミッションを終えるシーケンスです。&#10;突入の速さは近づいてきた速度と天体の重力で決まるので、ここでは選べません。&#10;決められるのは入る角度だけ。深すぎると燃え、浅すぎると弾き返されます。">
               <label id="entry_title">大気圏突入</label>
               <span class="orbit-badge" id="entry_badge"></span>
             </div>
@@ -286,16 +286,16 @@
             <div class="view-legend">
               <span><i class="sw-orbit"></i>突入までの軌道</span>
               <span><i class="sw-rp"></i>突入点・突入速度</span>
-              <span><i class="sw-horizon"></i>地平線 (γの基準)</span>
-              <span><i class="sw-beta"></i>経路角 γ / 狙いの深さ</span>
+              <span><i class="sw-horizon"></i>地平線 (角度の基準)</span>
+              <span><i class="sw-beta"></i>突入角 γ (入る深さ)</span>
               <span><i class="sw-porbit"></i>天体の公転方向</span>
             </div>
           </div>
 
           <div class="column box maneuver-only" id="maneuver_box">
             <div class="row swingby-head"
-              title="深宇宙で噴射して軌道を変える節。&#10;向きは打上げの手動モードと同じく、進行方向を基準にした2つの角度で与える。&#10;方位角α: 軌道面内で進行方向から測った角、仰角δ: 軌道面からの傾き。">
-              <label>マヌーバ (DSM)</label>
+              title="天体のない宇宙空間で噴射して、軌道を変えるシーケンスです。&#10;噴く向きは、探査機が進む向きを0度とした方位角αと、&#10;軌道面からどれだけ上を向けるかの仰角δで決めます。">
+              <label>マヌーバ (深宇宙での噴射)</label>
               <span class="orbit-badge" id="maneuver_badge"></span>
             </div>
             <div class="row view-row" id="dsm_view_row">
@@ -316,8 +316,9 @@
           </div>
 
           <div class="column box swingby-only" id="swingby_box">
-            <div class="row swingby-head">
-              <label>スイングバイ (B面)</label>
+            <div class="row swingby-head"
+              title="天体の重力を借りて、燃料を使わずに軌道を曲げるシーケンスです。&#10;どれだけ近くを、どちら側から通るかで曲がり方が決まります。&#10;図は天体を正面から見たときの、探査機が狙う位置 (B面) です。">
+              <label>スイングバイ</label>
               <div class="row swingby-mode" id="swingby_mode"></div>
             </div>
             <div class="row view-row">
@@ -327,10 +328,10 @@
               <div class="swingby-controls"></div>
             </div>
             <div class="view-legend">
-              <span><i class="sw-orbit"></i>双曲線軌道 (ΔV実施)</span>
-              <span><i class="sw-coast"></i>ΔV未実施</span>
+              <span><i class="sw-orbit"></i>通過する軌道</span>
+              <span><i class="sw-coast"></i>噴射しない場合</span>
               <span><i class="sw-rp"></i>近点半径 r<sub>p</sub></span>
-              <span><i class="sw-b"></i>B面 / Bベクトル</span>
+              <span><i class="sw-b"></i>狙う位置 (B面)</span>
               <span><i class="sw-beta"></i>回転角 β</span>
               <span><i class="sw-dv"></i>近点ΔV</span>
               <span><i class="sw-porbit"></i>天体の公転方向</span>
@@ -342,7 +343,7 @@
           <div class="column box leg-only fold closed" id="leg_box">
             <div class="row leg-head">
               <button type="button" class="fold-head" id="leg_fold"
-                title="次の目的地までの区間。太陽を何周してから着くかを選べる。&#10;同じ2点・同じ飛行時間でも、1周まわってから着く解は直行とはまったく別の軌道になり、&#10;遠い目的地へはそちらの方がずっと安いことが多い。&#10;周回数ごとに必要な最短飛行時間が決まっていて、それより短いと解が無い。&#10;押すと軌道の取り方と読み取りが出る。">
+                title="次の目的地までの区間です。太陽を何周してから着くかを選べます。&#10;遠い目的地へは、1周まわってから着く方がずっと安く済むことがよくあります。&#10;押すと軌道の取り方と読み取りが開きます。">
                 <span class="fold-mark" aria-hidden="true">
                   <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4"
                     stroke-linecap="round" stroke-linejoin="round">

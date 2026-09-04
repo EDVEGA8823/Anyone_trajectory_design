@@ -35,19 +35,19 @@ let rev_mode = "auto";
 // 表示できる指標。key はグリッドに持たせた配列名と対応する
 const METRICS = {
   c3: {
-    label: "打上げ C3",
+    label: "打上げエネルギー",
     unit: "km²/s²",
     pick: (cell) => cell.c3,
     digits: 1,
   },
   arrive: {
-    label: "到着 V∞",
+    label: "到着の速さ",
     unit: "km/s",
     pick: (cell) => cell.varr,
     digits: 2,
   },
   total: {
-    label: "合計 V∞",
+    label: "出発と到着の合計",
     unit: "km/s",
     pick: (cell) => cell.vdep + cell.varr,
     digits: 2,
@@ -65,7 +65,7 @@ const COLOR_STOPS = [
 ];
 
 const PAD = { left: 78, right: 68, top: 20, bottom: 46 };
-const HOVER_HINT = "クリックでその時刻に設定 / ドラッグで移動 / ホイールで拡大縮小";
+const HOVER_HINT = "押すとその日付になります / ドラッグで移動 / ホイールで拡大縮小";
 
 let win = null; // ウィンドウのルート要素
 let canvas = null;
@@ -1076,7 +1076,11 @@ function build_window() {
   const root = el("div", "pc-window");
 
   const head = el("div", "pc-head");
-  title_el = el("div", "pc-title", "ポークチョップ図");
+  title_el = el("div", "pc-title", "出発日と到着日の地図");
+  title_el.title =
+    "出発日 (横) と到着日 (縦) の組み合わせを片っ端から解いて、\n" +
+    "どれくらい楽に行けるかを色で塗った地図です。青いところほど楽に行けます。\n" +
+    "軌道設計では「ポークチョップ図」と呼ばれています。";
   const close = el("button", "pc-close", "×");
   close.type = "button";
   close.title = "閉じる";
@@ -1096,10 +1100,10 @@ function build_window() {
   }
   metric_sel.value = metric;
   metric_sel.title =
-    "色で塗る量\n" +
-    "打上げ C3: 出発のエネルギー (V∞の2乗)\n" +
-    "到着 V∞: 目標天体に対する到着速度\n" +
-    "合計 V∞: 出発のV∞と到着のV∞の和 (行きと着きの両方を見るとき)";
+    "図の色が何を表すかを選びます\n" +
+    "打上げエネルギー: 出発の負担。小さいほど重い探査機を打ち上げられる\n" +
+    "到着の速さ: 目的地に着くときの速さ。小さいほど、着いてからの減速が楽\n" +
+    "出発と到着の合計: 行きと着きの両方をまとめて見たいとき";
   metric_sel.onchange = () => {
     metric = metric_sel.value;
     choose_solutions(grid); // 量が変われば、どの周回数が安いかも変わる
@@ -1124,9 +1128,9 @@ function build_window() {
   });
   rev_sel.value = "auto";
   rev_sel.title =
-    "太陽を何周してから着く解を見るか。\n" +
-    "自動: 各点で一番安い周回数を採る (点線が周回数の境目)\n" +
-    "周回数を固定すると、その解だけの地図になる";
+    "太陽を何周してから着く行き方を見るかを選びます。\n" +
+    "自動: 点ごとに、いちばん安く行ける周回数を採る (点線がその境目)\n" +
+    "固定すると、その周回数だけの地図になります";
   rev_sel.onchange = () => {
     rev_mode = rev_sel.value === "auto" ? "auto" : Number(rev_sel.value);
     // 多周回の解は飛行時間が長いところにしか無い。いまの範囲のままだと
@@ -1165,8 +1169,8 @@ function build_window() {
     bar.appendChild(wrap);
     return input;
   };
-  dep_span_input = mk_span("出発 ±", "映している出発日の幅 (中心から前後この日数)");
-  arr_span_input = mk_span("到着 ±", "映している到着日の幅 (中心から前後この日数)");
+  dep_span_input = mk_span("出発 ±", "横軸に映す出発日の幅 (真ん中から前後この日数)");
+  arr_span_input = mk_span("到着 ±", "縦軸に映す到着日の幅 (真ん中から前後この日数)");
 
   res_sel = document.createElement("select");
   [
@@ -1180,16 +1184,16 @@ function build_window() {
     res_sel.appendChild(o);
   });
   res_sel.value = "100";
-  res_sel.title = "格子の細かさ。細かいほど時間がかかる";
+  res_sel.title = "図の細かさ。細かいほど計算に時間がかかります";
   res_sel.onchange = () => recompute();
   bar.appendChild(res_sel);
 
   const fit = el("button", "pc-sub", "色合わせ");
   fit.type = "button";
   fit.title =
-    "色と等高線の段階を、いま映っている範囲に合わせ直す。\n" +
-    "段階は拡大縮小しても変わらないようにしてあるので (変えると図の形が変わって見える)、\n" +
-    "拡大して色の差が乏しくなったときに押す。";
+    "いま映っている範囲に合わせて、色を塗り直します。\n" +
+    "拡大しても色の段階はそのままなので、拡大したら一面同じ色になった、\n" +
+    "というときに押してください。";
   fit.onclick = () => {
     ensure_color_range(true);
     draw();
@@ -1197,9 +1201,9 @@ function build_window() {
   };
   bar.appendChild(fit);
 
-  const reset = el("button", "pc-run", "初期範囲");
+  const reset = el("button", "pc-run", "範囲を戻す");
   reset.type = "button";
-  reset.title = "ホーマン遷移から見積もった打上げ窓のまわりに戻す";
+  reset.title = "最初に映していた、行きやすい時期のまわりに戻します";
   reset.onclick = () => {
     if (!target) return;
     view = auto_view(target);
@@ -1356,9 +1360,10 @@ function on_move(e) {
   if (!c) {
     hover_el.textContent = HOVER_HINT;
   } else if (c.before_arrival) {
-    hover_el.textContent = fmt_date(c.dep) + " : まだ到着していません (到着 " + fmt_date(target.dep_min_date) + ")";
+    hover_el.textContent =
+      fmt_date(c.dep) + " : この天体に着くのが " + fmt_date(target.dep_min_date) + " なので、まだ出発できません";
   } else if (!(c.c3 === c.c3)) {
-    hover_el.textContent = fmt_date(c.dep) + " → " + fmt_date(c.arr) + " : 解なし";
+    hover_el.textContent = fmt_date(c.dep) + " → " + fmt_date(c.arr) + " : この組み合わせでは飛べません";
   } else {
     const tof = Math.round(c.arr - c.dep);
     hover_el.textContent =
@@ -1369,12 +1374,12 @@ function on_move(e) {
       tof +
       "日" +
       (c.rev > 0 ? " ・ " + c.rev + "周" : "") +
-      ") / C3 " +
+      ") ・ 打上げ " +
       c.c3.toFixed(1) +
-      " km²/s² ・ 到着V∞ " +
+      " km²/s² ・ 到着 " +
       c.varr.toFixed(2) +
       " km/s" +
-      (on_pick ? " ・ クリックでこの時刻にする" : "");
+      (on_pick ? " ・ 押すとこの日付にします" : "");
   }
   draw();
 }
@@ -1611,20 +1616,22 @@ function update_status(extra) {
   }
   const m = METRICS[metric];
   status_el.textContent =
-    "色: " +
+    "色は" +
     m.label +
     " [" +
     m.unit +
-    "] ・ " +
-    (rev_mode === "auto" ? "周回数は各点で最良 (点線が境目)" : rev_mode === 0 ? "直行のみ" : rev_mode + "周のみ") +
-    " ・ " +
+    "] ・ ◇ いちばん安い点 / 破線 いまの設定 / 灰色 高すぎるところ" +
+    (target && target.dep_min_date != undefined ? " / 斜線 まだ出発できないところ" : "");
+  // 細かい内訳は、読みたい人だけがカーソルを乗せて読めばよい
+  status_el.title =
+    (rev_mode === "auto" ? "周回数は点ごとにいちばん安いものを採用 (点線がその境目)" : rev_mode === 0 ? "直行のみ" : rev_mode + "周のみ") +
+    "\n" +
     grid.cols +
     "×" +
     grid.rows +
-    " 点中 " +
+    " 点のうち " +
     (grid.solved ?? 0) +
-    " 点で解あり ・ ◇最小 / 破線が現在 / 灰色は高すぎる領域" +
-    (target && target.dep_min_date != undefined ? " / 斜線は到着前でまだ出発できない領域" : "");
+    " 点で行き方が見つかりました";
 }
 
 /* ==================================================================
@@ -1669,7 +1676,8 @@ async function recompute() {
   draw();
   update_status();
   if (status_el) {
-    status_el.textContent += " ・ " + Math.round(performance.now() - t0) + " ms";
+    // 計算にかかった時間は、図の読み方より優先度が低いので説明の側に置く
+    status_el.title += "\n計算 " + Math.round(performance.now() - t0) + " ms";
   }
 }
 
@@ -1690,7 +1698,7 @@ export function openPorkchop(info) {
 
   const same = target && target.index === info.index && target.dep_num === info.dep_num && target.arr_num === info.arr_num;
   target = { ...info };
-  title_el.textContent = "ポークチョップ図  " + info.dep_name + " → " + info.arr_name;
+  title_el.textContent = "出発日と到着日の地図  " + info.dep_name + " → " + info.arr_name;
 
   if (!same || !grid || !view) {
     // 対象が変わったら、ホーマン遷移から見積もった窓のまわりを映す

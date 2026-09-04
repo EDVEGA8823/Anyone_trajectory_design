@@ -378,6 +378,10 @@ function make_row(b, imported) {
   row.appendChild(main);
 
   const nums = el("div", "bp-row-nums");
+  // 記号だけでは何の数字か分からないので、行にまとめて説明を付ける
+  nums.title = b.closed
+    ? "a: 軌道の大きさ / e: 軌道のつぶれ具合 (0で真円) / i: 軌道の傾き"
+    : "q: 太陽にいちばん近づく距離 / e: 軌道のつぶれ具合 / i: 軌道の傾き";
   const period = period_years(b);
   // 開いた軌道 (放物線・双曲線) には軌道長半径も周期も無いので、近点距離を出す
   nums.appendChild(el("span", null, b.closed ? "a " + fmt(b.a, 3) + " AU" : "q " + fmt(b.q, 3) + " AU"));
