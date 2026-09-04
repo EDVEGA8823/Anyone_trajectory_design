@@ -3132,6 +3132,8 @@ function boot() {
     share_link: copyShareLink,
     share_x: () => shareOnX(missionName() || DEFAULT_NAME),
     shortcuts: openShortcuts,
+    // 使い方は別ページ (docs/)。設計を抱えたまま遷移すると失われるので新しいタブで開く
+    help: () => window.open("docs/index.html", "_blank", "noopener"),
   });
   // 画像を作る間だけ「使っている天体だけ」に切り替えてもらう
   // (天体名の表は main.js 側にあるので、export_image.js からは手を借りる)

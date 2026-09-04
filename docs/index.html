@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>使い方 — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="../index.html">アプリを開く →</a>
+  </header>
+
+  <main>
+    <h1>使い方</h1>
+    <p class="lead">
+      惑星探査機の軌道を、自分の手で組み立てるための道具です。
+      難しい数式は道具の中に隠してあるので、日付と行き先を並べていくだけで軌道ができます。
+    </p>
+
+    <p>
+      まずは<a href="basics.html">画面の見方</a>を読んで、火星まで1本の軌道を引いてみてください。
+      そのあとは、実際に飛んだ探査機を題材にした4つのチュートリアルがあります。
+      <strong>どれも実際の打上げ日をそのまま入れて再現できる</strong>ので、
+      「その日でなければならなかった理由」が数字で見えます。
+    </p>
+
+    <h2>チュートリアル</h2>
+    <div class="cards">
+      <a class="card" href="basics.html">
+        <div class="no">はじめに</div>
+        <h3>画面の見方</h3>
+        <p>シーケンス・時刻・成績バー。地球から火星へ1本引くところまで。</p>
+      </a>
+      <a class="card" href="mars.html">
+        <div class="no">チュートリアル ①</div>
+        <h3>火星に行って帰ってくる</h3>
+        <p>MMX風。ホーマン遷移・周回軌道投入・軌道脱出・大気圏突入をひと通り。</p>
+      </a>
+      <a class="card" href="mercury.html">
+        <div class="no">チュートリアル ②</div>
+        <h3>金星の重力で水星へ</h3>
+        <p>マリナー10号風。スイングバイと、水星に3回会うための共鳴軌道。</p>
+      </a>
+      <a class="card" href="jupiter.html">
+        <div class="no">チュートリアル ③</div>
+        <h3>地球をもう一度使って木星へ</h3>
+        <p>Juno風。ΔVEGAと手動モード、深宇宙での噴射。</p>
+      </a>
+      <a class="card" href="ryugu.html">
+        <div class="no">チュートリアル ④</div>
+        <h3>小惑星に横づけする</h3>
+        <p>はやぶさ2風。天体の追加、共鳴による地球スイングバイ、ランデブー。</p>
+      </a>
+    </div>
+
+    <h2>この道具でできること・できないこと</h2>
+    <table>
+      <tr>
+        <th>できる</th>
+        <th>できない</th>
+      </tr>
+      <tr>
+        <td>
+          惑星と小天体 (小惑星・彗星) への軌道<br />
+          スイングバイ (重力だけ / 噴射で補う)<br />
+          深宇宙での噴射、周回軌道への出入り、大気圏突入<br />
+          ロケットを選んで打上げ質量と残る質量を見積もる<br />
+          出発日と到着日の地図 (ポークチョップ図)<br />
+          いまの設計を近くで詰める自動調整
+        </td>
+        <td>
+          イオンエンジンのような連続噴射<br />
+          (1回の噴射に置き換えて考えます)<br />
+          月・惑星の衛星のまわりの軌道<br />
+          太陽輻射圧や他の惑星の引力といった細かい効果<br />
+          姿勢制御・通信・電力といった探査機の設計
+        </td>
+      </tr>
+    </table>
+
+    <div class="note">
+      <strong>数字の読み方をひとつだけ</strong>
+      画面の右下に出る「残る質量」が、この道具でのいちばん大事な成績です。
+      選んだロケットで打ち上げられる質量から、噴射で使う燃料を引いたもので、
+      <strong>探査機そのものに使える重さ</strong>にあたります。これが大きいほど良い設計です。
+    </div>
+
+    <div class="nav-bottom">
+      <span></span>
+      <a href="basics.html">画面の見方 →</a>
+    </div>
+  </main>
+</body>
+
+</html>

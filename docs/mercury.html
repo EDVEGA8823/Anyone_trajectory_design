@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>② 金星の重力で水星へ — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="../index.html">アプリを開く →</a>
+  </header>
+
+  <main>
+    <h1>② 金星の重力で水星へ</h1>
+    <p class="lead">
+      1973年に打ち上げられたマリナー10号は、人類で初めて<strong>他の惑星の重力を乗り換えに使った</strong>探査機です。
+      実際の打上げ日をそのまま入れて、その軌道を再現します。
+    </p>
+
+    <div class="aim">
+      <h3>ここで覚えること</h3>
+      <ul>
+        <li>スイングバイは何をしているのか (曲げ角と近点高度)</li>
+        <li>内側の惑星ほど行きにくい理由</li>
+        <li>スイングバイの後の軌道を自分で決める (手動モード)</li>
+        <li>水星に3回会うための共鳴軌道</li>
+      </ul>
+    </div>
+
+    <h2>組み立てる</h2>
+
+    <ol class="steps">
+      <li>
+        <p>シーケンスを4つ作り、上から3つを次のようにします。</p>
+        <table>
+          <tr><th>番号</th><th>種別</th><th>天体</th><th>日付</th></tr>
+          <tr><td>1</td><td>打上げ</td><td>地球</td><td>1973/11/03</td></tr>
+          <tr><td>2</td><td>スイングバイ</td><td>金星</td><td>1974/02/05</td></tr>
+          <tr><td>3</td><td>スイングバイ</td><td>水星</td><td>1974/03/29</td></tr>
+          <tr><td>4</td><td>(あとで最終軌道にします)</td><td>—</td><td>1974/06/01</td></tr>
+        </table>
+        <p>すべてマリナー10号の実際の日付です。</p>
+        <figure>
+          <img src="img/mercury-all.png" alt="マリナー10号の軌道" />
+          <figcaption>地球 → 金星 → 水星。内側へ内側へと落ちていきます。</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <h2>スイングバイを読む</h2>
+    <figure class="panel">
+      <img src="img/mercury-venus.png" alt="金星スイングバイの操作パネル" />
+      <figcaption>金星でのスイングバイ。8.339 km/s で入り、34度曲げられて 8.029 km/s で出ていく。</figcaption>
+    </figure>
+
+    <p>
+      2番目の節を選ぶと、金星のそばで何が起きているかが出ます。図は金星を正面から見たところで、
+      青い面が探査機の狙う位置 (B面) です。
+    </p>
+
+    <table>
+      <tr><td>入ってくる V∞</td><td class="num">8.339 km/s</td><td>金星から見た、近づいてくる速さ</td></tr>
+      <tr><td>出ていく V∞</td><td class="num">8.029 km/s</td><td>離れていく速さ</td></tr>
+      <tr><td>曲げ角</td><td class="num">34.0°</td><td>重力で進む向きがどれだけ曲がったか</td></tr>
+      <tr><td>近点高度</td><td class="num">5681 km</td><td>いちばん近づく高さ</td></tr>
+      <tr><td>近点ΔV</td><td class="num">229.5 m/s</td><td>重力だけでは足りないぶんの噴射</td></tr>
+    </table>
+
+    <p>
+      ここがスイングバイの肝です。金星<strong>から見た速さはほとんど変わっていません</strong>
+      (8.339 → 8.029、差は近点で噴いた229 m/sぶん)。変わったのは<strong>向き</strong>です。
+      ところが金星自身が太陽のまわりを35 km/sで動いているので、
+      太陽から見ると、向きを変えただけで速度が大きく変わったことになります。燃料を使わずに、です。
+    </p>
+
+    <p>
+      近点高度を下げると曲げ角が増えます。もっと深く曲がりたければもっと近づけばよい —
+      ただし大気や放射線帯があるので下限があり、この道具はそこで止めます。
+      「曲げきれない角度」という読み値が出たら、重力だけでは足りていない合図で、
+      その不足分が近点ΔVとして請求されます。
+    </p>
+
+    <h3>次にどこへ着くのかは、着く前に決まっている</h3>
+    <p>
+      読み値のいちばん下に「次の水星での V∞ 10.576 km/s」とあります。
+      水星に着くときの速さは、<strong>水星に着く前の飛び方でもう決まっています</strong>。
+      だからスイングバイの節を開いてから慌てても遅く、そこへ向かう区間を組んでいる間に見ておく必要があります。
+      この道具では、打上げ・噴射・区間のどの節にもこの数字を出しています。
+    </p>
+
+    <div class="note">
+      <strong>内側の惑星ほど行きにくい</strong>
+      水星に 10.6 km/s で着く、というのはとても速い到着です。
+      太陽に近づくほど公転は速くなるので、内側へ落ちるほど探査機は加速してしまい、
+      そこで止まる (周回軌道に入る) のがとても高くつきます。
+      マリナー10号が通り過ぎるだけだったのはこのためで、
+      水星を周回した探査機 (メッセンジャー、ベピコロンボ) は、
+      何度もスイングバイを繰り返して速度を削ってから入っています。
+    </div>
+
+    <h2>水星の後をどうするか</h2>
+    <p>
+      ここからが本番です。3番目の節 (水星のスイングバイ) を選び、<strong>手動</strong>に切り替えます。
+    </p>
+
+    <figure class="panel">
+      <img src="img/mercury-manual.png" alt="水星スイングバイを手動にしたところ" />
+      <figcaption>手動にすると、近点高度と回転角βを自分で決められるようになります。</figcaption>
+    </figure>
+
+    <p>
+      自動モードは「次の目的地に必ず着くように」逆算する仕組みなので、行き先が要ります。
+      水星の先に行き先を決めていないここでは、<strong>自分で通り方を決める</strong>ほうが自然です。
+      手動にすると噴射の節 (マヌーバ) が後ろに1つ付いてきますが、次の手順で消えます。
+    </p>
+
+    <ol class="steps">
+      <li>
+        <p>いちばん下の節を選び、種別を<strong>最終軌道</strong>にします。付いてきた噴射の節は消えます。</p>
+        <figure class="seq">
+          <img src="img/mercury-end-types.png" alt="最終軌道にしたシーケンス" />
+          <figcaption>「最終軌道」は、目的地を持たずに終える節です。到達した軌道そのものが成果になります。</figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>
+          水星の節に戻り、<strong>近点高度 350 km</strong>、<strong>回転角 β 10度</strong> にします。
+        </p>
+        <figure class="panel">
+          <img src="img/mercury-tuned.png" alt="共鳴軌道に合わせた水星スイングバイ" />
+          <figcaption>近点高度350 km、β10度。噴射なし (近点ΔV 0) で通り抜けます。</figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>最終軌道の節を選んで、できあがった太陽周回軌道を見ます。</p>
+        <figure class="panel">
+          <img src="img/mercury-end.png" alt="到達した太陽周回軌道" />
+          <figcaption>近日点0.456 AU、遠日点0.773 AU、1周の時間 0.48年。</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <h2>0.48年という数字</h2>
+    <p>
+      水星の公転周期は88日 = 0.241年です。できあがった軌道の1周は<strong>0.48年 = 176日</strong>。
+      ちょうど<strong>水星2周ぶん</strong>です。
+    </p>
+
+    <p>
+      これが何を意味するか。探査機が1周して戻ってきたとき、水星もちょうど2周して<strong>同じ場所に戻っている</strong>。
+      つまり、もう一度水星に会えるのです。燃料は1滴も使わずに。
+    </p>
+
+    <p>
+      マリナー10号は実際にこれをやりました。1974年3月に1回目、9月に2回目、1975年3月に3回目。
+      同じ探査機で水星に3回接近し、表面の45%を撮影しました。
+      この共鳴軌道を見つけたのはイタリアの数学者ジュゼッペ・コロンボで、
+      彼の名前は今のベピコロンボ計画に残っています。
+    </p>
+
+    <div class="note">
+      <strong>やってみてください</strong>
+      近点高度と回転角βを動かすと、1周の時間がどう変わるか見えます。
+      0.48年ちょうどに合わせるのは、そう簡単ではありません。
+      角度を1度変えるだけで数日ずれます。実際の運用でもここは繊細な調整でした。
+    </div>
+
+    <h2>できあがり</h2>
+    <figure>
+      <img src="img/mercury-final.png" alt="完成したマリナー10号の軌道" />
+    </figure>
+
+    <table>
+      <tr><th>項目</th><th>この設計</th><th>実際のマリナー10号</th></tr>
+      <tr><td>打上げ</td><td class="num">1973/11/03</td><td class="num">1973/11/03</td></tr>
+      <tr><td>打上げエネルギー C3</td><td class="num">18.79 km²/s²</td><td class="num">約17</td></tr>
+      <tr><td>金星スイングバイ</td><td class="num">1974/02/05</td><td class="num">1974/02/05</td></tr>
+      <tr><td>金星の近点高度</td><td class="num">5681 km</td><td class="num">5768 km</td></tr>
+      <tr><td>水星に着く速さ</td><td class="num">10.576 km/s</td><td class="num">約11 km/s</td></tr>
+      <tr><td>水星スイングバイ</td><td class="num">1974/03/29</td><td class="num">1974/03/29</td></tr>
+      <tr><td>その後の公転周期</td><td class="num">176日</td><td class="num">176日</td></tr>
+    </table>
+
+    <div class="nav-bottom">
+      <a href="mars.html">← ① 火星に行って帰ってくる</a>
+      <a href="jupiter.html">③ 地球をもう一度使って木星へ →</a>
+    </div>
+  </main>
+</body>
+
+</html>

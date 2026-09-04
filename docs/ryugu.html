@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>④ 小惑星に横づけする — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="../index.html">アプリを開く →</a>
+  </header>
+
+  <main>
+    <h1>④ 小惑星に横づけする</h1>
+    <p class="lead">
+      はやぶさ2が向かった小惑星リュウグウへ、地球スイングバイを使って行きます。
+      通り過ぎるのではなく<strong>速度を合わせて並んで進む</strong>ので、惑星に行くのとは勝手が違います。
+    </p>
+
+    <div class="aim">
+      <h3>ここで覚えること</h3>
+      <ul>
+        <li>掲載されていない天体を一覧に追加する</li>
+        <li>フライバイとランデブーの違い</li>
+        <li>噴射なしで地球に戻る「共鳴」の軌道</li>
+        <li>小天体はスイングバイに使えない</li>
+      </ul>
+    </div>
+
+    <h2>リュウグウを呼び出す</h2>
+    <p>
+      画面上のバーの<strong>「天体を追加」</strong>を押します。
+      小惑星・彗星・恒星間天体の目録 (国際天文学連合 小惑星センターのデータ) から検索できます。
+    </p>
+    <p>
+      検索欄に <code>Ryugu</code> か <code>162173</code> と入れて、出てきた
+      <strong>(162173) Ryugu</strong> を選び、「追加」を押してください。
+      以後、天体の欄にリュウグウが並びます。
+    </p>
+
+    <div class="note">
+      <strong>好きな天体でかまいません</strong>
+      「よく使う天体」には、探査機が訪れた小惑星や彗星がまとまっています。
+      イトカワ、ベンヌ、エロス、チュリュモフ・ゲラシメンコ彗星…。
+      軌道の大きさ (a) と傾き (i) が地球に近いものほど行きやすく、
+      リュウグウが選ばれたのもその理由のひとつです。
+    </div>
+
+    <h2>組み立てる</h2>
+
+    <ol class="steps">
+      <li>
+        <p>シーケンスを3つ作ります。</p>
+        <table>
+          <tr><th>番号</th><th>種別</th><th>天体</th><th>日付</th></tr>
+          <tr><td>1</td><td>打上げ</td><td>地球</td><td>2014/12/03</td></tr>
+          <tr><td>2</td><td>スイングバイ</td><td>地球</td><td>2016/12/17</td></tr>
+          <tr><td>3</td><td>ランデブー</td><td>(162173) Ryugu</td><td>2018/03/12</td></tr>
+        </table>
+        <figure class="seq">
+          <img src="img/ryugu-types.png" alt="リュウグウを含むシーケンス" />
+          <figcaption>
+            小天体で選べる種別は<strong>フライバイ</strong>と<strong>ランデブー</strong>です。
+            スイングバイや周回軌道投入は出てきません。重力が小さすぎて、軌道を曲げることも捕まることもできないからです。
+          </figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <p>
+      打上げ日ははやぶさ2の実際の日付です。地球スイングバイは実機が2015年12月 (打上げの1年後) でしたが、
+      ここでは<strong>2年後</strong>にしています。理由は後で説明します。
+    </p>
+
+    <h2>また地球から地球</h2>
+    <figure class="panel">
+      <img src="img/ryugu-auto-panel.png" alt="自動モードでは解けない" />
+      <figcaption>チュートリアル③と同じ壁です。地球から地球へは自動では解けません。</figcaption>
+    </figure>
+
+    <p>
+      同じ手を使います。打上げの節を<strong>手動</strong>にして、噴射の節を後ろに付け、
+      その日付を1年後 (2015/12/15、遠日点のあたり) に。
+      打上げの脱出速度を 4.7 km/s、角度は両方0にしてから、<strong>自動調整</strong>を押します。
+    </p>
+
+    <figure>
+      <img src="img/ryugu-tuned.png" alt="自動調整の後" />
+      <figcaption>整った軌道。地球の軌道の少し外側を2年かけて1周し、地球に戻ってきます。</figcaption>
+    </figure>
+
+    <h2>噴射が 0 になる</h2>
+    <figure class="panel">
+      <img src="img/ryugu-dsm.png" alt="噴射の節が0 m/s" />
+      <figcaption>ΔV 0.0 m/s。噴射の節はあるのに、何も噴いていません。</figcaption>
+    </figure>
+
+    <p>
+      チュートリアル③のJunoでは662 m/s必要だった深宇宙の噴射が、ここでは<strong>0</strong>です。
+      種明かしは打上げの脱出速度 5.0 km/s にあります。
+      この速さで地球を出ると、探査機の公転周期がちょうど<strong>2年</strong>になります。
+      2年後、探査機が1周して戻ってきたとき、地球も2周して同じ場所にいる。
+      何もしなくても再会できるのです。
+    </p>
+
+    <p>
+      チュートリアル②でマリナー10号が水星と会った仕組みと同じ、<strong>共鳴</strong>です。
+      軌道の周期を天体の周期の整数倍にすると、燃料を使わずに再会できます。
+    </p>
+
+    <div class="note real">
+      <strong>実機が1年で戻った理由</strong>
+      はやぶさ2の地球スイングバイは打上げの<strong>1年後</strong>でした。
+      1年で戻る軌道は打上げの脱出速度がもっと小さくて済むので、打ち上げられる質量が増えます。
+      その代わり、そのままでは地球に戻ってきたときの速さが足りません。
+      そこではやぶさ2はイオンエンジンで少しずつ加速し、戻ってきたときの速さを育てました。
+      これがEDVEGA (Electric Delta-V Earth Gravity Assist) で、日本が実証した手法です。
+      この道具は連続噴射を扱えないので、噴射なしで成立する2年の共鳴を使いました。
+    </div>
+
+    <h2>スイングバイとランデブー</h2>
+    <figure class="panel">
+      <img src="img/ryugu-flyby.png" alt="地球スイングバイの読み値" />
+      <figcaption>地球スイングバイ。近点ΔV 0、噴射なしで58度曲げています。</figcaption>
+    </figure>
+
+    <p>
+      地球のそばを通ることで軌道が曲げられ、リュウグウの軌道に届くようになります。ここも噴射は0です。
+    </p>
+
+    <figure class="panel">
+      <img src="img/ryugu-rendezvous.png" alt="ランデブーの読み値" />
+      <figcaption>ランデブー。到着ΔV 687 m/s。「この先 天体と一緒に進む」。</figcaption>
+    </figure>
+
+    <p>
+      最後がランデブーです。<strong>到着ΔV 687 m/s</strong> は、リュウグウに速度を合わせて
+      並んで進むために要る噴射です。ここを<strong>フライバイ</strong>に変えてみてください。
+      ΔVは0になります — 通り過ぎるだけなら、何もしなくていいのです。
+    </p>
+
+    <p>
+      これが小天体を相手にするときの勘所です。惑星なら重力が助けてくれる (捕まえてくれる) ところを、
+      小惑星では全部自分の燃料で払うことになります。
+      リュウグウの重力は弱すぎて、周回軌道という考え方すら成り立ちません。
+      はやぶさ2が「周回」ではなく「ホームポジションに留まる」と言っていたのはこのためです。
+    </p>
+
+    <h2>できあがり</h2>
+    <figure>
+      <img src="img/ryugu-final.png" alt="完成したリュウグウ行きの軌道" />
+    </figure>
+
+    <table>
+      <tr><th>項目</th><th>この設計</th><th>実際のはやぶさ2</th></tr>
+      <tr><td>打上げ</td><td class="num">2014/12/04</td><td class="num">2014/12/03</td></tr>
+      <tr><td>打上げエネルギー C3</td><td class="num">25.2 km²/s²</td><td class="num">22.4 km²/s²</td></tr>
+      <tr><td>地球スイングバイ</td><td class="num">2016/12/03</td><td class="num">2015/12/03</td></tr>
+      <tr><td>リュウグウ到着</td><td class="num">2018/04/23</td><td class="num">2018/06/27</td></tr>
+      <tr><td>深宇宙での噴射</td><td class="num">0 m/s (2年共鳴)</td><td class="num">イオンエンジンで約1 km/s</td></tr>
+      <tr><td>総ΔV</td><td class="num">688 m/s</td><td class="num">—</td></tr>
+    </table>
+
+    <h2>この先</h2>
+    <p>
+      はやぶさ2はここからサンプルを積んで地球に帰ってきました。
+      チュートリアル①でやった帰りの組み立てを、ここに足してみてください。
+      リュウグウの節の後ろに<strong>再出発</strong>を足し、
+      最後に地球への<strong>大気圏突入</strong>を置きます。
+      実機のカプセルは2020年12月5日に、11.6 km/sでオーストラリアに帰ってきました。
+    </p>
+
+    <div class="nav-bottom">
+      <a href="jupiter.html">← ③ 地球をもう一度使って木星へ</a>
+      <a href="index.html">目次 →</a>
+    </div>
+  </main>
+</body>
+
+</html>

@@ -1,0 +1,123 @@
+"""チュートリアル用の図を撮る台本。
+
+各手順は (説明, JSの式, 撮る名前 or None, 切り抜きセレクタ or None)。
+名前を付けた手順のあとで PNG を書き出す。
+"""
+
+def basics():
+    """画面の見方"""
+    return [
+        ("空の画面", "__D.wait(300)", "basics-empty", None),
+        ("シーケンスを2つ足す", "__D.add(2)", "basics-two", None),
+        ("2番目を火星の周回軌道投入に",
+         "(async()=>{await __D.pick(1); await __D.body('火星'); await __D.type('周回軌道投入');})()", None, None),
+        ("日付を入れる", "__D.dates(['2026-10-30','2027-09-15'])", "basics-mars", None),
+        ("打上げの節を選ぶ", "__D.pick(0)", "basics-launch-panel", ".control-panel"),
+        ("成績バー", "__D.wait(200)", "basics-statbar", ".stat-bar"),
+        ("シーケンス一覧", "__D.wait(200)", "basics-list", ".sequence-panel"),
+        ("選択を外す", "__D.deselect()", "basics-preview", None),
+    ]
+
+
+def mars():
+    """① MMX風 火星圏サンプルリターン"""
+    return [
+        ("シーケンスを4つ用意する", "__D.add(4)", None, None),
+        ("2番目を火星の周回軌道投入に",
+         "(async()=>{await __D.pick(1); await __D.body('火星'); await __D.type('周回軌道投入');})()", None, None),
+        ("3番目を火星からの軌道脱出に",
+         "(async()=>{await __D.pick(2); await __D.type('軌道脱出');})()", None, None),
+        ("4番目を地球への大気圏突入に",
+         "(async()=>{await __D.pick(3); await __D.body('地球'); await __D.type('大気圏突入');})()", None, None),
+        ("日付を入れる",
+         "__D.dates(['2026-10-30','2027-09-15','2030-08-25','2031-08-20'])", "mars-all", None),
+        ("シーケンス一覧", "__D.deselect()", "mars-types", ".sequence-panel"),
+        ("打上げの節", "__D.pick(0)", "mars-launch", ".control-panel"),
+        ("周回軌道投入の節", "__D.pick(1)", "mars-insert", ".control-panel"),
+        ("遠点を下げると投入ΔVが増える", "__D.orbit(200, 10000)", "mars-insert2", ".control-panel"),
+        ("元の大きな楕円に戻す", "__D.orbit(200, 64528)", None, None),
+        ("軌道脱出の節", "__D.pick(2)", "mars-escape", ".control-panel"),
+        ("大気圏突入の節", "__D.pick(3)", "mars-entry", ".control-panel"),
+        ("全体", "__D.deselect()", "mars-final", None),
+    ]
+
+
+def mercury():
+    """② マリナー10号風 水星フライバイ"""
+    return [
+        ("シーケンスを4つ用意する", "__D.add(4)", None, None),
+        ("2番目を金星のスイングバイに",
+         "(async()=>{await __D.pick(1); await __D.body('金星'); await __D.type('スイングバイ');})()", None, None),
+        ("3番目を水星のスイングバイに",
+         "(async()=>{await __D.pick(2); await __D.body('水星'); await __D.type('スイングバイ');})()", None, None),
+        ("マリナー10号の実際の日付に",
+         "__D.dates(['1973-11-03','1974-02-05','1974-03-29','1974-06-01'])", "mercury-all", None),
+        ("金星スイングバイの節", "__D.pick(1)", "mercury-venus", ".control-panel"),
+        ("水星スイングバイの節を手動にする",
+         "(async()=>{await __D.pick(2); await __D.mode(false);})()", "mercury-manual", ".control-panel"),
+        ("最後の節を最終軌道にする (付いてきた噴射の節は消える)",
+         "(async()=>{const n=__D.State.mission_sequence.count; await __D.pick(n-1); await __D.type('最終軌道');})()",
+         "mercury-end-types", ".sequence-panel"),
+        ("共鳴する高度と回転角に合わせる",
+         "(async()=>{await __D.pick(2); await __D.field('近点高度', 350); await __D.field('回転角', 10);})()",
+         "mercury-tuned", ".control-panel"),
+        ("最終軌道の節 (周期が水星2周ぶん)", "__D.pick(3)", "mercury-end", ".control-panel"),
+        ("全体", "__D.deselect()", "mercury-final", None),
+    ]
+
+
+def jupiter():
+    """③ Juno風 ΔVEGA 木星探査機"""
+    return [
+        ("シーケンスを3つ用意する", "__D.add(3)", None, None),
+        ("2番目を地球のスイングバイに",
+         "(async()=>{await __D.pick(1); await __D.body('地球'); await __D.type('スイングバイ');})()", None, None),
+        ("3番目を木星の周回軌道投入に",
+         "(async()=>{await __D.pick(2); await __D.body('木星'); await __D.type('周回軌道投入');})()", None, None),
+        ("Junoの実際の日付に",
+         "__D.dates(['2011-08-05','2013-10-09','2016-07-05'])", "jupiter-auto", None),
+        ("打上げを選ぶと自動では解けていない", "__D.pick(0)", "jupiter-auto-panel", ".control-panel"),
+        ("打上げを手動モードにする",
+         "(async()=>{await __D.pick(0); await __D.mode(false);})()", "jupiter-manual", ".sequence-panel"),
+        ("噴射の日付を遠日点あたりに",
+         "__D.dates(['2011-08-05','2012-08-31',undefined,undefined])", None, None),
+        ("打上げの向きと速さを置く",
+         "(async()=>{await __D.pick(0); await __D.field('脱出速度', 5.6); await __D.field('方位角', 0); await __D.field('仰角', 0);})()",
+         "jupiter-set", ".control-panel"),
+        ("この時点の全体", "__D.deselect()", "jupiter-rough", None),
+        ("自動調整で詰める", "__D.tune()", "jupiter-tuned", None),
+        ("噴射の節", "__D.pick(1)", "jupiter-dsm", ".control-panel"),
+        ("地球スイングバイの節", "__D.pick(2)", "jupiter-flyby", ".control-panel"),
+        ("全体", "__D.deselect()", "jupiter-final", None),
+    ]
+
+
+def ryugu():
+    """④ はやぶさ2風 小惑星ランデブー"""
+    return [
+        ("リュウグウを天体の一覧に追加する", "__D.addBody('popular','Ryugu')", None, None),
+        ("シーケンスを3つ用意する", "__D.add(3)", None, None),
+        ("2番目を地球のスイングバイに",
+         "(async()=>{await __D.pick(1); await __D.body('地球'); await __D.type('スイングバイ');})()", None, None),
+        ("3番目をリュウグウのランデブーに",
+         "(async()=>{await __D.pick(2); await __D.body('Ryugu'); await __D.type('ランデブー');})()", None, None),
+        ("日付を置く",
+         "__D.dates(['2014-12-03','2016-12-17','2018-03-12'])", "ryugu-auto", None),
+        ("シーケンス一覧", "__D.deselect()", "ryugu-types", ".sequence-panel"),
+        ("地球→地球は自動では解けない", "__D.pick(0)", "ryugu-auto-panel", ".control-panel"),
+        ("打上げを手動モードにする",
+         "(async()=>{await __D.pick(0); await __D.mode(false);})()", None, None),
+        ("噴射の日付を1年後 (遠日点) に",
+         "__D.dates(['2014-12-03','2015-12-15',undefined,undefined])", None, None),
+        ("打上げの向きと速さを置く",
+         "(async()=>{await __D.pick(0); await __D.field('脱出速度', 4.7); await __D.field('方位角', 0); await __D.field('仰角', 0);})()",
+         None, None),
+        ("自動調整で詰める", "__D.tune()", "ryugu-tuned", None),
+        ("噴射の節 (0 m/s で済む)", "__D.pick(1)", "ryugu-dsm", ".control-panel"),
+        ("地球スイングバイの節", "__D.pick(2)", "ryugu-flyby", ".control-panel"),
+        ("ランデブーの節", "__D.pick(3)", "ryugu-rendezvous", ".control-panel"),
+        ("全体", "__D.deselect()", "ryugu-final", None),
+    ]
+
+
+SCENARIOS = {"basics": basics, "mars": mars, "mercury": mercury, "jupiter": jupiter, "ryugu": ryugu}

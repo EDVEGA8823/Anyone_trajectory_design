@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>画面の見方 — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="../index.html">アプリを開く →</a>
+  </header>
+
+  <main>
+    <h1>画面の見方</h1>
+    <p class="lead">地球から火星まで、1本の軌道を引いてみます。5分もかかりません。</p>
+
+    <div class="aim">
+      <h3>ここで覚えること</h3>
+      <ul>
+        <li>ミッションは「シーケンス」を並べて作る</li>
+        <li>日付を決めると軌道が決まる</li>
+        <li>成績は左下のバーで読む</li>
+      </ul>
+    </div>
+
+    <h2>3つの区画</h2>
+    <figure>
+      <img src="img/basics-empty.png" alt="起動直後の画面" />
+      <figcaption>起動直後。左が太陽系ビュー、真ん中がミッションシーケンス、右が操作パネル。</figcaption>
+    </figure>
+
+    <p>
+      <strong>太陽系ビュー</strong>は、いま何がどこにあるかを見る場所です。
+      ドラッグで回転、ホイールで拡大縮小できます。
+      何も選んでいないときは、ここに出ている時刻はプレビューです。
+      <kbd>←</kbd> <kbd>→</kbd> を押すと日付が動いて、惑星がぐるぐる回ります。
+      この状態でいくら動かしても、ミッションの日付は変わりません。
+    </p>
+
+    <p>
+      <strong>ミッションシーケンス</strong>は、探査機がこれから何をするかの一覧です。
+      「打上げ」「スイングバイ」「周回軌道投入」といった<em>節</em>を上から順に並べていきます。
+    </p>
+
+    <p>
+      <strong>操作パネル</strong>には、一覧で選んだ節の設定と読み取りが出ます。
+      選んでいる節によって中身がまるごと入れ替わります。
+    </p>
+
+    <h2>火星まで引いてみる</h2>
+
+    <ol class="steps">
+      <li>
+        <p>「+ シーケンスを追加」を2回押します。1つ目は必ず<strong>打上げ</strong>になります。</p>
+        <figure>
+          <img src="img/basics-two.png" alt="シーケンスを2つ足したところ" />
+          <figcaption>2つ目はまだ「---」= 行き先も種別も決まっていない状態です。</figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>
+          2つ目のカードを押して選び、操作パネルの<strong>天体</strong>で「火星」を選びます。
+          続けて<strong>シーケンス</strong>の「変更」から「周回軌道投入」を選びます。
+        </p>
+        <p>
+          種別の選択肢は天体によって変わります。惑星ならスイングバイ・周回軌道投入・大気圏突入、
+          小惑星ならフライバイ・ランデブーです。重力の大きさが違うので、できることも違います。
+        </p>
+      </li>
+
+      <li>
+        <p>
+          日付を入れます。カードを選ぶと操作パネルの<strong>時刻</strong>にその節の日付が出るので、
+          打上げを 2026/10/30、火星到着を 2027/09/15 にします。
+        </p>
+        <p>
+          日付欄に直接打ち込むほか、<kbd>-10</kbd> <kbd>-1</kbd> <kbd>+1</kbd> <kbd>+10</kbd> のボタン、
+          キーボードの <kbd>←</kbd> <kbd>→</kbd>、太陽系ビューで惑星を掴んでドラッグ、のどれでも動かせます。
+        </p>
+        <figure>
+          <img src="img/basics-mars.png" alt="地球から火星への軌道" />
+          <figcaption>青い線が探査機の通り道です。日付を決めた瞬間に、それを結ぶ軌道が計算されます。</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <div class="note">
+      <strong>なぜ日付だけで軌道が決まるのか</strong>
+      出発する場所 (その日の地球) と着く場所 (その日の火星)、そしてかかる日数。
+      この3つが決まると、それを結ぶ軌道は (ほぼ) 1本に決まります。
+      これを解く問題を<strong>ランベール問題</strong>といって、この道具の心臓部です。
+      裏返すと、あなたが決めるのは「いつ出て、いつ着くか」だけでよい、ということです。
+    </div>
+
+    <h2>成績を読む</h2>
+    <figure>
+      <img src="img/basics-statbar.png" alt="ミッションの成績バー" />
+      <figcaption>太陽系ビューの下のバー。この設計の良し悪しはここに出ます。</figcaption>
+    </figure>
+
+    <table>
+      <tr>
+        <th>読み値</th>
+        <th>意味</th>
+        <th>大きいと</th>
+      </tr>
+      <tr>
+        <td>脱出速度</td>
+        <td>地球の重力を振り切った後に残る速度</td>
+        <td>遠くへ早く行けるが、打ち上げられる質量が減る</td>
+      </tr>
+      <tr>
+        <td>総ΔV</td>
+        <td>探査機が自分の燃料で出す速度変化の合計</td>
+        <td>燃料を食うので、残る質量が減る</td>
+      </tr>
+      <tr>
+        <td>打上げ質量 → 残る質量</td>
+        <td>選んだロケットで打ち上げられる質量と、燃料を使い切った後に残る質量</td>
+        <td>残る質量が大きいほど良い設計</td>
+      </tr>
+    </table>
+
+    <p>
+      色が付きます。青緑なら楽、黄色やオレンジなら苦しい、赤ならかなり苦しい、という目安です。
+      カーソルを乗せると、その色の境目がいくつなのかも読めます。
+    </p>
+
+    <h2>操作パネルの読み取り</h2>
+    <figure class="panel">
+      <img src="img/basics-launch-panel.png" alt="打上げの操作パネル" />
+      <figcaption>打上げの節を選んだところ。3Dビューは地球を中心にした近くの様子です。</figcaption>
+    </figure>
+
+    <p>
+      右側の細い欄に読み取りが並びます。ここには<strong>設計を決めるのに要る数字だけ</strong>を出していて、
+      確かめるときにしか使わないものは「高度な情報」に畳んであります。押すと開きます。
+    </p>
+    <p>
+      「火星での V∞」は、この区間を飛んだ先で火星に着くときの、火星から見た速さです。
+      これから作る軌道の善し悪しは、たいていこの数字で決まります。
+    </p>
+
+    <h2>覚えておくと早い</h2>
+    <table>
+      <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>シーケンスを選ぶ</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>時刻を1日ずつ動かす (<kbd>Shift</kbd> で10日)</td></tr>
+      <tr><td><kbd>A</kbd> / <kbd>Delete</kbd></td><td>シーケンスを足す / 消す</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>元に戻す</td></tr>
+      <tr><td><kbd>?</kbd></td><td>キーボード操作の一覧</td></tr>
+    </table>
+
+    <p>
+      作った設計は、上のバーの「保存」でファイルに落とせます。
+      「…」のメニューから「共有リンクをコピー」を選ぶと、設計をまるごと埋め込んだURLが作れるので、
+      そのまま人に送れます。「画像で保存」は軌道図と成績を1枚の絵にします。
+    </p>
+
+    <div class="nav-bottom">
+      <a href="index.html">← 目次</a>
+      <a href="mars.html">① 火星に行って帰ってくる →</a>
+    </div>
+  </main>
+</body>
+
+</html>

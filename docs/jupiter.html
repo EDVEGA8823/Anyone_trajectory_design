@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>③ 地球をもう一度使って木星へ — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="../index.html">アプリを開く →</a>
+  </header>
+
+  <main>
+    <h1>③ 地球をもう一度使って木星へ</h1>
+    <p class="lead">
+      木星は遠い。まっすぐ行こうとすると、どのロケットでも探査機が軽くなりすぎます。
+      NASAのJunoが採った答えは、<strong>いったん外へ出て、2年後に地球へ戻ってきて、その重力を借りる</strong>ことでした。
+      ΔVEGA (Delta-V Earth Gravity Assist) と呼ばれる手です。
+    </p>
+
+    <div class="aim">
+      <h3>ここで覚えること</h3>
+      <ul>
+        <li>地球から地球への区間は、自動では解けない</li>
+        <li>手動モードと、後ろに付いてくる噴射の節</li>
+        <li>遠日点で噴くと何が起きるか</li>
+        <li>自動調整の使いどころ</li>
+      </ul>
+    </div>
+
+    <h2>まず素直に組んでみる</h2>
+
+    <ol class="steps">
+      <li>
+        <p>シーケンスを3つ作ります。すべてJunoの実際の日付です。</p>
+        <table>
+          <tr><th>番号</th><th>種別</th><th>天体</th><th>日付</th></tr>
+          <tr><td>1</td><td>打上げ</td><td>地球</td><td>2011/08/05</td></tr>
+          <tr><td>2</td><td>スイングバイ</td><td>地球</td><td>2013/10/09</td></tr>
+          <tr><td>3</td><td>周回軌道投入</td><td>木星</td><td>2016/07/05</td></tr>
+        </table>
+        <figure>
+          <img src="img/jupiter-auto.png" alt="自動モードでは解けていない状態" />
+          <figcaption>軌道が引けていません。太陽系ビューには線らしい線が出ていないはずです。</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <p>
+      うまくいきません。打上げの節を選ぶと、脱出速度がとんでもない値になっています。
+    </p>
+
+    <figure class="panel">
+      <img src="img/jupiter-auto-panel.png" alt="自動モードの打上げの読み値" />
+      <figcaption>自動モードは「出発点と到着点を結ぶ軌道」を解きますが、この区間は解が意味を持ちません。</figcaption>
+    </figure>
+
+    <p>
+      理由ははっきりしています。この区間は<strong>地球から地球へ</strong>で、しかも2年後。
+      地球は2年でほぼ2周して元の場所に戻ってくるので、
+      「出発点と到着点がほぼ同じ場所」という問題になってしまいます。
+      そんな軌道は、まっすぐ行って戻ってくるような無茶なものしかありません。
+    </p>
+
+    <div class="note warn">
+      <strong>これは道具の不具合ではありません</strong>
+      同じ天体に戻ってくる区間は、途中で何かをしない限り成立しない、ということです。
+      その「何か」が深宇宙での噴射で、まさにΔVEGAの正体です。
+    </div>
+
+    <h2>手動モードに切り替える</h2>
+
+    <ol class="steps">
+      <li>
+        <p>打上げの節を選び、<strong>手動</strong>を押します。</p>
+        <figure class="seq">
+          <img src="img/jupiter-manual.png" alt="手動モードにしたシーケンス" />
+          <figcaption>「マヌーバ」という節が自動で1つ増えます。これが深宇宙での噴射です。</figcaption>
+        </figure>
+        <p>
+          手動モードでは、あなたが<strong>飛び出す向きと速さ</strong>を決めます。
+          その代わり「次の目的地に届く」保証がなくなるので、
+          後ろに付いた噴射の節が、届かせる役目を引き受けます。
+        </p>
+      </li>
+
+      <li>
+        <p>
+          噴射の節の日付を <strong>2012/08/31</strong> あたりにします。打上げの約1年後です。
+        </p>
+      </li>
+
+      <li>
+        <p>
+          打上げの節に戻り、<strong>脱出速度 5.6 km/s</strong>、方位角 α = 0、仰角 δ = 0 を入れます。
+        </p>
+        <figure class="panel">
+          <img src="img/jupiter-set.png" alt="手動モードの打上げ設定" />
+          <figcaption>α = 0 は「地球が進む向きにまっすぐ」という意味です。</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <figure>
+      <img src="img/jupiter-rough.png" alt="手で置いた段階の軌道" />
+      <figcaption>形になりました。外へ膨らんで、地球に戻ってきて、木星へ。ただしまだ雑です。</figcaption>
+    </figure>
+
+    <h2>自動調整で詰める</h2>
+    <p>
+      ここから先は手で詰めてもよいのですが、動かせるつまみが多すぎます
+      (脱出速度・2つの角度・4つの日付)。
+      ミッションシーケンスの見出しにある<strong>「自動調整」</strong>を押してください。
+    </p>
+
+    <p>
+      いまの設計を出発点にして、その<strong>近くだけ</strong>を探します。
+      別物の軌道を持ってくることはないので、あなたが決めた骨格 — 地球へ戻って木星へ — は変わりません。
+      数秒で終わります。
+    </p>
+
+    <figure>
+      <img src="img/jupiter-tuned.png" alt="自動調整の後" />
+      <figcaption>整いました。残る質量が大きく増えているはずです。</figcaption>
+    </figure>
+
+    <h2>何が起きたのかを読む</h2>
+    <figure class="panel">
+      <img src="img/jupiter-dsm.png" alt="噴射の節の読み値" />
+      <figcaption>噴射の節。ΔV 662 m/s、太陽からの距離 2.256 AU。</figcaption>
+    </figure>
+
+    <p>
+      時刻の欄に<strong>近日点・遠日点・交点の一覧</strong>が出ていることに注目してください。
+      2012/8/28 に遠日点 2.26 AU とあり、噴射の日付 (2012/8/26) はそのすぐ手前です。
+      つまりこの噴射は<strong>いちばん太陽から遠いところで打たれています</strong>。
+    </p>
+
+    <p>
+      これがΔVEGAの要点です。遠日点は探査機がいちばんゆっくり動いているところで、
+      そこで少し加速すると、反対側 (近日点) の速度が大きく増えます。
+      662 m/s という小さな噴射が、地球に戻ってきたときの速さ (V∞ 9.9 km/s) を作っています。
+      まっすぐ木星へ向かうためにこの速さを打上げで出そうとすると、
+      C3 は 98 km²/s² 前後。どんなロケットでも探査機はほとんど積めません。
+    </p>
+
+    <figure class="panel">
+      <img src="img/jupiter-flyby.png" alt="地球スイングバイの読み値" />
+      <figcaption>地球スイングバイ。近点ΔVが0 — 燃料を1滴も使わずに44度曲げています。</figcaption>
+    </figure>
+
+    <p>
+      そして地球のそばを通ることで、太陽から見た速度が跳ね上がります。
+      <strong>近点ΔVは0</strong>。重力だけで足りているので、噴射はしていません。
+      ここから先はもう木星まで届きます。
+    </p>
+
+    <h2>できあがり</h2>
+    <figure>
+      <img src="img/jupiter-final.png" alt="完成したJunoの軌道" />
+    </figure>
+
+    <table>
+      <tr><th>項目</th><th>この設計</th><th>実際のJuno</th></tr>
+      <tr><td>打上げ</td><td class="num">2011/08/10</td><td class="num">2011/08/05</td></tr>
+      <tr><td>打上げエネルギー C3</td><td class="num">28.9 km²/s²</td><td class="num">31.1 km²/s²</td></tr>
+      <tr><td>深宇宙での噴射</td><td class="num">662 m/s (2012年8月)</td><td class="num">約730 m/s (2012年8-9月、2回)</td></tr>
+      <tr><td>地球スイングバイ</td><td class="num">2013/10/01</td><td class="num">2013/10/09</td></tr>
+      <tr><td>スイングバイ時のV∞</td><td class="num">9.9 km/s</td><td class="num">約9.3 km/s</td></tr>
+      <tr><td>木星到着</td><td class="num">2016/04</td><td class="num">2016/07/05</td></tr>
+      <tr><td>打上げ質量 (H3-24形態)</td><td class="num">3275 kg</td><td class="num">3625 kg (アトラスV)</td></tr>
+    </table>
+
+    <p>
+      手で大まかに置いて、自動調整に詰めさせるだけで、実機の設計にここまで近づきます。
+      日付が数日ずれているのは、この道具が探しているのが
+      「残る質量がいちばん大きい設計」であって、実機が抱えていた他の事情
+      (打上げ日の制約、通信、機器の運用) を知らないからです。
+    </p>
+
+    <div class="note real">
+      <strong>実際のJunoとの違い</strong>
+      実機の深宇宙噴射は2012年8月30日と9月14日の2回に分かれています。
+      この道具では噴射の節を2つ並べれば同じことができますが、
+      合計のΔVはほとんど変わらないので、ここでは1回にまとめました。
+    </div>
+
+    <div class="nav-bottom">
+      <a href="mercury.html">← ② 金星の重力で水星へ</a>
+      <a href="ryugu.html">④ 小惑星に横づけする →</a>
+    </div>
+  </main>
+</body>
+
+</html>

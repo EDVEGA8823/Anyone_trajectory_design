@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>① 火星に行って帰ってくる — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="../index.html">アプリを開く →</a>
+  </header>
+
+  <main>
+    <h1>① 火星に行って帰ってくる</h1>
+    <p class="lead">
+      火星まで飛び、周回軌道に入り、しばらく留まってから飛び立ち、地球の大気に飛び込んで終わる。
+      JAXAの火星衛星探査計画 MMX と同じ形のミッションを組みます。
+    </p>
+
+    <div class="aim">
+      <h3>ここで覚えること</h3>
+      <ul>
+        <li>惑星間の移動には「行ける時期」が決まっている (打上げ窓)</li>
+        <li>周回軌道に入るには噴射が要る。軌道の大きさでその量が変わる</li>
+        <li>帰りの窓は行きとは別に探す</li>
+        <li>大気圏突入は速さが勝手に決まる。決められるのは角度だけ</li>
+      </ul>
+    </div>
+
+    <h2>組み立てる</h2>
+
+    <ol class="steps">
+      <li>
+        <p>シーケンスを4つ作り、上から順に次のようにします。</p>
+        <table>
+          <tr><th>番号</th><th>種別</th><th>天体</th><th>日付</th></tr>
+          <tr><td>1</td><td>打上げ</td><td>地球</td><td>2026/10/30</td></tr>
+          <tr><td>2</td><td>周回軌道投入</td><td>火星</td><td>2027/09/15</td></tr>
+          <tr><td>3</td><td>軌道脱出</td><td>火星 (自動で揃う)</td><td>2030/08/25</td></tr>
+          <tr><td>4</td><td>大気圏突入</td><td>地球</td><td>2031/08/20</td></tr>
+        </table>
+        <figure class="seq">
+          <img src="img/mars-types.png" alt="4つのシーケンス" />
+          <figcaption>
+            「軌道脱出」は直前の「周回軌道投入」と同じ天体に自動で揃うので、天体を選ぶ欄は閉じています。
+          </figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>日付を入れると、4本の区間がつながります。</p>
+        <figure>
+          <img src="img/mars-all.png" alt="火星往復の全体" />
+          <figcaption>
+            外側へ大きく膨らむ行き、火星の公転にくっついて進む滞在、内側へ落ちる帰り。
+            滞在中は火星と一緒に動くので、火星の軌道と重なって描かれます。
+          </figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <h2>行きの区間を読む</h2>
+    <figure class="panel">
+      <img src="img/mars-launch.png" alt="打上げの操作パネル" />
+      <figcaption>打上げの節。脱出速度 3.05 km/s、その先の火星に 2.589 km/s で着く。</figcaption>
+    </figure>
+
+    <p>
+      地球を出るときの<strong>脱出速度が 3.05 km/s</strong>、打上げエネルギー (C3) は 9.30 km²/s²。
+      火星へ向かう軌道としては、ほぼいちばん安いあたりです。
+      これはホーマン遷移 — 地球の軌道と火星の軌道に内接する楕円 — にごく近い形です。
+    </p>
+
+    <p>
+      日付を前後に動かしてみてください。1か月ずらすだけで脱出速度が跳ね上がるはずです。
+      地球と火星の位置関係が合う時期は<strong>約26か月ごと</strong>にしか来ません。
+      これが「打上げ窓」で、探査機の打上げ日が動かせない理由です。
+    </p>
+
+    <div class="note">
+      <strong>窓の探し方</strong>
+      勘で日付をずらす代わりに、操作パネルの「出発日と到着日を探す」を押すと、
+      出発日と到着日の組み合わせを総当たりで解いた地図が出ます (ポークチョップ図)。
+      青いところが安く、押すとその日付になります。
+    </div>
+
+    <h2>火星の周回軌道に入る</h2>
+    <figure class="panel">
+      <img src="img/mars-insert.png" alt="周回軌道投入の操作パネル" />
+      <figcaption>近点200 km × 遠点64528 kmの大きな楕円。投入ΔVは768.6 m/s。</figcaption>
+    </figure>
+
+    <p>
+      火星に近づいてくる速さ (V∞) が 2.589 km/s。このままでは通り過ぎてしまうので、
+      いちばん近づく点で噴射して減速し、楕円軌道に捕まります。その量が<strong>投入ΔV</strong>です。
+    </p>
+
+    <p>
+      遠点高度の初期値は上限に張り付いています。これは<strong>ヒル半径の半分</strong>で、
+      これより遠いと太陽に引っぱられて周回軌道を保てません。
+      そして<strong>捕まるだけなら、この大きな楕円がいちばん安い</strong>のです。
+    </p>
+
+    <p>試しに遠点高度を 10000 km に下げてみてください。</p>
+    <figure class="panel">
+      <img src="img/mars-insert2.png" alt="遠点を下げたときの投入ΔV" />
+      <figcaption>遠点10000 kmにすると投入ΔVは1191.4 m/s。1周の時間も2.4日から6.6時間に縮みます。</figcaption>
+    </figure>
+
+    <p>
+      768.6 → 1191.4 m/s。<strong>1.5倍</strong>です。
+      低い軌道は観測にも通信にも有利ですが、そのぶん燃料を払うことになります。
+      この道具では、周回軌道の高さは自動調整でも動かしません。
+      どこを回るかはミッションの目的が決めることで、燃料の都合で勝手に変えるものではないからです。
+    </p>
+    <p>読み終えたら、遠点は元の 64528 km に戻しておいてください。</p>
+
+    <h2>帰りの窓を探す</h2>
+    <figure class="panel">
+      <img src="img/mars-escape.png" alt="軌道脱出の操作パネル" />
+      <figcaption>2030/08/25に火星の周回軌道から飛び立つ。脱出ΔVは804 m/s。</figcaption>
+    </figure>
+
+    <p>
+      帰りも同じで、火星と地球の位置関係が合う時期を選びます。
+      3番目の節の日付を動かしながら、成績バーの総ΔVがいちばん小さくなるあたりを探してください。
+      2030年の夏から秋に窓があります。
+    </p>
+
+    <p>
+      往路と復路で<strong>3年近く火星に留まる</strong>のは、この窓を待つためです。
+      実際のMMXも2026年に打ち上げて2031年に帰ってくる計画で、ほとんどの期間は待ち時間です。
+    </p>
+
+    <h2>大気圏に飛び込む</h2>
+    <figure class="panel">
+      <img src="img/mars-entry.png" alt="大気圏突入の操作パネル" />
+      <figcaption>突入速度11.824 km/s、突入角 -8.0度。バッジは「実績内」。</figcaption>
+    </figure>
+
+    <p>
+      最後の節は大気圏突入です。ここには<strong>速さを決める欄がありません</strong>。
+      突入の速さは、近づいてきた速度と地球の重力だけで決まってしまうからです。
+      設計として決められるのは<strong>入る角度 (突入角 γ) だけ</strong>。
+    </p>
+
+    <p>
+      浅すぎると大気に弾き返されて宇宙へ戻ってしまい、深すぎると熱と減速に耐えられません。
+      無事に降りられるのは、おおむね -14度から -5.5度の間です。
+      角度を変えても突入の速さは変わらないことも、動かしてみると分かります。
+    </p>
+
+    <p>
+      右上のバッジは、突入の速さがどのくらい厳しいかの目安です。
+      11.824 km/s は「実績内」— スターダスト (人類が経験した最速の再突入 12.9 km/s) の範囲に収まっています。
+    </p>
+
+    <h2>できあがり</h2>
+    <figure>
+      <img src="img/mars-final.png" alt="完成した火星往復ミッション" />
+    </figure>
+
+    <table>
+      <tr><th>項目</th><th>この設計</th><th>実際のMMX</th></tr>
+      <tr><td>打上げ</td><td class="num">2026年10月</td><td class="num">2026年度</td></tr>
+      <tr><td>打上げエネルギー C3</td><td class="num">9.30 km²/s²</td><td class="num">10前後</td></tr>
+      <tr><td>火星到着</td><td class="num">2027年9月</td><td class="num">2027年</td></tr>
+      <tr><td>地球帰還</td><td class="num">2031年8月</td><td class="num">2031年</td></tr>
+      <tr><td>総ΔV</td><td class="num">1572 m/s</td><td class="num">—</td></tr>
+      <tr><td>残る質量 (H3-24形態)</td><td class="num">3030 kg</td><td class="num">約4000 kg (打上げ時)</td></tr>
+    </table>
+
+    <div class="note real">
+      <strong>実際のMMXとの違い</strong>
+      MMXが向かうのは火星そのものではなく衛星フォボスで、その周りの特殊な軌道 (準衛星軌道) に入ります。
+      この道具は衛星のまわりの軌道を扱えないので、火星の周回軌道として近似しています。
+      往復の骨格 — いつ出て、いつ着いて、いつ帰るか — は同じです。
+    </div>
+
+    <div class="nav-bottom">
+      <a href="basics.html">← 画面の見方</a>
+      <a href="mercury.html">② 金星の重力で水星へ →</a>
+    </div>
+  </main>
+</body>
+
+</html>

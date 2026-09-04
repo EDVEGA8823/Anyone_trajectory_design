@@ -1,0 +1,276 @@
+/* だれでも軌道設計 — ドキュメントの見た目
+
+   アプリ本体 (css/tokens.css) と同じ色を使う。別の見た目にすると、
+   説明の中の言葉と画面の中の言葉が結び付きにくくなる。 */
+
+:root {
+  --gray-50: #f7f7f8;
+  --gray-100: #efeff1;
+  --gray-200: #e3e4e8;
+  --gray-400: #a1a4ad;
+  --text: #17181a;
+  --text-muted: #6b6f76;
+  --surface: #ffffff;
+  --surface-muted: var(--gray-50);
+  --border: var(--gray-200);
+  --accent: #2f6df6;
+  --accent-soft: #eaf1ff;
+  --accent-strong: #1b4fd0;
+  --good: #1f7a4d;
+  --warn: #b5761b;
+  --danger: #c0392b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+/* ------------------------------------------------------------------ */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  background: #17181a;
+  color: #fff;
+}
+.topbar a {
+  color: #cfd3da;
+  text-decoration: none;
+  font-size: 13px;
+}
+.topbar a:hover {
+  color: #fff;
+}
+.topbar .brand {
+  font-weight: 700;
+  color: #fff;
+  font-size: 15px;
+}
+.topbar .spacer {
+  margin-left: auto;
+}
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+}
+
+h1 {
+  font-size: 26px;
+  line-height: 1.5;
+  margin: 18px 0 6px;
+}
+h2 {
+  font-size: 19px;
+  margin: 44px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--border);
+}
+h3 {
+  font-size: 16px;
+  margin: 28px 0 6px;
+}
+p {
+  margin: 10px 0;
+}
+a {
+  color: var(--accent-strong);
+}
+
+.lead {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* 章の頭に置く「何が学べるか」 */
+.aim {
+  margin: 18px 0 10px;
+  padding: 14px 18px;
+  background: var(--accent-soft);
+  border: 1px solid #cbdcff;
+  border-radius: 12px;
+}
+.aim h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--accent-strong);
+}
+.aim ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* 手順 */
+ol.steps {
+  counter-reset: step;
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+}
+ol.steps > li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 4px 40px;
+  margin: 0 0 20px;
+}
+ol.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 26px;
+  text-align: center;
+}
+
+figure {
+  margin: 16px 0;
+}
+figure img {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+figure.panel img {
+  max-width: 400px;
+}
+/* ミッションシーケンスの一覧は縦に細長いので、幅をさらに詰める */
+figure.seq img {
+  max-width: 230px;
+}
+figcaption {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 14px;
+  width: 100%;
+}
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+th {
+  background: var(--gray-100);
+  font-weight: 600;
+}
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.note {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--gray-400);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.note strong {
+  display: block;
+  margin-bottom: 2px;
+}
+.note.real {
+  border-left-color: var(--good);
+}
+.note.warn {
+  border-left-color: var(--warn);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+.card {
+  display: block;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+.card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(23, 24, 26, 0.07);
+}
+.card .no {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.card h3 {
+  margin: 2px 0 4px;
+  font-size: 16px;
+}
+.card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.nav-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 56px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+  figure.panel img {
+    max-width: 100%;
+  }
+}
