@@ -170,11 +170,49 @@ def jupiter_direct():
     ]
 
 
+def pluto_direct():
+    """③ の前振り: 木星を使わずに冥王星へ直行してみる"""
+    return [
+        ("シーケンスを2つ用意する", "__D.add(2)", None, None),
+        ("2番目を冥王星の通過に",
+         "(async()=>{await __D.pick(1); await __D.body('冥王星'); await __D.type('スイングバイ');})()", None, None),
+        ("ニューホライズンズと同じ日に着く日付にする",
+         "__D.dates(['2006-01-19','2015-07-14'])", None, None),
+        ("ロケットをアトラスVにする", "__D.launcher('atlas551_star48b')", "pluto-direct-stat", ".stat-bar"),
+        ("打上げの節", "__D.pick(0)", "pluto-direct-launch", ".control-panel"),
+        ("全体", "__D.deselect()", "pluto-direct", None),
+    ]
+
+
+def pluto():
+    """③ ニューホライズンズ風 木星スイングバイで冥王星へ"""
+    return [
+        ("シーケンスを3つ用意する", "__D.add(3)", None, None),
+        ("2番目を木星のスイングバイに",
+         "(async()=>{await __D.pick(1); await __D.body('木星'); await __D.type('スイングバイ');})()", None, None),
+        ("3番目を冥王星の通過に",
+         "(async()=>{await __D.pick(2); await __D.body('冥王星'); await __D.type('スイングバイ');})()", None, None),
+        ("ニューホライズンズの実際の日付に",
+         "__D.dates(['2006-01-19','2007-02-28','2015-07-14'])", "pluto-all", None),
+        ("シーケンス一覧", "__D.deselect()", "pluto-types", ".sequence-panel"),
+        ("ロケットをアトラスVにする", "__D.launcher('atlas551_star48b')", "pluto-stat", ".stat-bar"),
+        ("打上げの節", "__D.pick(0)", "pluto-launch", ".control-panel"),
+        ("木星スイングバイの節", "__D.pick(1)", "pluto-jupiter", ".control-panel"),
+        ("打上げを20日ずらすと窓から外れる",
+         "(async()=>{await __D.dates(['2006-02-08',undefined,undefined]); await __D.pick(1);})()",
+         "pluto-offwindow", ".control-panel"),
+        ("戻す", "__D.dates(['2006-01-19',undefined,undefined])", None, None),
+        ("全体", "__D.deselect()", "pluto-final", None),
+    ]
+
+
 SCENARIOS = {
     "basics": basics,
     "mars": mars,
     "mercury_direct": mercury_direct,
     "mercury": mercury,
+    "pluto_direct": pluto_direct,
+    "pluto": pluto,
     "jupiter_direct": jupiter_direct,
     "jupiter": jupiter,
     "ryugu": ryugu,

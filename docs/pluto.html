@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>③ 木星に押してもらって冥王星へ — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="../index.html">アプリを開く →</a>
+  </header>
+
+  <main>
+    <h1>③ 木星に押してもらって冥王星へ</h1>
+    <p class="lead">
+      2006年に打ち上げられたニューホライズンズは、9年半かけて冥王星に到達しました。
+      鍵は打上げの13か月後にすれ違った木星です。
+      節を3つ並べるだけの、いちばん簡単なチュートリアルですが、
+      <strong>木星の重力がどれほど桁違いか</strong>がはっきり出ます。
+    </p>
+
+    <div class="aim">
+      <h3>ここで覚えること</h3>
+      <ul>
+        <li>木星のスイングバイの威力 (金星や地球とは桁が違う)</li>
+        <li>打上げロケットを選ぶ</li>
+        <li>打上げ窓が狭いということ</li>
+      </ul>
+    </div>
+
+    <h2>まず、木星を使わずに行ってみる</h2>
+    <p>
+      シーケンスを2つ作り、1つ目は地球、2つ目を<strong>冥王星のスイングバイ</strong> (通り過ぎるだけ) にします。
+      日付はニューホライズンズと同じ、2006/01/19 出発、2015/07/14 到着。
+    </p>
+    <p>
+      成績バーの<strong>打ち上げロケット</strong>を「Atlas V 551 + Star 48B」にしてください。
+      ニューホライズンズが実際に使った構成です。
+    </p>
+
+    <figure>
+      <img src="img/pluto-direct.png" alt="冥王星へ直行する軌道" />
+      <figcaption>地球から冥王星へ、まっすぐ向かう軌道。</figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="img/pluto-direct-launch.png" alt="直行したときの打上げの読み値" />
+      <figcaption>脱出速度 16.280 km/s。冥王星には 13.485 km/s で着きます。</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/pluto-direct-stat.png" alt="直行したときの成績" />
+      <figcaption>打上げエネルギー 265.03 km²/s²。打ち上げられるのは 70 kg です。</figcaption>
+    </figure>
+
+    <p>
+      <strong>70 kg</strong>。カメラ1台も載りません。
+      冥王星は遠いというだけでなく、<strong>速く着こうとするほど高くつく</strong>のです。
+      同じ9年半で着くには、これだけのエネルギーが要ります。
+    </p>
+
+    <h2>木星を挟む</h2>
+
+    <ol class="steps">
+      <li>
+        <p>作り直して、シーケンスを3つ。すべてニューホライズンズの実際の日付です。</p>
+        <table>
+          <tr><th>番号</th><th>種別</th><th>天体</th><th>日付</th></tr>
+          <tr><td>1</td><td>打上げ</td><td>地球</td><td>2006/01/19</td></tr>
+          <tr><td>2</td><td>スイングバイ</td><td>木星</td><td>2007/02/28</td></tr>
+          <tr><td>3</td><td>スイングバイ</td><td>冥王星</td><td>2015/07/14</td></tr>
+        </table>
+        <figure class="seq">
+          <img src="img/pluto-types.png" alt="3つのシーケンス" />
+        </figure>
+      </li>
+    </ol>
+
+    <figure>
+      <img src="img/pluto-all.png" alt="ニューホライズンズの軌道" />
+      <figcaption>地球 → 木星 → 冥王星。木星のところで少し折れているのが分かります。</figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="img/pluto-launch.png" alt="木星を使ったときの打上げの読み値" />
+      <figcaption>脱出速度 12.602 km/s。直行のときの16.280から下がりました。</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/pluto-stat.png" alt="木星を使ったときの成績" />
+      <figcaption>打上げエネルギー 158.80 km²/s²、打ち上げられる質量 471 kg。</figcaption>
+    </figure>
+
+    <p>
+      <strong>70 kg が 471 kg</strong> になりました。約6.7倍です。
+      実際のニューホライズンズは478 kg。ほぼそのままの数字が出ています。
+    </p>
+
+    <h2>木星は桁が違う</h2>
+    <figure class="panel">
+      <img src="img/pluto-jupiter.png" alt="木星スイングバイの読み値" />
+      <figcaption>近点高度 2260591 km。それでも15.8度曲がります。</figcaption>
+    </figure>
+
+    <p>
+      注目してほしいのは<strong>近点高度 2260591 km</strong> — <strong>226万キロ</strong>です。
+      地球から月までの距離 (38万km) の6倍も離れたところを通っています。
+    </p>
+
+    <p>
+      チュートリアル②の金星は5681 km、④で使う地球は1万6000 km。
+      それに比べて226万kmという「かすりもしない」距離を通りながら、
+      それでも<strong>15.8度</strong>曲げられている。木星の重力とはそういうものです。
+    </p>
+
+    <table>
+      <tr><th>天体</th><th>近点高度</th><th>曲げ角</th><th>チュートリアル</th></tr>
+      <tr><td>金星</td><td class="num">5,681 km</td><td class="num">34.0°</td><td>②</td></tr>
+      <tr><td>地球</td><td class="num">16,000 km</td><td class="num">63.3°</td><td>⑤</td></tr>
+      <tr><td>木星</td><td class="num">2,260,591 km</td><td class="num">15.8°</td><td>③ (このページ)</td></tr>
+    </table>
+
+    <p>
+      曲げ角だけを見ると木星が小さく見えますが、意味が違います。
+      木星は<strong>速度そのものを大きく増やす</strong>のです。
+      木星に 18.511 km/s で近づき、18.471 km/s で離れていく — 木星から見れば速さは変わっていません。
+      ところが木星自身が太陽のまわりを13 km/sで動いているので、
+      太陽から見た速度はここで大きく跳ね上がります。
+      冥王星に 13.787 km/s という猛烈な速さで着くのは、そのおかげです。
+    </p>
+
+    <p>
+      近点ΔVは <strong>35.2 m/s</strong>。ほとんど無料です。
+      226万km離れたところを通るだけで、探査機の質量が6.7倍になる勘定になります。
+    </p>
+
+    <div class="note">
+      <strong>速すぎて止まれない</strong>
+      13.787 km/s は「冥王星から見た速さ」です。
+      この速さでは冥王星に留まることは考えられず、ニューホライズンズは
+      通り過ぎながら観測しました。接近から離脱までの勝負は数時間。
+      観測計画は打上げの何年も前から秒単位で組まれていました。
+    </div>
+
+    <h2>窓は狭い</h2>
+    <p>
+      打上げの日付を20日ずらして、2006/02/08 にしてみてください。
+      そのあと木星の節を選び直します。
+    </p>
+
+    <figure class="panel">
+      <img src="img/pluto-offwindow.png" alt="打上げを20日ずらしたとき" />
+      <figcaption>近点ΔVが 35 m/s から 349 m/s へ。打上げエネルギーも158.8から195.5に上がります。</figcaption>
+    </figure>
+
+    <p>
+      たった20日で、燃料の要求が10倍になりました。
+      さらにずらすと、地球・木星・冥王星が一直線に近い並びから外れていき、
+      木星に「ついでに」寄ることができなくなります。
+    </p>
+
+    <table>
+      <tr><th>打上げをずらす</th><th>打上げエネルギー</th><th>近点ΔV</th></tr>
+      <tr><td class="num">-40日</td><td class="num">267.1</td><td class="num">906 m/s</td></tr>
+      <tr><td class="num">-20日</td><td class="num">189.9</td><td class="num">380 m/s</td></tr>
+      <tr><td class="num">そのまま</td><td class="num">158.8</td><td class="num">35 m/s</td></tr>
+      <tr><td class="num">+20日</td><td class="num">195.5</td><td class="num">349 m/s</td></tr>
+      <tr><td class="num">+40日</td><td class="num">330.2</td><td class="num">634 m/s</td></tr>
+    </table>
+
+    <p>
+      実際のニューホライズンズの打上げ窓は2006年1月から2月のわずか3週間ほどで、
+      強風と地上の停電で2度延期されたあと、3度目に飛びました。
+      この窓を逃していれば、木星を使えないぶん到着は数年遅れていました。
+    </p>
+
+    <h2>できあがり</h2>
+    <figure>
+      <img src="img/pluto-final.png" alt="完成したニューホライズンズの軌道" />
+    </figure>
+
+    <table>
+      <tr><th>項目</th><th>この設計</th><th>実際のニューホライズンズ</th></tr>
+      <tr><td>打上げ</td><td class="num">2006/01/19</td><td class="num">2006/01/19</td></tr>
+      <tr><td>打上げエネルギー C3</td><td class="num">158.80 km²/s²</td><td class="num">157.8 km²/s²</td></tr>
+      <tr><td>打ち上げられる質量</td><td class="num">471 kg</td><td class="num">478 kg</td></tr>
+      <tr><td>木星スイングバイ</td><td class="num">2007/02/28</td><td class="num">2007/02/28</td></tr>
+      <tr><td>木星からの距離</td><td class="num">226万 km</td><td class="num">230万 km</td></tr>
+      <tr><td>冥王星到着</td><td class="num">2015/07/14</td><td class="num">2015/07/14</td></tr>
+      <tr><td>冥王星での相対速度</td><td class="num">13.787 km/s</td><td class="num">13.8 km/s</td></tr>
+    </table>
+
+    <p>
+      日付を3つ入れてロケットを選んだだけで、実機の数字がそのまま出ました。
+      軌道設計というのは、つまるところ「いつ、どこを通るか」を決める仕事なのだ、
+      ということがよく分かる例です。
+    </p>
+
+    <div class="nav-bottom">
+      <a href="mercury.html">← ② 金星の重力で水星へ</a>
+      <a href="jupiter.html">④ 地球をもう一度使って木星へ →</a>
+    </div>
+  </main>
+</body>
+
+</html>

@@ -98,6 +98,15 @@
       await D.field("遠点高度", ra_alt);
     },
 
+    // 打上げロケットを選ぶ (成績バーの選択欄)
+    async launcher(id) {
+      const sel = document.getElementById("launcher");
+      sel.value = id;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      await wait(600);
+      return sel.options[sel.selectedIndex].textContent;
+    },
+
     // ポークチョップ図を開く (いま選んでいる節の「出発日と到着日を探す」)
     async porkchop() {
       const btn = [...document.querySelectorAll(".pc-open")].find((b) => !b.disabled && b.offsetParent !== null);

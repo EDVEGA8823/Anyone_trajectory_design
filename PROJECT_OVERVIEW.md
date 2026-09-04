@@ -149,8 +149,9 @@ docs/                   使い方 (静的HTML)。アプリの「ヘルプ」か�
   basics.html             画面の見方
   mars.html               ① MMX風 火星圏サンプルリターン
   mercury.html            ② マリナー10号風 水星フライバイ
-  jupiter.html            ③ Juno風 ΔVEGA 木星探査機
-  ryugu.html              ④ はやぶさ2風 小惑星ランデブー
+  pluto.html              ③ ニューホライズンズ風 木星スイングバイで冥王星へ
+  jupiter.html            ④ Juno風 ΔVEGA 木星探査機
+  ryugu.html              ⑤ はやぶさ2風 小惑星ランデブー
   style.css / img/        見た目と図。図はアプリを実際に操作して撮ったもの
 
 data/bodies/            小天体の軌道要素 (index.json + まとまりごとのJSON)。README.md に仕様
