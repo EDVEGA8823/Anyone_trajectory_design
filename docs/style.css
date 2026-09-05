@@ -146,9 +146,10 @@ ol.steps > li::before {
 
 figure {
   margin: 16px 0;
+  text-align: center;
 }
 figure img {
-  display: block;
+  display: inline-block;
   max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -162,7 +163,8 @@ figure.seq img {
   max-width: 230px;
 }
 figcaption {
-  margin-top: 6px;
+  max-width: 620px;
+  margin: 6px auto 0;
   font-size: 12.5px;
   color: var(--text-muted);
   line-height: 1.6;
@@ -289,7 +291,7 @@ kbd {
   border-radius: 10px;
 }
 .chart-wrap {
-  margin: 16px 0 6px;
+  margin: 16px auto 6px;
 }
 .chart-big {
   max-width: 700px;
@@ -298,6 +300,7 @@ kbd {
 .legend {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 4px 16px;
   margin: 6px 0 0;
   font-size: 12.5px;

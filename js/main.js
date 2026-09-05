@@ -3375,7 +3375,7 @@ function open_porkchop_by_key() {
   const i = State.selected_sequence;
   const pc = i === -1 ? null : porkchop_target(i);
   if (!pc) {
-    notify("出発日と到着日の地図は、次の天体が決まっている自動モードの節で出せます");
+    notify("出発日と到着日の地図は、次の天体が決まっている自動モードのシーケンスで出せます");
     return;
   }
   openPorkchop(pc);

@@ -8,11 +8,14 @@ def basics():
     """画面の見方"""
     return [
         ("空の画面", "__D.wait(300)", "basics-empty", None),
-        ("シーケンスを2つ足す", "__D.add(2)", "basics-two", None),
+        ("シーケンスを2つ足す", "__D.add(2)", None, None),
+        # 2つ目を選んだ状態で撮る。次の手順で変えるのは「種別」と「天体」なので、
+        # その2つが見えていないと図と本文が噛み合わない
+        ("2つ目を選ぶ", "__D.pick(1)", "basics-two", None),
         ("2番目を火星の周回軌道投入に",
          "(async()=>{await __D.pick(1); await __D.body('火星'); await __D.type('周回軌道投入');})()", None, None),
         ("日付を入れる", "__D.dates(['2026-10-30','2027-09-15'])", "basics-mars", None),
-        ("打上げの節を選ぶ", "__D.pick(0)", "basics-launch-panel", ".control-panel"),
+        ("打上げのシーケンスを選ぶ", "__D.pick(0)", "basics-launch-panel", ".control-panel"),
         ("成績バー", "__D.wait(200)", "basics-statbar", ".stat-bar"),
         ("シーケンス一覧", "__D.wait(200)", "basics-list", ".sequence-panel"),
         ("選択を外す", "__D.deselect()", "basics-preview", None),

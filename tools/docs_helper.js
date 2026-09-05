@@ -26,7 +26,7 @@
 
     async pick(i) {
       const cards = [...document.querySelectorAll(".sequence")];
-      if (!cards[i]) throw new Error("節 " + i + " が無い (" + cards.length + "個)");
+      if (!cards[i]) throw new Error("シーケンス " + i + " が無い (" + cards.length + "個)");
       cards[i].click();
       await wait(450);
     },
