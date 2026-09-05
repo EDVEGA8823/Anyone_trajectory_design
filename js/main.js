@@ -553,6 +553,18 @@ function update_launch_mass(vinf, dv_kms) {
     show("打ち上げ不可", "-", "この速度まで加速するのは、このロケットの能力を超えています", "bad", approx);
     return;
   }
+  // キックステージ付きの構成は、上段のΔVが固定なので低いエネルギーの打上げには使えない
+  if (status === "below_range") {
+    show(
+      "この構成では不可",
+      "-",
+      "上段 (キックステージ) が強すぎて、この程度の打上げエネルギーには使えません。\n" +
+        "遠くへ速く行くとき専用の構成です",
+      "bad",
+      approx
+    );
+    return;
+  }
 
   // ロケット方程式。総ΔVの分の燃料を使うと、残るのはこれだけ。
   const dry = final_mass(mass, dv_kms);

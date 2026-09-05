@@ -15,7 +15,7 @@
 
 // H3の投入能力は表ではなく、C3 [km^2/s^2] に対する近似式で与える。
 //   質量 = A * exp(-(sqrt(C3 + 119.37529) - 10.9259) / 4.39338) - 5012.14
-// C3=0 で H3-24形態は 6000 kg、H3-22形態は 4090 kg になる係数。
+// C3=0 で H3-24形態は 5700 kg、H3-22形態は 4090 kg になる係数。
 // 式が0を下回るC3から先は「その機体では届かない」扱いにする。
 const H3_B = 5012.14;
 const H3_C = 119.37529;
@@ -26,6 +26,18 @@ const h3_mass = (A) => (c3) => A * Math.exp(-(Math.sqrt(c3 + H3_C) - H3_D) / H3_
 const h3_vinf_max = (A) => {
   const u = -H3_E * Math.log(H3_B / A) + H3_D;
   return Math.sqrt(Math.max(u * u - H3_C, 0));
+};
+
+// 同じ形の近似式で与える他の機体。
+//   質量 = A * exp(-sqrt(C3 + C0) / B) - M0
+// C0 はパーキング軌道での 2mu/r にあたる下駄で、H3の式の 119.37529 と役割は同じ
+// (高度の取り方の違いで少し値が違う)。
+const FIT_C0 = 121.843;
+const fit_mass = (A, B, M0) => (c3) => A * Math.exp(-Math.sqrt(c3 + FIT_C0) / B) - M0;
+// 質量が0になるV∞ (上の式を m=0 について解いたもの)
+const fit_vinf_max = (A, B, M0) => {
+  const u = B * Math.log(A / M0);
+  return Math.sqrt(Math.max(u * u - FIT_C0, 0));
 };
 
 // --- Atlas V 551 + Star 48B (New Horizonsの構成) ---
@@ -129,8 +141,8 @@ const LAUNCHERS = {
   h3_24: {
     label: "H3-24形態",
     note: "参考値。C3に対する近似式で、赤緯依存は見ていない",
-    formula: h3_mass(11012.14),
-    vinf_max: h3_vinf_max(11012.14),
+    formula: h3_mass(10712.14),
+    vinf_max: h3_vinf_max(10712.14),
     source_mode: "extrapolated",
     confidence: "reference",
   },
@@ -139,6 +151,30 @@ const LAUNCHERS = {
     note: "参考値。C3に対する近似式で、赤緯依存は見ていない",
     formula: h3_mass(9102.14),
     vinf_max: h3_vinf_max(9102.14),
+    source_mode: "extrapolated",
+    confidence: "reference",
+  },
+  h2a202: {
+    label: "H-IIA202",
+    note: "参考値。C3に対する近似式で、赤緯依存は見ていない",
+    formula: fit_mass(177520, 3.12594, 2551.89),
+    vinf_max: fit_vinf_max(177520, 3.12594, 2551.89),
+    source_mode: "extrapolated",
+    confidence: "reference",
+  },
+  mv_ks: {
+    label: "M-V + キックステージ",
+    note: "参考値。固体ロケットM-Vに上段を足した構成。C3に対する近似式",
+    formula: fit_mass(503600, 1.71654, 128.192),
+    vinf_max: fit_vinf_max(503600, 1.71654, 128.192),
+    source_mode: "extrapolated",
+    confidence: "reference",
+  },
+  epsilon_s_ks: {
+    label: "イプシロンS + キックステージ",
+    note: "参考値。小型固体ロケットに上段を足した構成。C3に対する近似式",
+    formula: fit_mass(74199.7, 2.10757, 98.0725),
+    vinf_max: fit_vinf_max(74199.7, 2.10757, 98.0725),
     source_mode: "extrapolated",
     confidence: "reference",
   },
@@ -229,10 +265,11 @@ const LAUNCHERS = {
     ],
   },
   atlas551_star48b: {
-    label: "Atlas V 551 + Star 48B",
+    // 一覧の中での呼び方は他の上段付き構成と揃える (中身が Star 48B であることは説明に書く)
+    label: "Atlas V 551 + キックステージ",
     note:
-      "New Horizonsの構成。Atlas単体の表と Star 48B のΔVの釣り合いから逆算した推定で、" +
-      "公式の打上げ能力ではない。妥当なのはC3 60〜220 km²/s²の範囲",
+      "New Horizonsの構成 (上段は固体の Star 48B)。Atlas単体の表と Star 48B のΔVの" +
+      "釣り合いから逆算した推定で、公式の打上げ能力ではない。妥当なのはC3 60〜220 km²/s²の範囲",
     formula: (c3) => atlas551Star48B(c3),
     c3_min: STAR48B_C3_MIN,
     c3_max: STAR48B_C3_MAX,
@@ -506,7 +543,13 @@ export function launcher_mass(id, vinf, decl = 0, mode = "extended") {
       sourceMode: L.source_mode ?? "extrapolated",
       confidence: L.confidence ?? "reference",
     };
-    if (!(mass > 0)) return { mass: 0, status: "over_vinf", ...meta };
+    if (!(mass > 0)) {
+      // 質量が出ない理由は2つある。速すぎて届かないのと、遅すぎて成り立たないの。
+      // 後者はキックステージ付きの構成で起きる (上段のΔVは固定なので、小さな
+      // C3には使えない)。同じ「打ち上げ不可」で片付けると理由が嘘になる。
+      const below = L.c3_min != undefined && c3 < L.c3_min;
+      return { mass: 0, status: below ? "below_range" : "over_vinf", ...meta };
+    }
     const outside =
       (L.c3_min != undefined && c3 < L.c3_min) || (L.c3_max != undefined && c3 > L.c3_max);
     return {
