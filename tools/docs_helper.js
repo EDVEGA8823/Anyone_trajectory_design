@@ -154,6 +154,26 @@
       await wait(500);
     },
 
+    // 黄道面からの高さを見るための Z拡大 (押すと入り、もう一度押すと戻る)
+    async zzoom() {
+      document.getElementById("z_zoom").click();
+      await wait(800);
+    },
+
+    // カメラを斜めから。elev は黄道面からの仰角[度]、azim は方位[度]
+    async view(elev, dist, azim = 0) {
+      const e = (elev * Math.PI) / 180;
+      const a = (azim * Math.PI) / 180;
+      P.controls.object.position.set(
+        dist * Math.cos(e) * Math.sin(a),
+        dist * Math.sin(e),
+        dist * Math.cos(e) * Math.cos(a)
+      );
+      P.controls.update();
+      P.invalidate();
+      await wait(600);
+    },
+
     // 上のバーの「…」を開く (共有まわりの説明で使う)
     async menu() {
       document.querySelector(".topbar-more").click();

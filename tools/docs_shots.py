@@ -22,7 +22,8 @@ class Tab:
         self.id = 0
         info = json.loads(urllib.request.urlopen(f"http://127.0.0.1:{port}/json/list").read())
         page = next(t for t in info if t["type"] == "page")
-        self.ws = websocket.create_connection(page["webSocketDebuggerUrl"], timeout=300)
+        # ポークチョップ図のように、1手順が数分かかるものがある
+        self.ws = websocket.create_connection(page["webSocketDebuggerUrl"], timeout=900)
 
     def call(self, method, **params):
         self.id += 1
