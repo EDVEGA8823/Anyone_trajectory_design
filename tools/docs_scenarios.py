@@ -89,7 +89,8 @@ def jupiter():
         ("3番目を木星の周回軌道投入に",
          "(async()=>{await __D.pick(2); await __D.body('木星'); await __D.type('周回軌道投入');})()", None, None),
         ("Junoの実際の日付に",
-         "__D.dates(['2011-08-05','2013-10-09','2016-07-05'])", "jupiter-auto", None),
+         "__D.dates(['2011-08-05','2013-10-09','2016-07-05'])", None, None),
+        ("木星まで入るところまで引く", "__D.zoom(30)", "jupiter-auto", None),
         ("打上げを選ぶと自動では解けていない", "__D.pick(0)", "jupiter-auto-panel", ".control-panel"),
         ("打上げを手動モードにする",
          "(async()=>{await __D.pick(0); await __D.mode(false);})()", "jupiter-manual", ".sequence-panel"),
@@ -164,7 +165,8 @@ def jupiter_direct():
         ("2番目を木星のスイングバイに (通過するだけ)",
          "(async()=>{await __D.pick(1); await __D.body('木星'); await __D.type('スイングバイ');})()", None, None),
         ("いちばん安く行ける日付にする",
-         "__D.dates(['2011-07-16','2014-01-22'])", "jupiter-direct", None),
+         "__D.dates(['2011-07-16','2014-01-22'])", None, None),
+        ("木星まで入るところまで引く", "__D.zoom(30)", "jupiter-direct", None),
         ("打上げの節", "__D.pick(0)", "jupiter-direct-launch", ".control-panel"),
         ("成績バー", "__D.deselect()", "jupiter-direct-stat", ".stat-bar"),
     ]
@@ -180,7 +182,8 @@ def pluto_direct():
          "__D.dates(['2006-01-19','2015-07-14'])", None, None),
         ("ロケットをアトラスVにする", "__D.launcher('atlas551_star48b')", "pluto-direct-stat", ".stat-bar"),
         ("打上げの節", "__D.pick(0)", "pluto-direct-launch", ".control-panel"),
-        ("全体", "__D.deselect()", "pluto-direct", None),
+        ("冥王星まで入るところまで引く",
+         "(async()=>{await __D.deselect(); await __D.zoom(160);})()", "pluto-direct", None),
     ]
 
 
@@ -193,9 +196,10 @@ def pluto():
         ("3番目を冥王星の通過に",
          "(async()=>{await __D.pick(2); await __D.body('冥王星'); await __D.type('スイングバイ');})()", None, None),
         ("ニューホライズンズの実際の日付に",
-         "__D.dates(['2006-01-19','2007-02-28','2015-07-14'])", "pluto-all", None),
+         "__D.dates(['2006-01-19','2007-02-28','2015-07-14'])", None, None),
         ("シーケンス一覧", "__D.deselect()", "pluto-types", ".sequence-panel"),
         ("ロケットをアトラスVにする", "__D.launcher('atlas551_star48b')", "pluto-stat", ".stat-bar"),
+        ("冥王星まで入るところまで引く", "__D.zoom(160)", "pluto-all", None),
         ("打上げの節", "__D.pick(0)", "pluto-launch", ".control-panel"),
         ("木星スイングバイの節", "__D.pick(1)", "pluto-jupiter", ".control-panel"),
         ("打上げを20日ずらすと窓から外れる",
