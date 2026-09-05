@@ -154,6 +154,12 @@
       await wait(500);
     },
 
+    // 上のバーの「…」を開く (共有まわりの説明で使う)
+    async menu() {
+      document.querySelector(".topbar-more").click();
+      await wait(400);
+    },
+
     async zoom(dist) {
       P.controls.object.position.setLength(dist);
       P.controls.update();

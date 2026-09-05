@@ -19,6 +19,8 @@ def basics():
         ("成績バー", "__D.wait(200)", "basics-statbar", ".stat-bar"),
         ("シーケンス一覧", "__D.wait(200)", "basics-list", ".sequence-panel"),
         ("選択を外す", "__D.deselect()", "basics-preview", None),
+        ("上のバーの右側", "__D.wait(200)", "basics-topbar", ".topbar-actions"),
+        ("「…」のメニューを開く", "__D.menu()", "basics-menu", ".topbar-menu"),
     ]
 
 
