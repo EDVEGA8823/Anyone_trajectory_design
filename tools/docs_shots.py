@@ -7,6 +7,12 @@ url はローカルに立てた静的サーバのもの (例: http://127.0.0.1:8
 
 --shots を付けると docs/img/ に PNG を書き出す。付けなければ数字だけ出す
 (日付合わせの段階では、まず数字が妥当かを見たい)。
+
+手順の多いシナリオでは、後ろのほうの撮影が目に見えて遅くなる。1つのブラウザを
+開いたまま太陽系ビューを何度も作り直すためで、終わりのほうでは1手順に数分かかり、
+Page.captureScreenshot が返らなくなることもある。画角だけ直したいときは、
+その部分を切り出した小さいシナリオを作って回すほうが速い
+(例: hohmann に対する hohmann_broken)。
 """
 import base64, json, os, subprocess, sys, time, urllib.request
 import websocket
@@ -64,6 +70,25 @@ def launch(port, w, h):
 from docs_scenarios import SCENARIOS
 
 
+def close_browser(proc):
+    """Edge をまとめて止める。
+
+    proc.terminate() が止めるのは起動用のプロセスだけで、描画やGPUの
+    子プロセスは生き残る。残ったままにすると WebGL のコンテキストを掴んだ
+    ままになり、何度か走らせるうちに上限に当たって描画が止まる (1手順に
+    数分かかるようになり、最後は screenshot が返らなくなる)。
+    """
+    try:
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+    try:
+        proc.wait(timeout=10)
+    except Exception:
+        proc.kill()
+
+
 def main():
     url = sys.argv[1]
     name = sys.argv[2]
@@ -113,7 +138,7 @@ def main():
         time.sleep(0.8)
         print(json.dumps({"手順": log, "できあがり": tab.ev("__D.stat()")}, ensure_ascii=False, indent=1))
     finally:
-        proc.terminate()
+        close_browser(proc)
 
 
 main()

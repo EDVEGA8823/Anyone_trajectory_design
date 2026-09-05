@@ -60,6 +60,10 @@
       State.mission_sequence.set_dates(list.map((x) => (x == undefined ? undefined : D.jd(x))));
       await wait(500);
       E.updateAfterAdd();
+      // updateAfterAdd() だけでは軌道の弧が描き直されず、2回目以降の日付変更で
+      // 前の軌道が残ったままになる (成績バーの数字だけ新しくなる)。
+      // 画面から日付を触る道は update_plot() を通るので、ここでも呼んでおく。
+      M.update_plot();
       await wait(600);
     },
 
@@ -112,13 +116,22 @@
       const btn = [...document.querySelectorAll(".pc-open")].find((b) => !b.disabled && b.offsetParent !== null);
       if (!btn) throw new Error("「出発日と到着日を探す」が押せない");
       btn.click();
-      // 計算が終わる (くるくるが消える) まで待つ
-      for (let i = 0; i < 60; i++) {
-        await wait(400);
+      await D.pcWait();
+    },
+
+    // ポークチョップ図の計算が終わる (くるくるが消える) まで待つ。
+    // 範囲を広げると1万通り解くことになり、決め打ちの待ち時間では
+    // 「計算中…」のまま撮れてしまう。
+    async pcWait(max_sec = 600) {
+      for (let i = 0; i < max_sec; i++) {
+        await wait(1000);
         const sp = document.querySelector(".pc-spinner");
-        if (sp && getComputedStyle(sp).display === "none") break;
+        if (sp && getComputedStyle(sp).display === "none") {
+          await wait(1200);
+          return;
+        }
       }
-      await wait(1200);
+      throw new Error("ポークチョップ図の計算が終わらない");
     },
 
     // 図の色で塗る量を切り替える

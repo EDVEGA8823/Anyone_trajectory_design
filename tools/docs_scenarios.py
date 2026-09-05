@@ -215,40 +215,67 @@ def pluto():
     ]
 
 
+# 資料「ホーマン遷移と、3次元の壁」で使う共通の値
+_HOH_JUPITER = ("(async()=>{await __D.pick(1); await __D.body('木星');"
+                " await __D.type('スイングバイ');})()")
+_HOH_TOP = "__D.view(90, 26)"        # 真上から (木星の軌道まで枠に入る距離)
+_HOH_OBL = "__D.view(12, 24, 20)"    # 斜めから (面の傾きを見る)
+_HOH_EDGE = "__D.view(0, 24, 110)"   # 真横から (黄道面が1本の線になる)
+
+
+def _hohmann_broken():
+    """面を折る (ブロークンプレーン) の手順。壁の日付が入っている状態から始める。"""
+    return [
+        ("打上げを手動にする", "(async()=>{await __D.pick(0); await __D.mode(false);})()", None, None),
+        # 噴射の位置は日付で決める。動かして噴射量がいちばん小さいところを選んだ
+        ("噴射を置く", "__D.dates(['2030-01-22','2030-06-01',undefined])", None, None),
+        ("打上げの向きと速さを置く",
+         "(async()=>{await __D.pick(0); await __D.field('脱出速度', 8.4);"
+         "await __D.field('方位角', 0); await __D.field('仰角', 0);})()", None, None),
+        ("折ったあとの成績", "__D.deselect()", "hohmann-broken-stat", ".stat-bar"),
+        ("壁と同じ画角で見る", _HOH_OBL, "hohmann-broken", None),
+        # 折れ目は1度ほどなので、真横から見て Z拡大しないと線が1本に見える
+        ("真横から (Z拡大なし)", _HOH_EDGE, "hohmann-broken-zoff", None),
+        ("Z拡大を入れる", "(async()=>{await __D.zzoom(); await %s;})()" % _HOH_EDGE,
+         "hohmann-broken-zon", None),
+        ("Z拡大を戻す", "__D.zzoom()", None, None),
+        ("噴射のシーケンス", "__D.pick(1)", "hohmann-broken-dsm", ".control-panel"),
+    ]
+
+
 def hohmann():
     """資料: ホーマン遷移と3次元の壁 (地球 → 木星)
 
     出発日は 2030-01-22 で通す。飛行時間だけを変えて、島① (849日) /
-    転移角180度の壁 (966日) / 島② (1104日) を撮る。
+    転移角180度の直前 (966日) / 島② (1104日) を撮る。
+
+    カメラの距離は、木星 (5.2AU) と軌道全体が枠に入るように選んである。
+    画角の半分は tan(15度) なので、距離 26 でおよそ ±7AU 入る。
     """
-    J = "(async()=>{await __D.pick(1); await __D.body('木星'); await __D.type('スイングバイ');})()"
     return [
         ("シーケンスを2つ用意する", "__D.add(2)", None, None),
-        ("2番目を木星のスイングバイに", J, None, None),
+        ("2番目を木星のスイングバイに", _HOH_JUPITER, None, None),
 
         # 島① (転移角が180度より手前)
         ("島①の日付 849日", "__D.dates(['2030-01-22','2032-05-20'])", None, None),
-        ("引いて全体を入れる", "(async()=>{await __D.zoom(13); await __D.deselect();})()",
+        ("真上から", "(async()=>{await __D.deselect(); await %s;})()" % _HOH_TOP,
          "hohmann-short", None),
-
-        # Z拡大。真上から見ても平らにしか見えないものを、高さ方向に伸ばして見る
-        ("斜めから見る (Z拡大なし)", "__D.view(22, 26, 30)", "hohmann-zoff", None),
-        ("Z拡大を入れる", "__D.zzoom()", "hohmann-zon", None),
-        ("Z拡大を戻す", "(async()=>{await __D.zzoom(); await __D.view(90, 13);})()", None, None),
 
         # 島② (180度より向こう)
         ("島②の日付 1104日", "__D.dates(['2030-01-22','2033-01-30'])", None, None),
-        ("同じ画角で", "__D.deselect()", "hohmann-long", None),
+        ("同じ画角で", "(async()=>{await __D.deselect(); await %s;})()" % _HOH_TOP,
+         "hohmann-long", None),
 
-        # 壁のまんなか (転移角 179.5度)。上から見るとただの直線に見える
-        ("壁のまんなかの日付 966日", "__D.dates(['2030-01-22','2032-09-14'])", None, None),
-        ("上から見る", "__D.deselect()", "hohmann-wall-top", None),
-        ("斜めから見ると黄道面を突き抜けている", "__D.view(12, 18, 20)",
-         "hohmann-wall-3d", None),
+        # 転移角が180度に届く直前
+        ("壁の日付 966日", "__D.dates(['2030-01-22','2032-09-14'])", None, None),
+        ("真上から", "(async()=>{await __D.deselect(); await %s;})()" % _HOH_TOP,
+         "hohmann-wall-top", None),
+        ("斜めから見ると黄道面を突き抜けている", _HOH_OBL, "hohmann-wall-3d", None),
         ("成績バー", "__D.wait(200)", "hohmann-wall-stat", ".stat-bar"),
 
-        # ポークチョップ図。安いところが2つの島に割れているのが見える
-        ("真上に戻す", "__D.view(90, 13)", None, None),
+        # ポークチョップ図。安いところが2つの島に割れているのが見える。
+        # 1万通り解くので、この手順だけで数分かかる
+        ("真上に戻す", _HOH_TOP, None, None),
         ("出発日と到着日の地図",
          "(async()=>{await __D.pick(0); await __D.porkchop();})()", None, None),
         ("範囲を広げる",
@@ -256,26 +283,28 @@ def hohmann():
          "q[0].value='160'; q[0].dispatchEvent(new Event('change',{bubbles:true}));"
          "await __D.wait(300);"
          "q[1].value='420'; q[1].dispatchEvent(new Event('change',{bubbles:true}));"
-         "await __D.wait(5000);})()",
+         "await __D.wait(500); await __D.pcWait();})()",
          "hohmann-porkchop", ".pc-window"),
         ("閉じる", "__D.pcClose()", None, None),
+    ] + _hohmann_broken()
 
-        # 面を途中で折る (ブロークンプレーン)
-        ("打上げを手動にする", "(async()=>{await __D.pick(0); await __D.mode(false);})()", None, None),
-        # 噴射の位置は日付で決める。何度か動かして噴射量がいちばん小さいところを選んだ
-        ("噴射を置く", "__D.dates(['2030-01-22','2030-06-01',undefined])", None, None),
-        ("打上げの向きと速さを置く",
-         "(async()=>{await __D.pick(0); await __D.field('脱出速度', 8.4);"
-         "await __D.field('方位角', 0); await __D.field('仰角', 0);})()", None, None),
-        ("折ったあとの成績", "__D.deselect()", "hohmann-broken-stat", ".stat-bar"),
-        ("壁と同じ画角で見る", "__D.view(12, 18, 20)", "hohmann-broken", None),
-        ("噴射のシーケンス", "__D.pick(1)", "hohmann-broken-dsm", ".control-panel"),
-    ]
+
+def hohmann_broken():
+    """hohmann() のうち、面を折るところの図だけを撮り直す。
+
+    ポークチョップ図の手順を通らないので速い。画角を直したいときに使う。
+    """
+    return [
+        ("シーケンスを2つ用意する", "__D.add(2)", None, None),
+        ("2番目を木星のスイングバイに", _HOH_JUPITER, None, None),
+        ("壁の日付 966日", "__D.dates(['2030-01-22','2032-09-14'])", None, None),
+    ] + _hohmann_broken()
 
 
 SCENARIOS = {
     "basics": basics,
     "hohmann": hohmann,
+    "hohmann_broken": hohmann_broken,
     "mars": mars,
     "mercury_direct": mercury_direct,
     "mercury": mercury,
