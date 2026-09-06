@@ -24,6 +24,26 @@ def basics():
     ]
 
 
+def basics_tune():
+    """「画面の見方」の自動調整の説明で使う図。
+
+    火星まで1本引いたところ (basics と同じ) から自動調整を押して、前と後を撮る。
+    動かせるのは打上げ日と飛行時間の2つだけなので、何が起きたかが読み取りやすい。
+    """
+    return [
+        ("シーケンスを2つ足す", "__D.add(2)", None, None),
+        ("2番目を火星の周回軌道投入に",
+         "(async()=>{await __D.pick(1); await __D.body('火星'); await __D.type('周回軌道投入');})()",
+         None, None),
+        ("日付を入れる", "__D.dates(['2026-10-30','2027-09-15'])", None, None),
+        ("ミッションシーケンスの見出し", "__D.deselect()", "basics-tune-btn", ".sequence-panel .panel-head"),
+        ("調整の前の成績", "__D.wait(200)", "basics-tune-before", ".stat-bar"),
+        ("自動調整を押す", "__D.tune()", None, None),
+        ("調整の後の成績", "__D.wait(200)", "basics-tune-after", ".stat-bar"),
+        ("日付が動いている", "__D.wait(200)", "basics-tune-list", "#sequence"),
+    ]
+
+
 def mars():
     """① MMX風 火星圏サンプルリターン"""
     return [
@@ -480,6 +500,7 @@ def sw2_veega():
 
 SCENARIOS = {
     "basics": basics,
+    "basics_tune": basics_tune,
     "hohmann": hohmann,
     "hohmann_broken": hohmann_broken,
     "swingby_beta": swingby_beta,
