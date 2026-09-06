@@ -14,6 +14,7 @@
 import { isDialogOpen } from './dialog.js';
 import { isBodyPickerOpen } from './body_picker.js';
 import { isPorkchopOpen, closePorkchop } from './porkchop.js';
+import { isExamplesOpen, closeExamples } from './examples.js';
 
 /* ==================================================================
    割り当て
@@ -225,6 +226,13 @@ export function installShortcutKeys() {
       if (e.key === "Escape" || e.key === "?") {
         e.preventDefault();
         closeShortcuts();
+      }
+      return;
+    }
+    if (isExamplesOpen()) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeExamples();
       }
       return;
     }

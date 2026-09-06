@@ -141,4 +141,5 @@ def main():
         close_browser(proc)
 
 
-main()
+if __name__ == "__main__":
+    main()

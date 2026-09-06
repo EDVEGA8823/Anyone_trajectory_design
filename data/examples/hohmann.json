@@ -1,0 +1,29 @@
+{
+ "format": "anyone-trajectory-design",
+ "version": 1,
+ "app": "だれでも軌道設計",
+ "name": "面を折って木星へ",
+ "launcher": "h3_24",
+ "launch": {
+  "vinf": 8.4,
+  "alpha": 0,
+  "delta": 0
+ },
+ "nodes": [
+  {
+   "type": "Launch",
+   "date": 2462523.5,
+   "planet": 2,
+   "manual": true
+  },
+  {
+   "type": "Maneuver",
+   "date": 2462653.5
+  },
+  {
+   "type": "Swingby",
+   "date": 2463489.5,
+   "planet": 4
+  }
+ ]
+}

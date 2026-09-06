@@ -1,0 +1,38 @@
+{
+ "format": "anyone-trajectory-design",
+ "version": 1,
+ "name": "VEGA で木星へ",
+ "launcher": "h3_24",
+ "launch": {
+  "vinf": 5.165061556164644,
+  "alpha": 0.003661558716321748,
+  "delta": -0.0010579997202757596
+ },
+ "nodes": [
+  {
+   "type": "Launch",
+   "date": 2463079.813772975,
+   "planet": 2
+  },
+  {
+   "type": "Swingby",
+   "date": 2463246.9090707866,
+   "planet": 1,
+   "rp": 8544.331133373827,
+   "beta": -1.690100092514791,
+   "rev": 1
+  },
+  {
+   "type": "Swingby",
+   "date": 2463770.6006946205,
+   "planet": 2,
+   "rp": 6678.137,
+   "beta": -1.5169021184281313
+  },
+  {
+   "type": "Orbit",
+   "date": 2464616.379189568,
+   "planet": 4
+  }
+ ]
+}

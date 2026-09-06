@@ -64,7 +64,7 @@ const ACTIONS = [
   { sep: true },
 
   { id: "new", label: "新規作成", icon: "file", hint: "ミッションを空にして最初からやり直す", where: "menu" },
-  { id: "examples", label: "例を読み込む", icon: "example", hint: "実際の探査機のミッションを読み込んで参考にする", where: "menu" },
+  { id: "examples", label: "例を読み込む", icon: "example", hint: "ヘルプで組み立てている軌道を読み込む", where: "menu" },
   { sep: true },
   { id: "export_image", label: "画像で保存", icon: "image", hint: "いまの軌道図を画像として保存する", where: "menu" },
   { id: "share_link", label: "共有リンクをコピー", icon: "link", hint: "このミッションを開けるURLをコピーする", where: "menu" },

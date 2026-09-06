@@ -50,6 +50,7 @@ import {
   cancelOrDeselect,
 } from './ui/event.js';
 import { installShortcutKeys, setShortcutHandlers, openShortcuts } from './ui/shortcuts.js';
+import { openExamples } from './ui/examples.js';
 import { launcher_list, launcher_mass, launch_declination } from './core/launchers.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './panel/bplane.js';
 import {
@@ -3143,6 +3144,7 @@ function boot() {
     share_link: copyShareLink,
     share_x: () => shareOnX(missionName() || DEFAULT_NAME),
     shortcuts: openShortcuts,
+    examples: openExamples,
     // 使い方は別ページ (docs/)。設計を抱えたまま遷移すると失われるので新しいタブで開く
     help: () => window.open("docs/index.html", "_blank", "noopener"),
   });

@@ -1,0 +1,36 @@
+{
+ "format": "anyone-trajectory-design",
+ "version": 1,
+ "app": "だれでも軌道設計",
+ "name": "① 火星に行って帰ってくる",
+ "launcher": "h3_24",
+ "launch": {
+  "vinf": 3,
+  "alpha": 0,
+  "delta": 0
+ },
+ "nodes": [
+  {
+   "type": "Launch",
+   "date": 2461343.5,
+   "planet": 2
+  },
+  {
+   "type": "Orbit",
+   "date": 2461663.5,
+   "planet": 3,
+   "orbit_rp": 9376.2,
+   "orbit_ra": 9376.2
+  },
+  {
+   "type": "Escape",
+   "date": 2462808.5,
+   "planet": 3
+  },
+  {
+   "type": "Entry",
+   "date": 2463128.5,
+   "planet": 2
+  }
+ ]
+}
