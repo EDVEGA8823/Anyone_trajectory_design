@@ -135,7 +135,8 @@ async function readToken(hash) {
    コピーする
    ================================================================== */
 
-async function toClipboard(text) {
+/** 文字列をクリップボードへ。フィードバックの画面からも使う */
+export async function toClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);

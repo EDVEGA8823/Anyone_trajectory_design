@@ -803,3 +803,153 @@
   line-height: 1.6;
   color: var(--text-muted);
 }
+
+/* ==================================================================
+   フィードバックを送る (js/ui/feedback.js)
+   ==================================================================
+   書いてもらう画面なので、文字を打つ欄をいちばん大きく取る。 */
+.fb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(23, 24, 26, 0.42);
+}
+.fb-window {
+  width: min(520px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.fb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.fb-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.fb-close {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.fb-close:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+.fb-body {
+  padding: 12px 14px;
+  overflow-y: auto;
+}
+.fb-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-bottom: 4px;
+}
+.fb-text {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.fb-text:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.fb-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 2px 0;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.fb-details {
+  padding: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.fb-details > summary {
+  cursor: pointer;
+  padding: 2px 0;
+}
+/* 送る中身は、そのままの形で見せる (書き換えずに渡すことが分かるように) */
+.fb-preview {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-muted);
+}
+.fb-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 0 0;
+}
+.fb-btn {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.fb-btn:hover {
+  background: var(--surface-muted);
+}
+.fb-btn--primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #ffffff;
+}
+.fb-btn--primary:hover {
+  filter: brightness(0.94);
+}
+.fb-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}

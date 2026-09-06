@@ -51,6 +51,7 @@ import {
 } from './ui/event.js';
 import { installShortcutKeys, setShortcutHandlers, openShortcuts } from './ui/shortcuts.js';
 import { openExamples } from './ui/examples.js';
+import { openFeedback } from './ui/feedback.js';
 import { launcher_list, launcher_mass, launch_declination } from './core/launchers.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './panel/bplane.js';
 import {
@@ -3223,6 +3224,7 @@ function boot() {
     share_x: () => shareOnX(missionName() || DEFAULT_NAME),
     shortcuts: openShortcuts,
     examples: openExamples,
+    feedback: openFeedback,
     help: openHelpWindow,
     help_tab: openHelpTab,
   });
