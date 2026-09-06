@@ -72,7 +72,7 @@
 .view-tool.active {
   background: var(--accent-soft);
   border-color: var(--accent);
-  color: var(--accent-strong);
+  color: var(--accent-text);
 }
 .view-tool svg {
   display: block;

@@ -143,7 +143,7 @@
 /* 「打ち上げ不可」のような文字にも段階の色を効かせる (後述の lvl-* より前に
    置くと色が上書きされてしまうので、ここでは色を指定し直さない) */
 .value_box .value.as-text.lvl-bad {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 /* 打上げ質量 → 残る質量 をつなぐ矢印 */
@@ -158,15 +158,15 @@
 /* 値そのものに付く場合と、質量のように .value の中の span に付く場合がある */
 .value_box .value.lvl-good,
 .value_box .value .lvl-good {
-  color: var(--good);
+  color: var(--good-text);
 }
 .value_box .value.lvl-warn,
 .value_box .value .lvl-warn {
-  color: var(--warn);
+  color: var(--warn-text);
 }
 .value_box .value.lvl-bad,
 .value_box .value .lvl-bad {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .value_box.lvl-good {
   background: var(--good-soft);

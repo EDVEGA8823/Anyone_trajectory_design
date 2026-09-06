@@ -16,8 +16,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: var(--gray-900);
-  color: #ffffff;
+  background: var(--chrome);
+  color: var(--chrome-text);
 }
 
 .topbar-brand {
@@ -29,7 +29,7 @@
 
 .topbar-mark {
   display: block;
-  color: var(--gray-400);
+  color: var(--chrome-faint);
   flex: 0 0 auto;
 }
 
@@ -49,19 +49,19 @@
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--gray-300);
+  color: var(--chrome-dim);
   font-family: inherit;
   font-size: 12px;
   text-overflow: ellipsis;
 }
 .topbar-name:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: var(--chrome-line);
 }
 .topbar-name:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  border-color: var(--chrome-line-strong);
+  background: var(--chrome-hover);
+  color: var(--chrome-text);
 }
 
 /* 保存していない変更があることの目印。編集中の書類によくある点の印。
@@ -106,7 +106,7 @@
   padding: 7px;
 }
 .topbar-btn:disabled {
-  color: var(--gray-500);
+  color: var(--chrome-off);
   border-color: transparent;
   background: transparent;
   cursor: default;
@@ -129,7 +129,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--gray-300);
+  color: var(--chrome-dim);
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
@@ -139,8 +139,8 @@
 }
 .topbar-btn:hover,
 .topbar-btn.active {
-  background: rgba(255, 255, 255, 0.11);
-  color: #ffffff;
+  background: var(--chrome-hover);
+  color: var(--chrome-text);
 }
 .topbar-btn svg {
   display: block;
@@ -149,18 +149,18 @@
 
 /* ミッションを組み立てる操作は他より一段強く見せる */
 .topbar-btn--primary {
-  border-color: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
+  border-color: var(--chrome-line);
+  color: var(--chrome-text);
 }
 .topbar-btn--primary:hover {
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: var(--chrome-line-strong);
 }
 
 .topbar-sep {
   width: 1px;
   height: 22px;
   margin: 0 6px;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--chrome-line);
   flex: 0 0 auto;
 }
 
@@ -169,7 +169,7 @@
   display: flex;
   align-items: center;
   padding: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--chrome-line);
   border-radius: 999px;
   flex: 0 0 auto;
 }
@@ -178,7 +178,7 @@
   border: none;
   border-radius: 999px;
   background: transparent;
-  color: var(--gray-400);
+  color: var(--chrome-faint);
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
@@ -186,11 +186,11 @@
   cursor: pointer;
 }
 .topbar-lang-btn:hover {
-  color: #ffffff;
+  color: var(--chrome-text);
 }
 .topbar-lang-btn.active {
   background: rgba(255, 255, 255, 0.92);
-  color: var(--gray-900);
+  color: #17181a;
 }
 
 /* そのほかの操作 (⋯) */
@@ -297,7 +297,7 @@ body.file-drop::after {
   border: 2px dashed var(--accent);
   border-radius: var(--radius-lg);
   background: rgba(59, 111, 224, 0.06);
-  color: var(--accent-strong);
+  color: var(--accent-text);
   font-family: var(--font);
   font-size: 14px;
   font-weight: 600;
@@ -312,8 +312,8 @@ body.file-drop::after {
   z-index: 60;
   padding: 9px 16px;
   border-radius: 999px;
-  background: rgba(23, 24, 26, 0.92);
-  color: #ffffff;
+  background: var(--toast-bg);
+  color: var(--chrome-text);
   font-size: 12px;
   box-shadow: var(--shadow-md);
   pointer-events: none;

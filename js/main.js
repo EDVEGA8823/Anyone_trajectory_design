@@ -52,6 +52,8 @@ import {
 import { installShortcutKeys, setShortcutHandlers, openShortcuts } from './ui/shortcuts.js';
 import { openExamples } from './ui/examples.js';
 import { openFeedback } from './ui/feedback.js';
+import { openSettings } from './ui/settings.js';
+import { initTheme } from './ui/theme.js';
 import { launcher_list, launcher_mass, launch_declination } from './core/launchers.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './panel/bplane.js';
 import {
@@ -3225,6 +3227,7 @@ function boot() {
     shortcuts: openShortcuts,
     examples: openExamples,
     feedback: openFeedback,
+    settings: openSettings,
     help: openHelpWindow,
     help_tab: openHelpTab,
   });
@@ -3254,6 +3257,7 @@ function boot() {
   // 共有リンクの受け取り。履歴の見張りを始めた後に置く
   // (リンクから開いた時点を「ここより前へは戻さない」起点にするため)
   initShareLink();
+  initTheme();
 
   const leg_fold = document.getElementById("leg_fold");
   if (leg_fold) leg_fold.addEventListener("click", toggle_leg_box);

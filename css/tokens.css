@@ -1,14 +1,33 @@
 /* だれでも軌道設計 — 色・寸法・影などの土台となる変数
 
    css/ は index.html に書いた順で読み込まれる。同じ強さの規則は後勝ちなので、
-   順番を入れ替えたり <link> の並びを変えたりしないこと。 */
+   順番を入れ替えたり <link> の並びを変えたりしないこと。
+
+   【配色の切り替えについて】
+   色はすべてここで名前を付け、他のファイルは名前だけを使う。暗い配色は
+   :root[data-theme="dark"] で同じ名前に別の値を入れて作る。どちらを使うかは
+   js/ui/theme.js が <html data-theme="..."> を書いて決める。
+
+   --gray-* は「明るさの順」ではなく「役割の順」として使っている。
+     50〜300 … 地の上に薄く重ねるもの (下敷き・境界線)
+     400〜900 … 文字 (900がいちばんはっきり)
+   暗い配色ではこの並びを裏返す。つまり --gray-50 は暗い配色では「地より
+   ほんの少し明るい面」、--gray-900 は「いちばんはっきりした文字」になる。
+   こうすると、役割で色を選んでいる規則はそのまま両方で通る。
+
+   【暗いバーの色】
+   上部バー・ダイアログの見出し・ポークチョップ図の見出しは、明るい配色でも
+   暗い。これは「明るさの段階」ではなく「濃い帯」という別の役割なので、
+   --gray-900 ではなく --chrome-* を使う (裏返すと白い帯になってしまうため)。*/
 
 @charset "UTF-8";
 
 /* ==================================================================
-   Design tokens
+   Design tokens — 明るい配色 (既定)
    ================================================================== */
 :root {
+  color-scheme: light;
+
   --gray-50: #fafafa;
   --gray-100: #f3f4f6;
   --gray-150: #ebecef;
@@ -22,23 +41,67 @@
   --gray-900: #17181a;
 
   --accent: #3b6fe0;
+  /* 押したときに濃くなるほう。白い文字を乗せるので暗いままにする */
   --accent-strong: #2451b8;
+  /* 薄い青の上に乗せる文字。暗い配色では明るい青になる */
+  --accent-text: #2451b8;
   --accent-soft: #eaf0fd;
+  --accent-hover: #dfe9fc;
+
   --danger: #d6543f;
+  --danger-text: #d6543f;
   --danger-soft: #fbebe8;
   /* 値の大きさを一目で伝えるための色 (楽 / 普通 / 苦しい / かなり苦しい) */
   --good: #2f9e6e;
+  --good-text: #2f9e6e;
   --good-soft: #e9f6f0;
   --warn: #b8770f;
+  --warn-text: #b8770f;
   --warn-soft: #fdf4e6;
   --warn-border: #e8c68f;
 
-  --bg: var(--gray-100);
+  /* 「最終軌道」の読み値。閉じた軌道は緑、脱出は紫 */
+  --end-text: #1f6b4f;
+  --end-soft: #e4f4ec;
+  --end-border: #9fd8bf;
+  --escape-text: #8a4bc0;
+  --escape-soft: #f2e9fb;
+  --escape-border: #cfaee8;
+
+  --bg: #f3f4f6;
   --surface: #ffffff;
-  --surface-muted: var(--gray-50);
+  --surface-muted: #fafafa;
   --border: var(--gray-200);
   --text: var(--gray-900);
   --text-muted: var(--gray-500);
+
+  /* 濃い帯 (上部バー・見出し) と、その上に乗る文字 */
+  --chrome: #17181a;
+  --chrome-text: #ffffff;
+  --chrome-dim: #d1d3d9;
+  --chrome-faint: #a1a4ad;
+  --chrome-off: #71747c;
+  --chrome-hover: rgba(255, 255, 255, 0.11);
+  --chrome-line: rgba(255, 255, 255, 0.18);
+  --chrome-line-strong: rgba(255, 255, 255, 0.35);
+  --toast-bg: rgba(23, 24, 26, 0.92);
+  /* ダイアログの後ろを暗くする幕 */
+  --scrim: rgba(23, 24, 26, 0.42);
+  /* 図の上にかぶせる、下が透ける覆い */
+  --veil: rgba(255, 255, 255, 0.72);
+
+  /* 太陽系ビューと操作パネルの3D図で使う線の色。凡例の色見本もここを見る。
+     js/ui/theme.js が同じ値を読んで three.js に渡すので、片方だけ直さないこと */
+  --line-dark: #1a1c20; /* 双曲線・突入までの軌道 (地に対していちばん濃い線) */
+  --line-gray: #8a8f99; /* 目盛りの面・噴かなかった場合の線 */
+  --line-red: #d6543f;
+  --line-blue: #3b6fe0;
+  --line-orange: #e0a03b;
+  --line-purple: #9b4fd8;
+  --line-green: #4caf82;
+  --line-vinf: #ff8c1a;
+  --line-track: #2a5bd7; /* 選んでいるレグ (太陽系ビューの遷移軌道) */
+  --plot-bg: #ffffff; /* 太陽系ビューの地の色 */
 
   --radius-lg: 16px;
   --radius-md: 12px;
@@ -51,6 +114,88 @@
 
   --header-height: 64px;
   --canvas-padding: 24px;
+}
+
+/* ==================================================================
+   Design tokens — 暗い配色
+   ================================================================== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* 地より少し明るい面と境界線 (明るい配色の 50〜300 の裏返し) */
+  --gray-50: #24272c;
+  --gray-100: #292d33;
+  --gray-150: #2e3238;
+  --gray-200: #33373e;
+  --gray-300: #444951;
+  /* 文字 (明るい配色の 400〜900 の裏返し) */
+  --gray-400: #6f757e;
+  --gray-500: #9298a2;
+  --gray-600: #b0b6bf;
+  --gray-700: #c9ced5;
+  --gray-800: #e0e3e8;
+  --gray-900: #eef0f3;
+
+  /* 暗い地の上では、同じ青でも沈んで見える。少し明るくして釣り合わせる */
+  --accent: #5b8def;
+  --accent-strong: #3f6fd8;
+  --accent-text: #a6c3ff;
+  --accent-soft: #1e2941;
+  --accent-hover: #26355a;
+
+  --danger: #d6543f;
+  --danger-text: #ff8a72;
+  --danger-soft: #38201b;
+  --good: #2f9e6e;
+  --good-text: #55c795;
+  --good-soft: #17302a;
+  --warn: #cf8b1c;
+  --warn-text: #e0a648;
+  --warn-soft: #302516;
+  --warn-border: #6b5423;
+
+  --end-text: #63d3a3;
+  --end-soft: #163027;
+  --end-border: #2d6b52;
+  --escape-text: #c79bf0;
+  --escape-soft: #2a1c3a;
+  --escape-border: #563c72;
+
+  --bg: #131417;
+  --surface: #1d2024;
+  --surface-muted: #191b1f;
+  --border: var(--gray-200);
+  --text: var(--gray-900);
+  --text-muted: var(--gray-500);
+
+  /* 帯は地よりさらに沈める。明るい配色と同じく「濃い帯」であり続ける */
+  --chrome: #0c0d0f;
+  --chrome-text: #f0f2f5;
+  --chrome-dim: #b6bbc3;
+  --chrome-faint: #7d838d;
+  --chrome-off: #5b6068;
+  --chrome-hover: rgba(255, 255, 255, 0.09);
+  --chrome-line: rgba(255, 255, 255, 0.14);
+  --chrome-line-strong: rgba(255, 255, 255, 0.28);
+  --toast-bg: rgba(5, 6, 7, 0.94);
+  --scrim: rgba(0, 0, 0, 0.62);
+  --veil: rgba(19, 20, 23, 0.76);
+
+  /* いちばん濃い線は、暗い地の上ではいちばん明るい線になる */
+  --line-dark: #e8eaee;
+  --line-gray: #8f959f;
+  --line-red: #ef7059;
+  --line-blue: #5b8def;
+  --line-orange: #edb45a;
+  --line-purple: #b673ea;
+  --line-green: #4fc492;
+  --line-vinf: #ffa040;
+  --line-track: #5f92ff;
+  --plot-bg: #0b0c0e;
+
+  /* 暗い地では影がほとんど見えない。濃くして、面の縁を立たせる */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 
 * {

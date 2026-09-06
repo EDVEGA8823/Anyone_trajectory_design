@@ -78,7 +78,7 @@ const ACTIONS = [
   { sep: true },
   { id: "help_tab", label: "ヘルプをタブで開く", icon: "help", hint: "使い方のドキュメントを新しいタブで開く", where: "menu" },
   { id: "shortcuts", label: "キーボード操作", icon: "keyboard", hint: "ショートカットの一覧を見る", where: "menu" },
-  { id: "settings", label: "表示設定", icon: "settings", hint: "単位や配色などの表示の設定", where: "menu" },
+  { id: "settings", label: "表示設定", icon: "settings", hint: "配色 (明るい/暗い) などの見え方の設定", where: "menu" },
   { id: "feedback", label: "フィードバックを送る", icon: "feedback", hint: "要望や不具合を伝える", where: "menu" },
 ];
 

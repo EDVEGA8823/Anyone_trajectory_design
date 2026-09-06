@@ -73,8 +73,8 @@
   justify-content: space-between;
   gap: 8px;
   padding: 7px 8px 7px 12px;
-  background: var(--gray-800);
-  color: #ffffff;
+  background: var(--chrome);
+  color: var(--chrome-text);
   cursor: move;
   user-select: none;
   flex: 0 0 auto;
@@ -97,15 +97,15 @@
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--gray-300);
+  color: var(--chrome-dim);
   font-family: inherit;
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
 }
 .pc-close:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #ffffff;
+  background: var(--chrome-hover);
+  color: var(--chrome-text);
 }
 
 .pc-bar {
@@ -152,14 +152,14 @@
   border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
-  color: var(--accent-strong);
+  color: var(--accent-text);
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
 }
 .pc-run:hover {
-  background: #dfe9fc;
+  background: var(--accent-hover);
 }
 
 /* 補助的な操作 (色の測り直しなど) */
@@ -223,7 +223,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--veil);
 }
 
 .pc-ring {
@@ -264,7 +264,7 @@
 .pc-open:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
-  color: var(--accent-strong);
+  color: var(--accent-text);
 }
 .pc-open:disabled {
   color: var(--gray-400);

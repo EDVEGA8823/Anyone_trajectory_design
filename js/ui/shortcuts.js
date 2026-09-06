@@ -16,6 +16,7 @@ import { isBodyPickerOpen } from './body_picker.js';
 import { isPorkchopOpen, closePorkchop } from './porkchop.js';
 import { isExamplesOpen, closeExamples } from './examples.js';
 import { isFeedbackOpen, closeFeedback } from './feedback.js';
+import { isSettingsOpen, closeSettings } from './settings.js';
 
 /* ==================================================================
    割り当て
@@ -234,6 +235,13 @@ export function installShortcutKeys() {
       if (e.key === "Escape") {
         e.preventDefault();
         closeExamples();
+      }
+      return;
+    }
+    if (isSettingsOpen()) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeSettings();
       }
       return;
     }
