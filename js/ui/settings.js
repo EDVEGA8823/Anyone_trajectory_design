@@ -7,11 +7,12 @@
 // どちらが自分に合うか見比べられないため。
 
 import { themePref, setThemePref, currentTheme, onThemeChange } from './theme.js';
+import { t, onLangChange } from './i18n.js';
 
 const THEMES = [
   {
     id: "auto",
-    label: "自動",
+    label: "自動##配色",
     desc: "お使いの端末の設定に合わせる",
   },
   {
@@ -44,8 +45,10 @@ function refresh() {
   if (note_el) {
     note_el.textContent =
       pref === "auto"
-        ? "いまは端末の設定に従って「" + (currentTheme() === "dark" ? "暗い" : "明るい") + "」で出しています。"
-        : "この端末では、次に開いたときもこの配色で出します。";
+        ? t("いまは端末の設定に従って「{theme}」で出しています。", {
+            theme: t(currentTheme() === "dark" ? "暗い" : "明るい"),
+          })
+        : t("この端末では、次に開いたときもこの配色で出します。");
   }
 }
 
@@ -54,27 +57,28 @@ function build() {
   const win = el("div", "st-window");
 
   const head = el("div", "st-head");
-  head.appendChild(el("div", "st-title", "表示設定"));
+  head.appendChild(el("div", "st-title", t("表示設定")));
   const close = el("button", "st-close", "×");
   close.type = "button";
-  close.title = "閉じる";
+  close.title = t("閉じる");
   close.onclick = closeSettings;
   head.appendChild(close);
   win.appendChild(head);
 
   const body = el("div", "st-body");
-  body.appendChild(el("div", "st-label", "配色"));
+  body.appendChild(el("div", "st-label", t("配色")));
 
   const row = el("div", "st-choices");
-  for (const t of THEMES) {
+  // 変数名は th。t は訳を引く関数なので、ここでは使えない
+  for (const th of THEMES) {
     const btn = el("button", "st-choice");
     btn.type = "button";
-    btn.title = t.desc;
-    btn.appendChild(swatch(t.id));
-    btn.appendChild(el("div", "st-choice-name", t.label));
-    btn.appendChild(el("div", "st-choice-desc", t.desc));
-    btn.onclick = () => setThemePref(t.id);
-    buttons.set(t.id, btn);
+    btn.title = t(th.desc);
+    btn.appendChild(swatch(th.id));
+    btn.appendChild(el("div", "st-choice-name", t(th.label)));
+    btn.appendChild(el("div", "st-choice-desc", t(th.desc)));
+    btn.onclick = () => setThemePref(th.id);
+    buttons.set(th.id, btn);
     row.appendChild(btn);
   }
   body.appendChild(row);
@@ -87,7 +91,7 @@ function build() {
     el(
       "div",
       "st-foot",
-      "ヘルプのページも同じ配色で開きます。画像で保存したときの色も、いまの配色になります。"
+      t("ヘルプのページも同じ配色で開きます。画像で保存したときの色も、いまの配色になります。")
     )
   );
 
@@ -106,6 +110,16 @@ function swatch(id) {
   box.appendChild(el("div", "st-swatch-line st-swatch-line--short"));
   return box;
 }
+
+// 言語が変わったら、覚えている画面を捨てる (次に開くときに組み直す)
+onLangChange(() => {
+  if (root) {
+    root.remove();
+    root = null;
+    buttons = new Map();
+    note_el = null;
+  }
+});
 
 export function openSettings() {
   if (!root) {

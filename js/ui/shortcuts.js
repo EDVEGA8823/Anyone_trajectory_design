@@ -17,6 +17,7 @@ import { isPorkchopOpen, closePorkchop } from './porkchop.js';
 import { isExamplesOpen, closeExamples } from './examples.js';
 import { isFeedbackOpen, closeFeedback } from './feedback.js';
 import { isSettingsOpen, closeSettings } from './settings.js';
+import { t, onLangChange } from './i18n.js';
 
 /* ==================================================================
    割り当て
@@ -290,10 +291,10 @@ function build() {
   const win = el("div", "ks-window");
 
   const head = el("div", "ks-head");
-  head.appendChild(el("div", "ks-title", "キーボード操作"));
+  head.appendChild(el("div", "ks-title", t("キーボード操作")));
   const close = el("button", "ks-close", "×");
   close.type = "button";
-  close.title = "閉じる";
+  close.title = t("閉じる");
   close.onclick = closeShortcuts;
   head.appendChild(close);
   win.appendChild(head);
@@ -301,7 +302,7 @@ function build() {
   const body = el("div", "ks-body");
   SHORTCUT_GROUPS.forEach((g) => {
     const sec = el("div", "ks-group");
-    sec.appendChild(el("div", "ks-group-title", g.title));
+    sec.appendChild(el("div", "ks-group-title", t(g.title)));
     g.items.forEach((item) => {
       const row = el("div", "ks-row");
       const keys = el("div", "ks-keys");
@@ -316,7 +317,7 @@ function build() {
         keys.appendChild(box);
       });
       row.appendChild(keys);
-      row.appendChild(el("div", "ks-desc", item.desc));
+      row.appendChild(el("div", "ks-desc", t(item.desc)));
       sec.appendChild(row);
     });
     body.appendChild(sec);
@@ -327,10 +328,7 @@ function build() {
     el(
       "div",
       "ks-foot",
-      "時刻を動かすキーは、時刻の枠に出ている相手 (「2. 金星」など) に効きます。" +
-        "何も選んでいないときは太陽系ビューが見ている時刻が動くだけで、" +
-        "シーケンスの日付は変わりません。" +
-        "文字を打っている間は、Ctrl の付いたものだけ効きます。"
+      t("時刻を動かすキーは、時刻の枠に出ている相手 (「2. 金星」など) に効きます。何も選んでいないときは太陽系ビューが見ている時刻が動くだけで、シーケンスの日付は変わりません。文字を打っている間は、Ctrl の付いたものだけ効きます。")
     )
   );
 
@@ -340,6 +338,14 @@ function build() {
   });
   return overlay;
 }
+
+// 言語が変わったら、覚えている画面を捨てる (次に開くときに組み直す)
+onLangChange(() => {
+  if (root) {
+    root.remove();
+    root = null;
+  }
+});
 
 export function openShortcuts() {
   if (!root) {

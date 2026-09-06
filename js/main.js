@@ -57,6 +57,7 @@ import { openExamples } from './ui/examples.js';
 import { openFeedback } from './ui/feedback.js';
 import { openSettings } from './ui/settings.js';
 import { initTheme, onThemeChange } from './ui/theme.js';
+import { initLang, applyStaticText, onLangChange, currentLang, t } from './ui/i18n.js';
 import { launcher_list, launcher_mass, launch_declination } from './core/launchers.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './panel/bplane.js';
 import {
@@ -3158,6 +3159,11 @@ function refresh_after_swingby_change() {
 // Main execution / initialization
 // ========================================
 function boot() {
+  // 言語は、文字を持つ画面を組み立てるより先に決める。
+  // 後から決めると、日本語で組んだものを全部作り直すことになる
+  initLang();
+  applyStaticText();
+
   // Initialize Mission
   State.mission_sequence = new Mission();
   // ブラウザが再読み込み時にフォームの入力値を勝手に復元することがあり、
@@ -3258,6 +3264,22 @@ function boot() {
   // (リンクから開いた時点を「ここより前へは戻さない」起点にするため)
   initShareLink();
   initTheme();
+  // 言語が変わったら、文字を持っている画面をまとめて作り直す。
+  // CSSと違って文字は書き換えないと変わらないので、ここで一通り触る
+  onLangChange(() => {
+    initLauncherSelect();
+    update_sequence_times();
+    update_stat_bar();
+    updateAfterAdd();
+    update_z_zoom_button();
+    init_tune_button();
+    // 太陽系ビューの天体名も日本語のまま残っている
+    for (let i = 0; i < PlotState.planet_speres.length; i++) {
+      const sph = PlotState.planet_speres[i];
+      if (sph && sph.children[0]) sph.children[0].element.textContent = t(State.planet_list[i]);
+    }
+    invalidate();
+  });
   // 配色が変わったら、CSSでは色を変えられない図を引き直す。
   // 公転軌道の線は一度作ったきり色を触らないので、ここで塗り直す
   // (遷移軌道の弧は update_plot() が毎回塗り直すので触らなくてよい)

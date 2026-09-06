@@ -12,6 +12,7 @@
 
 import { confirmDiscard, loadMissionData } from '../mission/mission_file.js';
 import { notify } from './topbar.js';
+import { t, currentLang, onLangChange } from './i18n.js';
 
 const BASE = "data/examples/";
 
@@ -32,7 +33,7 @@ function loadIndex() {
   if (index_promise) return index_promise;
   index_promise = fetch(BASE + "index.json", { cache: "default" })
     .then((res) => {
-      if (!res.ok) throw new Error("index.json が読めません (" + res.status + ")");
+      if (!res.ok) throw new Error(t("index.json が読めません ({status})", { status: res.status }));
       return res.json();
     })
     .catch((e) => {
@@ -49,12 +50,12 @@ async function pick(item, btn) {
   btn.classList.add("ex-item--busy");
   try {
     // 読み込むと今の設計は消える。ファイルを開くときと同じ確認を通す
-    if (!(await confirmDiscard("読み込む"))) return;
+    if (!(await confirmDiscard(t("読み込む")))) return;
     const res = await fetch(BASE + item.file, { cache: "default" });
     if (!res.ok) throw new Error(item.file + " (" + res.status + ")");
-    if (loadMissionData(await res.json(), item.name)) closeExamples();
+    if (loadMissionData(await res.json(), shown(item, "name"))) closeExamples();
   } catch (e) {
-    notify("例を読み込めませんでした");
+    notify(t("例を読み込めませんでした"));
   } finally {
     loading = false;
     btn.classList.remove("ex-item--busy");
@@ -67,22 +68,22 @@ function fill(index) {
   (index.examples || []).forEach((item) => {
     if (item.group && item.group !== group) {
       group = item.group;
-      list_el.appendChild(el("div", "ex-group", group));
+      list_el.appendChild(el("div", "ex-group", t(group)));
     }
     const row = el("div", "ex-row");
     const btn = el("button", "ex-item");
     btn.type = "button";
-    btn.appendChild(el("div", "ex-name", item.name));
-    btn.appendChild(el("div", "ex-desc", item.desc || ""));
+    btn.appendChild(el("div", "ex-name", shown(item, "name")));
+    btn.appendChild(el("div", "ex-desc", shown(item, "desc")));
     btn.onclick = () => pick(item, btn);
     row.appendChild(btn);
     if (item.doc) {
       // 解説は別ページ。設計を抱えたまま遷移しないよう新しいタブで開く
-      const doc = el("a", "ex-doc", "解説");
-      doc.href = item.doc;
+      const doc = el("a", "ex-doc", t("解説"));
+      doc.href = docPath(item.doc);
       doc.target = "_blank";
       doc.rel = "noopener";
-      doc.title = "この軌道の解説を読む";
+      doc.title = t("この軌道の解説を読む");
       row.appendChild(doc);
     }
     list_el.appendChild(row);
@@ -94,10 +95,10 @@ function build() {
   const win = el("div", "ex-window");
 
   const head = el("div", "ex-head");
-  head.appendChild(el("div", "ex-title", "例を読み込む"));
+  head.appendChild(el("div", "ex-title", t("例を読み込む")));
   const close = el("button", "ex-close", "×");
   close.type = "button";
-  close.title = "閉じる";
+  close.title = t("閉じる");
   close.onclick = closeExamples;
   head.appendChild(close);
   win.appendChild(head);
@@ -109,8 +110,7 @@ function build() {
     el(
       "div",
       "ex-foot",
-      "ヘルプ (使い方) で組み立てている軌道です。読み込むと今の設計は消えます。" +
-        "「解説」を開くと、その軌道をどう作ったかが順を追って読めます。"
+      t("ヘルプ (使い方) で組み立てている軌道です。読み込むと今の設計は消えます。「解説」を開くと、その軌道をどう作ったかが順を追って読めます。")
     )
   );
 
@@ -121,6 +121,28 @@ function build() {
   return overlay;
 }
 
+// 目録は名前と説明を日本語で持ち、英語は name_en / desc_en に持つ。
+// 英語が無いものは日本語のまま出す (訳し忘れでも一覧が消えないように)
+function shown(item, key) {
+  if (currentLang() === "en" && item[key + "_en"]) return item[key + "_en"];
+  return item[key] || "";
+}
+
+/** 解説の入口。英語のときは docs/en/ の同じ名前のページへ向ける */
+function docPath(doc) {
+  if (!doc) return doc;
+  return currentLang() === "en" ? doc.replace("docs/", "docs/en/") : doc;
+}
+
+// 言語が変わったら、覚えている画面を捨てる (次に開くときに組み直す)
+onLangChange(() => {
+  if (root) {
+    root.remove();
+    root = null;
+    list_el = null;
+  }
+});
+
 export function openExamples() {
   if (!root) {
     root = build();
@@ -128,14 +150,14 @@ export function openExamples() {
   }
   root.style.display = "flex";
   list_el.innerHTML = "";
-  list_el.appendChild(el("div", "ex-note", "読み込んでいます…"));
+  list_el.appendChild(el("div", "ex-note", t("読み込んでいます…")));
   loadIndex().then(
     (index) => {
       if (isExamplesOpen()) fill(index);
     },
     () => {
       list_el.innerHTML = "";
-      list_el.appendChild(el("div", "ex-note", "例の一覧を読めませんでした。"));
+      list_el.appendChild(el("div", "ex-note", t("例の一覧を読めませんでした。")));
     }
   );
 }

@@ -4,6 +4,8 @@
 // ダイアログをブロック」で握り潰されて、押していないのに進んでしまう。
 // 消えたら戻せない操作 (新規作成・読込による上書き) はここを通す。
 
+import { t } from "./i18n.js";
+
 let root = null;
 let win = null;
 let title_el = null;
@@ -85,10 +87,13 @@ export function confirmDialog({ title, message, ok = "OK", cancel = "キャン�
   // 前の問いが残っていたら、それは「やめる」で閉じる
   if (resolve_now) close(false);
 
-  title_el.textContent = title || "";
-  text_el.textContent = message || "";
-  ok_btn.textContent = ok;
-  cancel_btn.textContent = cancel;
+  // 受け取った文字はここで訳す。呼ぶ側は日本語のまま渡してよい
+  // (値を差し込む文は、呼ぶ側が t() で組み立ててから渡す。訳し終えた文を
+  //  もう一度 t() に通しても、対訳表に無いのでそのまま出る)
+  title_el.textContent = t(title || "");
+  text_el.textContent = t(message || "");
+  ok_btn.textContent = t(ok);
+  cancel_btn.textContent = t(cancel);
   ok_btn.classList.toggle("dlg-btn--danger", !!danger);
   root.style.display = "flex";
 

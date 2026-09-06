@@ -8,6 +8,8 @@
 // 登録が無ければ「準備中」と出すだけにしてある。後から実装を差し込めるように、
 // ボタンの並びと呼び口だけを先に決めておくのがこのファイルの役目。
 
+import { t, currentLang, setLang, onLangChange } from "./i18n.js";
+
 const ICON = {
   // ブランドマーク (黄道面を回る軌道)
   brand:
@@ -90,12 +92,18 @@ const LANGUAGES = [
 let handlers = {};
 let menu_el = null;
 let lang_el = null;
-let language = "ja";
+
 let toast_timer = 0;
+let lang_watch = false; // 言語の見張りは一度だけ付ける
 
 /* ==================================================================
    組み立て
    ================================================================== */
+
+/** innerHTML に入れる文字を安全にする (訳文に記号が入っても崩れないように) */
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 function el(tag, cls, html) {
   const e = document.createElement(tag);
@@ -112,13 +120,14 @@ function fire(action) {
     return;
   }
   // まだ中身が無いもの。押しても何も起きないと壊れて見えるので、そう言っておく
-  notify("「" + action.label + "」は準備中です");
+  notify(t("「{label}」は準備中です", { label: t(action.label) }));
 }
 
 function make_button(action) {
-  const btn = el("button", "topbar-btn", svg(action.icon) + '<span class="topbar-btn-label">' + action.label + "</span>");
+  const btn = el("button", "topbar-btn",
+    svg(action.icon) + '<span class="topbar-btn-label">' + esc(t(action.label)) + "</span>");
   btn.type = "button";
-  btn.title = action.label + "\n" + action.hint;
+  btn.title = t(action.label) + "\n" + t(action.hint);
   btn.dataset.id = action.id;
   if (action.primary) btn.classList.add("topbar-btn--primary");
   // アイコンだけで意味が通るものは、狭いときに文字を隠す
@@ -128,9 +137,9 @@ function make_button(action) {
 }
 
 function make_menu_item(action) {
-  const item = el("button", "topbar-menu-item", svg(action.icon) + "<span>" + action.label + "</span>");
+  const item = el("button", "topbar-menu-item", svg(action.icon) + "<span>" + esc(t(action.label)) + "</span>");
   item.type = "button";
-  item.title = action.hint;
+  item.title = t(action.hint);
   item.dataset.id = action.id;
   // バーにも出ているものは、バーが詰まって隠れたときだけメニューに出す
   if (action.where === "both") item.classList.add("only-narrow");
@@ -140,19 +149,17 @@ function make_menu_item(action) {
 
 function make_language() {
   const wrap = el("div", "topbar-lang");
-  wrap.title = "表示言語を切り替える";
+  wrap.title = t("表示言語を切り替える");
   LANGUAGES.forEach(([code, text]) => {
     const b = el("button", "topbar-lang-btn", text);
     b.type = "button";
     b.dataset.lang = code;
     b.onclick = () => {
+      // 言語を切り替えるのは i18n.js の仕事。画面の作り直しは、
+      // これを見張っている側 (initTopbar の onLangChange) がやる
+      setLang(code);
       const fn = handlers.language;
-      if (fn) {
-        fn(code); // 実装がある場合は、切り替えた側が setTopbarLanguage を呼ぶ
-        return;
-      }
-      // 実装が無いうちは見た目だけ動かすと嘘になるので、言うだけにする
-      if (code !== language) notify("英語表示は準備中です");
+      if (fn) fn(code);
     };
     wrap.appendChild(b);
   });
@@ -234,8 +241,8 @@ export function initTopbar() {
 
   const more = el("button", "topbar-btn topbar-more", svg("more"));
   more.type = "button";
-  more.title = "そのほかの操作";
-  more.setAttribute("aria-label", "そのほかの操作");
+  more.title = t("そのほかの操作");
+  more.setAttribute("aria-label", t("そのほかの操作"));
   more.onclick = (e) => {
     e.stopPropagation();
     toggle_menu(more);
@@ -253,7 +260,14 @@ export function initTopbar() {
     if (e.key === "Escape") close_menu();
   });
 
-  setTopbarLanguage(language);
+  setTopbarLanguage(currentLang());
+
+  // 言語が変わったら、バーとメニューは作り直す。ボタンの文字は作るときに
+  // 訳しているので、書き換えるより組み直すほうが漏れが出ない
+  if (!lang_watch) {
+    lang_watch = true;
+    onLangChange(() => initTopbar());
+  }
 }
 
 /* ==================================================================
@@ -290,8 +304,8 @@ export function initHistoryButtons() {
   const host = document.getElementById("topbar_history");
   if (!host) return;
   host.innerHTML = "";
-  undo_btn = make_history_button("undo", "元に戻す", "Ctrl+Z");
-  redo_btn = make_history_button("redo", "やり直す", "Ctrl+Y / Ctrl+Shift+Z");
+  undo_btn = make_history_button("undo", t("元に戻す"), "Ctrl+Z");
+  redo_btn = make_history_button("redo", t("やり直す"), "Ctrl+Y / Ctrl+Shift+Z");
   host.appendChild(undo_btn);
   host.appendChild(redo_btn);
 }
@@ -327,7 +341,6 @@ export function setTopbarHandlers(h) {
 
 /** いま選ばれている言語を見た目に反映する ("ja" | "en") */
 export function setTopbarLanguage(code) {
-  language = code;
   if (!lang_el) return;
   for (const b of lang_el.querySelectorAll(".topbar-lang-btn")) {
     b.classList.toggle("active", b.dataset.lang === code);
@@ -335,7 +348,7 @@ export function setTopbarLanguage(code) {
 }
 
 export function topbarLanguage() {
-  return language;
+  return currentLang();
 }
 
 /** ミッション名の欄の中身 */

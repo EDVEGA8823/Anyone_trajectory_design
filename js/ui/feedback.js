@@ -17,6 +17,7 @@ import { missionShareUrl, toClipboard } from '../mission/share_link.js';
 import { State } from '../core/state.js';
 import { launcher_list } from '../core/launchers.js';
 import { notify } from './topbar.js';
+import { t, onLangChange } from './i18n.js';
 
 const ISSUE_URL = "https://github.com/EDVEGA8823/Anyone_trajectory_design/issues/new";
 // 本文が長すぎるとURLとして弾かれる。日本語は1文字が9文字ぶんに膨らむので、
@@ -46,21 +47,21 @@ function launcher_label() {
 function environment() {
   const m = State.mission_sequence;
   return [
-    ["ブラウザ", navigator.userAgent],
-    ["画面", window.innerWidth + "×" + window.innerHeight +
-      " (倍率 " + (window.devicePixelRatio || 1) + ")"],
-    ["アプリ", location.origin + location.pathname],
-    ["シーケンス", (m ? m.count : 0) + "個"],
-    ["ロケット", launcher_label()],
+    [t("ブラウザ"), navigator.userAgent],
+    [t("画面"), window.innerWidth + "×" + window.innerHeight +
+      " (" + t("倍率") + " " + (window.devicePixelRatio || 1) + ")"],
+    [t("アプリ"), location.origin + location.pathname],
+    [t("シーケンス##環境の見出し"), t("{n}個", { n: m ? m.count : 0 })],
+    [t("ロケット"), launcher_label()],
   ];
 }
 
 function body_text() {
   const said = (text_el.value || "").trim();
-  const lines = ["### 何が起きましたか", "", said || "(まだ書かれていません)", "", "### 環境", ""];
+  const lines = [t("### 何が起きましたか"), "", said || t("(まだ書かれていません)"), "", t("### 環境"), ""];
   for (const [k, v] of environment()) lines.push("- " + k + ": " + v);
   if (attach_el.checked && share_url) {
-    lines.push("", "### そのときの設計", "", share_url);
+    lines.push("", t("### そのときの設計"), "", share_url);
   }
   return lines.join("\n");
 }
@@ -68,7 +69,7 @@ function body_text() {
 function title_text() {
   // 1行目を見出しにする。空なら種別だけ
   const first = (text_el.value || "").trim().split(/\r?\n/)[0].trim();
-  if (!first) return "フィードバック";
+  if (!first) return t("フィードバック");
   return first.length > 50 ? first.slice(0, 50) + "…" : first;
 }
 
@@ -89,8 +90,8 @@ async function send_to_github() {
   if (url.length > MAX_URL) {
     // URLに載せきれない。手で貼ってもらうほうが確実
     const ok = await toClipboard(body_text());
-    notify(ok ? "長いので内容をコピーしました。GitHubの本文に貼り付けてください"
-              : "内容が長すぎます。少し短くしてください");
+    notify(t(ok ? "長いので内容をコピーしました。GitHubの本文に貼り付けてください"
+                : "内容が長すぎます。少し短くしてください"));
     if (!ok) return;
     window.open(ISSUE_URL + "?title=" + encodeURIComponent(title_text()), "_blank", "noopener");
     closeFeedback();
@@ -102,10 +103,10 @@ async function send_to_github() {
 
 async function copy_all() {
   if (await toClipboard(body_text())) {
-    notify("内容をコピーしました");
+    notify(t("内容をコピーしました"));
     closeFeedback();
   } else {
-    notify("コピーできませんでした");
+    notify(t("コピーできませんでした"));
   }
 }
 
@@ -114,21 +115,21 @@ function build() {
   const win = el("div", "fb-window");
 
   const head = el("div", "fb-head");
-  head.appendChild(el("div", "fb-title", "フィードバックを送る"));
+  head.appendChild(el("div", "fb-title", t("フィードバックを送る")));
   const close = el("button", "fb-close", "×");
   close.type = "button";
-  close.title = "閉じる";
+  close.title = t("閉じる");
   close.onclick = closeFeedback;
   head.appendChild(close);
   win.appendChild(head);
 
   const body = el("div", "fb-body");
-  body.appendChild(el("label", "fb-label", "何が起きましたか / どうしたいですか"));
+  body.appendChild(el("label", "fb-label", t("何が起きましたか / どうしたいですか")));
   text_el = document.createElement("textarea");
   text_el.className = "fb-text";
   text_el.rows = 6;
   text_el.maxLength = MAX_TEXT;
-  text_el.placeholder = "例) 木星への周回軌道投入で、遠点を上げても投入ΔVが変わらない";
+  text_el.placeholder = t("例) 木星への周回軌道投入で、遠点を上げても投入ΔVが変わらない");
   text_el.oninput = refresh;
   body.appendChild(text_el);
 
@@ -138,23 +139,23 @@ function build() {
   attach_el.checked = true;
   attach_el.onchange = refresh;
   attach_row.appendChild(attach_el);
-  attach_row.appendChild(el("span", null, "いまの設計を添える (共有リンク)"));
+  attach_row.appendChild(el("span", null, t("いまの設計を添える (共有リンク)")));
   body.appendChild(attach_row);
 
   const det = document.createElement("details");
   det.className = "fb-details";
   const sum = document.createElement("summary");
-  sum.textContent = "送る内容を見る";
+  sum.textContent = t("送る内容を見る");
   det.appendChild(sum);
   preview_el = el("pre", "fb-preview");
   det.appendChild(preview_el);
   body.appendChild(det);
 
   const foot_btns = el("div", "fb-buttons");
-  const go = el("button", "fb-btn fb-btn--primary", "GitHubで報告する");
+  const go = el("button", "fb-btn fb-btn--primary", t("GitHubで報告する"));
   go.type = "button";
   go.onclick = send_to_github;
-  const copy = el("button", "fb-btn", "内容をコピー");
+  const copy = el("button", "fb-btn", t("内容をコピー"));
   copy.type = "button";
   copy.onclick = copy_all;
   foot_btns.appendChild(copy);
@@ -166,8 +167,7 @@ function build() {
     el(
       "div",
       "fb-foot",
-      "GitHubで報告するにはアカウントが要ります。持っていなければ「内容をコピー」して、" +
-        "Xやメールで送ってください。書いた内容と、上に出ている環境・設計が公開の場所に載ります。"
+      t("GitHubで報告するにはアカウントが要ります。持っていなければ「内容をコピー」して、Xやメールで送ってください。書いた内容と、上に出ている環境・設計が公開の場所に載ります。")
     )
   );
 
@@ -177,6 +177,15 @@ function build() {
   });
   return overlay;
 }
+
+// 言語が変わったら、覚えている画面を捨てる (次に開くときに組み直す)
+onLangChange(() => {
+  if (root) {
+    root.remove();
+    root = null;
+    text_el = attach_el = preview_el = null;
+  }
+});
 
 export function openFeedback() {
   if (!root) {
@@ -192,7 +201,7 @@ export function openFeedback() {
     if (!share_url && attach_el) {
       attach_el.checked = false;
       attach_el.disabled = true;
-      attach_el.parentElement.title = "まだシーケンスがありません";
+      attach_el.parentElement.title = t("まだシーケンスがありません");
     } else if (attach_el) {
       attach_el.disabled = false;
       attach_el.parentElement.title = "";
