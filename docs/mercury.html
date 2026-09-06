@@ -8,7 +8,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- 配色 (明るい/暗い) を、スタイルより先に決めておく。
+       docs/theme.js を待つと、暗い配色の人に一瞬だけ白い画面が出てしまう。
+       ここと docs/theme.js、アプリ側は同じ鍵 (atd_theme) を読む -->
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
   <link rel="stylesheet" href="style.css" />
+  <script src="theme.js" defer></script>
 </head>
 
 <body>

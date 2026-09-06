@@ -4,6 +4,8 @@
    説明の中の言葉と画面の中の言葉が結び付きにくくなる。 */
 
 :root {
+  color-scheme: light;
+
   --gray-50: #f7f7f8;
   --gray-100: #efeff1;
   --gray-200: #e3e4e8;
@@ -16,9 +18,54 @@
   --accent: #2f6df6;
   --accent-soft: #eaf1ff;
   --accent-strong: #1b4fd0;
+  --accent-border: #cbdcff;
+  /* 面の上に直に置く小さな青い文字 (カードの見出しの上の札) */
+  --accent-label: #2f6df6;
   --good: #1f7a4d;
   --warn: #b5761b;
   --danger: #c0392b;
+
+  /* 上のバーは明るい配色でも暗い。アプリの上部バーと同じ扱い */
+  --topbar-bg: #17181a;
+  --topbar-text: #ffffff;
+  --topbar-link: #cfd3da;
+  --card-shadow: 0 6px 20px rgba(23, 24, 26, 0.07);
+}
+
+/* 暗い配色。どちらを使うかは theme.js が <html data-theme> に書く。
+   アプリ (css/tokens.css) と同じ鍵 (atd_theme) を見るので、アプリを
+   暗くしておけばヘルプも暗く開く。
+
+   図はアプリを明るい配色で写したものなので、暗い配色でも明るいまま出る。
+   色そのものが説明の一部 (どの線が何色か) なので、暗くすると本文と
+   食い違ってしまう。写真として見てもらう。 */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --gray-50: #1a1c1f;
+  --gray-100: #24272c;
+  --gray-200: #32363d;
+  --gray-400: #767c85;
+  --text: #eceef1;
+  --text-muted: #a0a6b0;
+  --surface: #1e2126;
+  --surface-muted: var(--gray-50);
+  --border: var(--gray-200);
+  /* 白い文字を乗せる下地なので、暗いままにする */
+  --accent: #3f6fd8;
+  --accent-soft: #1c2740;
+  /* 薄い青の上に乗せる文字。こちらは明るくする */
+  --accent-strong: #a6c3ff;
+  --accent-border: #2f4570;
+  --accent-label: #7fa6ff;
+  --good: #4ec48d;
+  --warn: #dda44a;
+  --danger: #ef7a68;
+
+  --topbar-bg: #0c0d0f;
+  --topbar-text: #f0f2f5;
+  --topbar-link: #b6bbc3;
+  --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -43,20 +90,20 @@ body {
   align-items: center;
   gap: 14px;
   padding: 10px 20px;
-  background: #17181a;
-  color: #fff;
+  background: var(--topbar-bg);
+  color: var(--topbar-text);
 }
 .topbar a {
-  color: #cfd3da;
+  color: var(--topbar-link);
   text-decoration: none;
   font-size: 13px;
 }
 .topbar a:hover {
-  color: #fff;
+  color: var(--topbar-text);
 }
 .topbar .brand {
   font-weight: 700;
-  color: #fff;
+  color: var(--topbar-text);
   font-size: 15px;
 }
 .topbar .spacer {
@@ -102,7 +149,7 @@ a {
   margin: 18px 0 10px;
   padding: 14px 18px;
   background: var(--accent-soft);
-  border: 1px solid #cbdcff;
+  border: 1px solid var(--accent-border);
   border-radius: 12px;
 }
 .aim h3 {
@@ -137,7 +184,7 @@ ol.steps > li::before {
   height: 26px;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 700;
   line-height: 26px;
@@ -319,12 +366,12 @@ kbd {
 }
 .card:hover {
   border-color: var(--accent);
-  box-shadow: 0 6px 20px rgba(23, 24, 26, 0.07);
+  box-shadow: var(--card-shadow);
 }
 .card .no {
   font-size: 12px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-label);
 }
 .card h3 {
   margin: 2px 0 4px;
@@ -440,4 +487,23 @@ h3.group {
   .rocket .body {
     grid-template-columns: 1fr;
   }
+}
+
+/* 配色の切り替え (docs/theme.js が上のバーに入れる)。
+   右寄せは .spacer が済ませているので、ここでは寄せない */
+.theme-btn {
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--topbar-link);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.theme-btn:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: var(--topbar-text);
 }
