@@ -191,6 +191,37 @@ td.num {
   font-variant-numeric: tabular-nums;
 }
 
+/* 同じものを条件だけ変えて並べる図 (3つ並び) */
+.shots3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 10px;
+  margin: 18px 0 6px;
+}
+.shots3 img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.shots3 .cap {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  text-align: center;
+}
+.shots3 .cap b {
+  display: block;
+  color: var(--text);
+}
+@media (max-width: 700px) {
+  .shots3 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* 列の多い表は、狭い画面では横に送る (ページ全体が横に伸びないように) */
 .table-wide {
   overflow-x: auto;

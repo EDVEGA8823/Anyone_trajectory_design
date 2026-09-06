@@ -301,10 +301,50 @@ def hohmann_broken():
     ] + _hohmann_broken()
 
 
+def swingby_beta():
+    """資料: 回転角βを変えると加速にも減速にもなる (地球スイングバイ)
+
+    打上げ(手動) → 噴射 → 地球スイングバイ(手動) → 最終軌道。
+    打上げを手動にすると噴射が1つ、スイングバイを手動にするともう1つ増えるので、
+    最後を「最終軌道」にして余分な噴射を落としてから β を振る。
+    """
+    steps = [
+        ("シーケンスを3つ用意する", "__D.add(3)", None, None),
+        ("2番目を地球のスイングバイに",
+         "(async()=>{await __D.pick(1); await __D.body('地球'); await __D.type('スイングバイ');})()",
+         None, None),
+        ("日付 (1年で地球に戻る)", "__D.dates(['2014-12-03','2015-12-03','2017-06-03'])", None, None),
+        ("打上げを手動にする", "(async()=>{await __D.pick(0); await __D.mode(false);})()", None, None),
+        ("噴射の日付を置く",
+         "__D.dates(['2014-12-03','2015-03-03','2015-12-03','2017-06-03'])", None, None),
+        ("打上げの向きと速さを置く",
+         "(async()=>{await __D.pick(0); await __D.field('脱出速度', 4.0);"
+         "await __D.field('方位角', 94); await __D.field('仰角', 0);})()", None, None),
+        ("スイングバイを手動にする", "(async()=>{await __D.pick(2); await __D.mode(false);})()",
+         None, None),
+        ("最後を最終軌道にして余分な噴射を落とす",
+         "(async()=>{await __D.pick(4); await __D.type('最終軌道');})()", None, None),
+    ]
+    # β=90 で減速、0 でほぼそのまま、270 で加速になる (この入り方の場合)
+    for beta, tag in ((90, "slow"), (0, "same"), (270, "fast")):
+        steps += [
+            ("β = %d 度にする" % beta,
+             "(async()=>{await __D.pick(2); await __D.field('近点高度', 16000);"
+             "await __D.field('回転角', %d);})()" % beta, None, None),
+            ("スイングバイの図 (β=%d)" % beta, "__D.wait(300)",
+             "swingby-%s-3d" % tag, "#swingby_box"),
+            ("太陽系ビュー (β=%d)" % beta,
+             "(async()=>{await __D.deselect(); await __D.view(90, 6);})()",
+             "swingby-%s-sun" % tag, "#graph-panel"),
+        ]
+    return steps
+
+
 SCENARIOS = {
     "basics": basics,
     "hohmann": hohmann,
     "hohmann_broken": hohmann_broken,
+    "swingby_beta": swingby_beta,
     "mars": mars,
     "mercury_direct": mercury_direct,
     "mercury": mercury,
