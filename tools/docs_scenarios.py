@@ -340,11 +340,119 @@ def swingby_beta():
     return steps
 
 
+# 資料「スイングバイ その2: 木星行きの軌道」で使う図
+#
+# 出来上がりの軌道は tools/docs_missions.py に固めてある (自動調整は
+# 打ち切り時間で結果が動くので、詰めた設計をJSONにして数字と図で共有する)。
+_SW2_TOP = "__D.view(90, 26)"     # 木星の軌道まで枠に入る真上から
+_SW2_IN = "__D.view(90, 10)"      # 内側の区間 (遠日点 2.3 AU まで) が入る距離
+
+
+def _sw2_show(name, tag, arrival, panels=()):
+    """固めた軌道を読み込んで、全体・成績・一覧を撮る。
+
+    画面の時刻は木星に着く日に合わせる。既定の「今日」のままだと、惑星の丸が
+    軌道の端 (出会う場所) とまるで違うところに出て、線がどこへ向かっているのか
+    読めない。
+    """
+    from docs_missions import js
+    steps = [
+        ("%s を読み込む" % name, js(name), None, None),
+        ("時刻を木星に着く日に合わせる", "__D.when('%s')" % arrival, None, None),
+        ("全体 (真上から)", "(async()=>{await __D.deselect(); await %s;})()" % _SW2_TOP,
+         "sw2-%s" % tag, None),
+        ("内側だけ", _SW2_IN, "sw2-%s-in" % tag, None),
+        ("成績バー", _SW2_TOP, "sw2-%s-stat" % tag, ".stat-bar"),
+        ("シーケンス一覧", "__D.wait(200)", "sw2-%s-list" % tag, "#sequence"),
+    ]
+    for i, label in panels:
+        steps.append(("%d番目のシーケンス" % (i + 1), "__D.pick(%d)" % i,
+                      "sw2-%s-%s" % (tag, label), ".control-panel"))
+    return steps
+
+
+def sw2_direct():
+    """比べるための下敷き: 地球から木星へ直行"""
+    from docs_missions import js
+    return [
+        ("直行を読み込む", js("直行"), None, None),
+        ("時刻を木星に着く日に合わせる", "__D.when('2034-03-21')", None, None),
+        ("全体 (真上から)", "(async()=>{await __D.deselect(); await %s;})()" % _SW2_TOP,
+         "sw2-direct", None),
+        ("成績バー", "__D.wait(200)", "sw2-direct-stat", ".stat-bar"),
+        # ポークチョップ図は節を選んでいないと開けないので、先に打上げを選ぶ
+        ("打上げのシーケンスを選ぶ", "__D.pick(0)", None, None),
+        # 木星の窓を探す。ΔVEGA はこの日付から2年さかのぼって組み立てる
+        ("出発日と到着日の地図", "__D.porkchop()", "sw2-porkchop", ".pc-window"),
+        ("閉じる", "__D.pcClose()", None, None),
+    ]
+
+
+def sw2_dvega():
+    """ΔVEGA の作り方 (組み立てる途中) と、出来上がり"""
+    from docs_missions import js
+    return [
+        # --- まず木星へ直行する2つのシーケンスを置く ---
+        ("シーケンスを2つ用意する", "__D.add(2)", None, None),
+        ("2番目を木星の周回軌道投入に",
+         "(async()=>{await __D.pick(1); await __D.body('木星'); await __D.type('周回軌道投入');})()",
+         None, None),
+        ("窓の日付を入れる", "__D.dates(['2032-03-31','2034-03-21'])", None, None),
+
+        # --- その前に打上げを足して、2年さかのぼる ---
+        ("一覧のいちばん上の「+ シーケンスを追加」を押す", "__D.add(1)", None, None),
+        ("2番目 (もとの打上げ) を地球のスイングバイにする",
+         "(async()=>{await __D.pick(1); await __D.type('スイングバイ');})()",
+         "sw2-dvega-list", "#sequence"),
+        ("打上げを2年前に戻す",
+         "__D.dates(['2030-02-10','2032-03-31','2034-03-21'])", None, None),
+        ("地球→地球は自動では解けない", "__D.pick(0)", "sw2-dvega-auto", ".control-panel"),
+
+        # --- 手動モードにして、2年で戻ってくる速さを入れる ---
+        ("打上げを手動モードにする", "(async()=>{await __D.pick(0); await __D.mode(false);})()", None, None),
+        ("噴射を遠日点あたりに置く",
+         "__D.dates(['2030-02-10','2031-03-30','2032-03-31','2034-03-21'])", None, None),
+        ("打上げの向きと速さを置く",
+         "(async()=>{await __D.pick(0); await __D.field('脱出速度', 5.2);"
+         "await __D.field('方位角', 0); await __D.field('仰角', 0);})()",
+         "sw2-dvega-set", ".control-panel"),
+        ("この時点の全体", "(async()=>{await __D.deselect(); await %s;})()" % _SW2_TOP,
+         "sw2-dvega-rough", None),
+
+        # --- 自動調整のあと (固めた設計を読み込む) ---
+        ("自動調整で詰めたもの", js("ΔVEGA長"), None, None),
+        ("時刻を木星に着く日に合わせる", "__D.when('2034-07-21')", None, None),
+        ("全体", "(async()=>{await __D.deselect(); await %s;})()" % _SW2_TOP, "sw2-dvega", None),
+        ("成績バー", "__D.wait(200)", "sw2-dvega-stat", ".stat-bar"),
+        ("噴射のシーケンス", "__D.pick(1)", "sw2-dvega-dsm", ".control-panel"),
+        ("地球スイングバイのシーケンス", "__D.pick(2)", "sw2-dvega-flyby", ".control-panel"),
+
+        # --- 短いほうの2年同期 ---
+        ("短いほうを読み込む", js("ΔVEGA短"), None, None),
+        ("時刻を木星に着く日に合わせる", "__D.when('2035-03-06')", None, None),
+        ("全体", "(async()=>{await __D.deselect(); await %s;})()" % _SW2_TOP, "sw2-dvega-short", None),
+    ]
+
+
+def sw2_vega():
+    """VEGA: 地球 → 金星 → 地球 → 木星"""
+    return _sw2_show("VEGA", "vega", "2035-10-15", [(1, "venus"), (2, "flyby")])
+
+
+def sw2_veega():
+    """VEEGA: 地球 → 金星 → 地球 → 地球 → 木星"""
+    return _sw2_show("VEEGA", "veega", "2036-01-14", [(2, "earth1"), (3, "earth2")])
+
+
 SCENARIOS = {
     "basics": basics,
     "hohmann": hohmann,
     "hohmann_broken": hohmann_broken,
     "swingby_beta": swingby_beta,
+    "sw2_direct": sw2_direct,
+    "sw2_dvega": sw2_dvega,
+    "sw2_vega": sw2_vega,
+    "sw2_veega": sw2_veega,
     "mars": mars,
     "mercury_direct": mercury_direct,
     "mercury": mercury,

@@ -24,6 +24,16 @@
       }
     },
 
+    // 保存ファイルの中身をそのまま読み込む。
+    // 資料に載せる軌道は、自動調整の結果まで含めて1つのJSONに固めておき、
+    // 数字と図の両方をそこから起こす (別々に作り直すと必ず食い違う)。
+    async load(data) {
+      const MF = await import("./js/mission/mission_file.js");
+      if (!MF.loadMissionData(data, data.name || "資料の軌道")) throw new Error("読み込めなかった");
+      await wait(1200);
+      return D.stat();
+    },
+
     async pick(i) {
       const cards = [...document.querySelectorAll(".sequence")];
       if (!cards[i]) throw new Error("シーケンス " + i + " が無い (" + cards.length + "個)");
@@ -65,6 +75,17 @@
       // 画面から日付を触る道は update_plot() を通るので、ここでも呼んでおく。
       M.update_plot();
       await wait(600);
+    },
+
+    // 画面に映す時刻を動かす (丸をその日の位置に置く)。
+    // 節を選んでいると Update_time がその節の日付を動かしてしまうので、
+    // 先に選択を外してから触る。
+    async when(iso) {
+      document.getElementById("deselect_sequence").click();
+      await wait(300);
+      State.tmp_date = D.jd(iso);
+      E.Update_time();
+      await wait(700);
     },
 
     async mode(auto) {

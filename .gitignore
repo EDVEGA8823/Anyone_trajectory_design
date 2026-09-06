@@ -5,3 +5,6 @@
 # Pythonの中間ファイル
 __pycache__/
 *.pyc
+
+# docs_shots.py がスクリーンショット用に立てる Edge のプロファイル
+tools/cdpprof_*/
