@@ -179,16 +179,63 @@ function arrivalVinfRow(mission, i, prefix = "") {
   ];
 }
 
+/**
+ * 枠の吹き出しに出す名前。
+ *
+ * 自動モードのスイングバイは、曲げ足りないぶんを近点の噴射で補う
+ * (パワードスイングバイ) 解き方をしている。無推力で通り過ぎる手動モードとは
+ * 別物なので、ここで呼び分ける。
+ *
+ * バッジのほうは種別のまま短くしてある。「パワードスイングバイ」は一覧の幅に
+ * 入りきらず、伸ばすとゴミ箱を枠の外へ押し出してしまうため。噴いた量は
+ * 名前の欄 (「地球 843 m/s」) に出るので、見落とすことはない。
+ */
+function sequence_title(mission, id) {
+  const type = mission.type(id);
+  const label = type === Sequence_Type.Swingby && mission.is_auto_mode(id) ? "パワードスイングバイ" : type;
+  return id + 1 + ".  " + label;
+}
+
+/**
+ * 一覧に出す名前の欄。ノードの種類ごとに、いちばん知りたいものを出す。
+ *   マヌーバ                  … 深宇宙の一点なので、天体名の代わりにΔV
+ *   最終軌道                  … 到達した軌道の種類
+ *   自動モードのスイングバイ  … 天体名と、近点で噴くことになったΔV
+ *   それ以外                  … 天体名
+ *
+ * 日付を動かすと変わる値なので、一覧を作り直すとき (change_sequence) と
+ * ドラッグ中の軽い更新 (update_sequence_times) の両方からここを通す。
+ */
+function sequence_name(mission, id) {
+  const type = mission.type(id);
+  if (type === Sequence_Type.Maneuver) {
+    // 並びの最後の自動マヌーバだけが次の目的地へ繋ぐ役目を持つので、
+    // 手で足した手動マヌーバとは見分けが付くようにする。
+    if (!mission.is_auto_mode(id)) return "深宇宙 (手動)";
+    const dsm = mission.get_dsm_info(id);
+    return dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+  }
+  if (type === Sequence_Type.End) return end_orbit_label(mission.get_end_info(id));
+  if (mission.planet_num(id) == -1) return "---";
+  const body = State.planet_list[mission.planet_num(id)];
+  if (type === Sequence_Type.Swingby && mission.is_auto_mode(id)) {
+    // 0 m/s なら燃料を使わずに曲げきれているということ。設計の要点なので
+    // 0 のときも隠さずに出す
+    const sb = mission.get_swingby_info(id);
+    if (sb) return body + " " + (sb.dv_periapsis * 1000).toFixed(0) + " m/s";
+  }
+  return body;
+}
+
 // シーケンス一覧の1枚。ノードの数だけ縦に並ぶので2行に収める。
 //   1行目: [チェック] [1. 打上げ]            [ゴミ箱]
 //   2行目: 天体名                            日付
 export function add_sequence(id) {
   const mission = State.mission_sequence;
-  const type = mission.type(id);
 
   let sequence_elem = document.createElement("div");
   sequence_elem.className = "sequence";
-  sequence_elem.title = id + 1 + ".  " + type;
+  sequence_elem.title = sequence_title(mission, id);
   if (id == State.selected_sequence) sequence_elem.classList.add("selected");
   if (State.checked.has(id)) sequence_elem.classList.add("checked");
 
@@ -199,29 +246,12 @@ export function add_sequence(id) {
   // 連番と種別。以前は枠の上に飛び出していたが、中に入れて縦を詰める
   const badge = document.createElement("span");
   badge.className = "seq-badge";
-  badge.textContent = id + 1 + ". " + type;
+  badge.textContent = id + 1 + ". " + mission.type(id);
   head.appendChild(badge);
 
   const span1 = document.createElement("span");
   span1.className = "seq-name";
-  if (type === Sequence_Type.Maneuver) {
-    // マヌーバ(DSM)は天体ではなく深宇宙の一点なので、天体名の代わりにΔVを出す。
-    // 並びの最後の自動マヌーバだけが次の目的地へ繋ぐ役目を持つので、
-    // 手で足した手動マヌーバとは見分けが付くようにする。
-    const dsm = mission.get_dsm_info(id);
-    if (!mission.is_auto_mode(id)) {
-      span1.textContent = "深宇宙 (手動)";
-    } else {
-      span1.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
-    }
-  } else if (type === Sequence_Type.End) {
-    // 最終軌道も天体を持たないので、到達した軌道の種類を出す
-    span1.textContent = end_orbit_label(mission.get_end_info(id));
-  } else if (mission.planet_num(id) == -1) {
-    span1.textContent = "---";
-  } else {
-    span1.textContent = State.planet_list[mission.planet_num(id)];
-  }
+  span1.textContent = sequence_name(mission, id);
   // 幅が足りないと省略されるので、全体は吹き出しで読めるようにしておく
   span1.title = span1.textContent;
 
@@ -391,8 +421,8 @@ export function change_sequence() {
 // 天体ドラッグ中など、日付が高頻度で動く間の軽い更新。
 // change_sequence() は一覧をまるごと作り直すので、ドラッグ中毎フレーム
 // 呼ぶとチェック状態やスクロール位置が乱れうるし重い。ここでは既存の
-// カードを使い回し、日付 (と自動マヌーバのΔV、ドラッグで変わりうる) だけ
-// 書き換える。ノードの増減など構造が変わる操作は別経路 (change_sequence)
+// カードを使い回し、日付と名前の欄 (マヌーバのΔVやパワードスイングバイの
+// 近点ΔV。ドラッグで変わりうる) だけ書き換える。ノードの増減など構造が変わる操作は別経路 (change_sequence)
 // を通るので、ここでは考えなくてよい。
 export function update_sequence_times() {
   const mission = State.mission_sequence;
@@ -404,11 +434,14 @@ export function update_sequence_times() {
     const date_el = card.querySelector(".seq-date");
     if (date_el) date_el.textContent = JulianToDate(mission.date(id)).toLocaleDateString();
 
-    if (mission.type(id) === Sequence_Type.Maneuver && mission.is_auto_mode(id)) {
-      const name_el = card.querySelector(".seq-name");
-      if (name_el) {
-        const dsm = mission.get_dsm_info(id);
-        name_el.textContent = dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+    // 名前の欄には日付で変わる値 (マヌーバのΔV、パワードスイングバイの
+    // 近点ΔV) が出るので、ここでも書き換える
+    const name_el = card.querySelector(".seq-name");
+    if (name_el) {
+      const name = sequence_name(mission, id);
+      if (name_el.textContent !== name) {
+        name_el.textContent = name;
+        name_el.title = name;
       }
     }
   });
