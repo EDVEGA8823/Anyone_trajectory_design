@@ -85,7 +85,9 @@
 #plot {
   display: block;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  /* 縁は border ではなく影の一部として引く。canvas の大きさは JS が
+     clientWidth から決めているので、枠を足すと寸法がずれる */
+  box-shadow: var(--shadow-md), 0 0 0 1px var(--plot-edge);
   background: var(--surface);
 }
 

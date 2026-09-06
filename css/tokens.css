@@ -111,6 +111,8 @@
   --line-achieved: #2f9e6e; /* 最終軌道 (届いた先の軌道) */
   --plot-bg: #ffffff; /* 太陽系ビューの地の色 */
   --plot-grid: #aaaaaa; /* 目盛りと軸 */
+  /* 太陽系ビューの縁。明るい配色では地との明暗差と影で縁が分かるので引かない */
+  --plot-edge: transparent;
   --plot-orbit: #999999; /* 惑星の公転軌道 */
   --plot-orbit-small: #8fa0b8; /* 取り込んだ小天体の公転軌道 */
   /* ポークチョップ図。色の帯そのもの (色の付いた等高線) は配色で変えない。
@@ -217,6 +219,8 @@
   --line-achieved: #4fc492;
   --plot-bg: #0b0c0e;
   --plot-grid: #454b55;
+  /* 暗い配色では影が見えず、地と溶けて図の範囲が分からなくなるので引く */
+  --plot-edge: var(--gray-200);
   --plot-orbit: #7e848d;
   --plot-orbit-small: #6f7d92;
   --pc-field: #16181b;
