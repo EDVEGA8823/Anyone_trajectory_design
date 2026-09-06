@@ -73,7 +73,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 7px 8px 7px 12px;
-  background: var(--chrome);
+  background: var(--chrome-alt);
   color: var(--chrome-text);
   cursor: move;
   user-select: none;

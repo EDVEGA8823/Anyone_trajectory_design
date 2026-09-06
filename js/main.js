@@ -30,6 +30,9 @@ import {
   COLOR_LEG_ACTIVE,
   COLOR_COAST,
   COLOR_ACHIEVED,
+  COLOR_PLANET_ORBIT,
+  COLOR_SMALL_BODY_ORBIT,
+  applyPlotTheme,
   invalidate,
   drawingPos,
   updateNodeMarkers,
@@ -53,7 +56,7 @@ import { installShortcutKeys, setShortcutHandlers, openShortcuts } from './ui/sh
 import { openExamples } from './ui/examples.js';
 import { openFeedback } from './ui/feedback.js';
 import { openSettings } from './ui/settings.js';
-import { initTheme } from './ui/theme.js';
+import { initTheme, onThemeChange } from './ui/theme.js';
 import { launcher_list, launcher_mass, launch_declination } from './core/launchers.js';
 import { initBPlane, updateBPlane, setBPlaneHandlers, setBPlaneActiveHandle, invalidateBPlane } from './panel/bplane.js';
 import {
@@ -894,12 +897,9 @@ export function make_plot() {
   createPlanets(planet_pos);
 
   planet_orbits.forEach((orbit) => {
-    PlotState.orbit_lines.push(createLine(orbit, 0x999999));
+    PlotState.orbit_lines.push(createLine(orbit, COLOR_PLANET_ORBIT));
   });
 }
-
-// 取り込んだ小天体の色。惑星 (0x999999) と見分けが付くよう少し冷たくする
-const COLOR_SMALL_BODY_ORBIT = 0x8fa0b8;
 
 /**
  * 天体を選ぶ画面で選ばれた小天体を取り込む。
@@ -3258,6 +3258,20 @@ function boot() {
   // (リンクから開いた時点を「ここより前へは戻さない」起点にするため)
   initShareLink();
   initTheme();
+  // 配色が変わったら、CSSでは色を変えられない図を引き直す。
+  // 公転軌道の線は一度作ったきり色を触らないので、ここで塗り直す
+  // (遷移軌道の弧は update_plot() が毎回塗り直すので触らなくてよい)
+  onThemeChange(() => {
+    applyPlotTheme();
+    PlotState.orbit_lines.forEach((line, num) => {
+      if (!line) return;
+      line.line.material.color.setHex(
+        num >= smallBodyBase() ? COLOR_SMALL_BODY_ORBIT : COLOR_PLANET_ORBIT
+      );
+    });
+    update_plot();
+    updateControlPanelDisplay();
+  });
 
   const leg_fold = document.getElementById("leg_fold");
   if (leg_fold) leg_fold.addEventListener("click", toggle_leg_box);

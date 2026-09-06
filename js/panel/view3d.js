@@ -490,3 +490,59 @@ export function attachHandleDrag({ getRenderer, getCamera, getControls, getActiv
 
   return { cancel: endDrag, dragging: () => dragging };
 }
+
+/* ==================================================================
+   配色の切り替え
+   ================================================================== */
+/**
+ * シーンの中の線・面を、対応表にしたがって塗り直す。
+ *
+ * これらのビューは、材質を作るときに色を渡したきり色を触らない。配色が
+ * 切り替わったとき、材質を1つずつ名前で覚えて塗り直すのは書く量が多く、
+ * 新しい線を足したときに直し忘れる。そこで「元の色 → 新しい色」の対応表を
+ * 作って、シーン全体を歩いて置き換える。
+ *
+ * これで済むのは、使っている色が css/tokens.css の --line-* に限られていて、
+ * 同じ色が別々の意味で使われていないため。番号で色を作っている天体の色
+ * (PLANET_COLORS) は対応表に入らないので触られない。
+ *
+ * @param {THREE.Scene} scene
+ * @param {Map<number, number>} map 元の色 (0xRRGGBB) → 新しい色
+ */
+export function retintScene(scene, map) {
+  if (!scene || !map || map.size === 0) return;
+  scene.traverse((obj) => {
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    for (const m of mats) {
+      if (!m || !m.color) continue;
+      const next = map.get(m.color.getHex());
+      if (next !== undefined) m.color.setHex(next);
+    }
+  });
+}
+
+/**
+ * 「色を読み直して、変わったぶんだけ塗り直す」関数を作る。
+ *
+ * 各ビューは、使っている色を let で持ち、変数から取り直す read() と、
+ * いまの値を並べて返す list() を用意する。ここはその2つを繋ぐだけ。
+ *
+ * @param {() => number[]} list いまの色を並べて返す (取り直さない)
+ * @param {() => void} read 変数から色を取り直す
+ * @param {() => (THREE.Scene|THREE.Scene[])} getScene 塗り直す先 (複数でもよい)
+ * @param {() => void} [after] 塗り直したあとにやること (再描画の合図など)
+ */
+export function makeThemeApplier(list, read, getScene, after) {
+  return () => {
+    const before = list();
+    read();
+    const now = list();
+    const map = new Map();
+    before.forEach((c, i) => {
+      if (c !== now[i]) map.set(c, now[i]);
+    });
+    const scenes = getScene();
+    for (const sc of Array.isArray(scenes) ? scenes : [scenes]) retintScene(sc, map);
+    if (after) after();
+  };
+}

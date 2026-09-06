@@ -12,7 +12,9 @@ import {
   attachHandleDrag,
   closestOnAxis,
   makeRenderLoop,
+  makeThemeApplier,
 } from './view3d.js';
+import { cssHex, onThemeChange } from '../ui/theme.js';
 
 // 大気圏突入の操作パネル用の小さな3Dビュー。
 // 天体を中心に、V∞で落ちてくる軌道と、突入インターフェースに達する点、
@@ -59,11 +61,26 @@ const ECLIPTIC_CELLS = 16;
 // γの補助線・矢印の長さ (天体半径単位)
 const GAMMA_R = 2.2;
 
-const COLOR_TRACK = 0x1a1c20; // 突入までの軌道
-const COLOR_ENTRY = 0xd6543f; // 突入点・突入速度
-const COLOR_HORIZON = 0x8a8f99; // 地平線 (γの基準)
-const COLOR_GAMMA = 0xe0a03b; // 経路角γ・狙いのハンドル
-const COLOR_PLANET_ORBIT = 0x4caf82; // 天体の公転方向 (B面ビューと同じ色)
+// 色は css/tokens.css の --line-* から取る (明るい配色と暗い配色で入れ替わる)
+let COLOR_TRACK = 0x1a1c20; // 突入までの軌道
+let COLOR_ENTRY = 0xd6543f; // 突入点・突入速度
+let COLOR_HORIZON = 0x8a8f99; // 地平線 (γの基準)
+let COLOR_GAMMA = 0xe0a03b; // 経路角γ・狙いのハンドル
+let COLOR_PLANET_ORBIT = 0x4caf82; // 天体の公転方向 (B面ビューと同じ色)
+
+function read_colors() {
+  COLOR_TRACK = cssHex("--line-dark", 0x1a1c20);
+  COLOR_ENTRY = cssHex("--line-red", 0xd6543f);
+  COLOR_HORIZON = cssHex("--line-gray", 0x8a8f99);
+  COLOR_GAMMA = cssHex("--line-orange", 0xe0a03b);
+  COLOR_PLANET_ORBIT = cssHex("--line-green", 0x4caf82);
+}
+
+function color_list() {
+  return [COLOR_TRACK, COLOR_ENTRY, COLOR_HORIZON, COLOR_GAMMA, COLOR_PLANET_ORBIT];
+}
+read_colors();
+onThemeChange(makeThemeApplier(color_list, read_colors, () => scene, () => invalidate()));
 
 const PLANET_COLORS = [
   0x9c9c9c, 0xe0c58f, 0x3a7bd5, 0xc1440e, 0xd9a066, 0xe4d2a4, 0x9fd8e0, 0x4f6fd8, 0xc9b28a,
@@ -97,7 +114,7 @@ export function initEntryView() {
   // 黄道面 (太陽系全体の基準面)。向きだけ毎回northHatに合わせる
   eclipticPlane = new THREE.LineSegments(
     squareGridGeometry((ECLIPTIC_CELL * ECLIPTIC_CELLS) / 2, ECLIPTIC_CELLS),
-    new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.16, depthWrite: false })
+    new THREE.LineBasicMaterial({ color: COLOR_HORIZON, transparent: true, opacity: 0.16, depthWrite: false })
   );
   eclipticPlane.name = "ecliptic";
   eclipticPlane.renderOrder = -1;

@@ -1,5 +1,7 @@
 import { launch_frame } from '../core/trajectory.js';
 import { createVectorView } from './vector_view.js';
+import { makeThemeApplier } from './view3d.js';
+import { cssHex, onThemeChange } from '../ui/theme.js';
 
 // 「天体を離れる瞬間の、天体に対する相対速度」を見る遠景3Dビューのひな型。
 //
@@ -23,10 +25,11 @@ import { createVectorView } from './vector_view.js';
 //   基準方向 = 天体の公転方向、1目盛 = 1 km/s (固定)、陰影 = 太陽方向
 // という打上げ向けの取り決めを共有する。
 
-const COLOR_VINF = 0xff8c1a;
-const COLOR_ALPHA = 0x3b6fe0;
-const COLOR_DELTA = 0xe0a03b;
-const COLOR_PLANET_ORBIT = 0x4caf82;
+// 色は css/tokens.css の --line-* から取る (明るい配色と暗い配色で入れ替わる)
+let COLOR_VINF = 0xff8c1a;
+let COLOR_ALPHA = 0x3b6fe0;
+let COLOR_DELTA = 0xe0a03b;
+let COLOR_PLANET_ORBIT = 0x4caf82;
 
 const PLANET_COLORS = [
   0x9c9c9c, 0xe0c58f, 0x3a7bd5, 0xc1440e, 0xd9a066, 0xe4d2a4, 0x9fd8e0, 0x4f6fd8, 0xc9b28a,
@@ -37,7 +40,32 @@ const SMALL_BODY_COLOR = 0xddaa44;
 
 // 中心を「軌道上の一点」として描くときの色。太陽系ビューの選択中ノードの印と
 // 同じ色にして、同じものを指していると分かるようにする (js/plot.js)
-const COLOR_NODE = 0x1f4fd8;
+let COLOR_NODE = 0x1f4fd8;
+
+function read_colors() {
+  COLOR_VINF = cssHex("--line-vinf", 0xff8c1a);
+  COLOR_ALPHA = cssHex("--line-blue", 0x3b6fe0);
+  COLOR_DELTA = cssHex("--line-orange", 0xe0a03b);
+  COLOR_PLANET_ORBIT = cssHex("--line-green", 0x4caf82);
+  COLOR_NODE = cssHex("--line-node", 0x1f4fd8);
+}
+
+function color_list() {
+  return [COLOR_VINF, COLOR_ALPHA, COLOR_DELTA, COLOR_PLANET_ORBIT, COLOR_NODE];
+}
+read_colors();
+
+// このファイルは「出発」「脱出」など複数のビューを作る。配色が切り替わったら
+// 作ったぶんすべてを塗り直すので、作った先を覚えておく
+const made = [];
+onThemeChange(
+  makeThemeApplier(
+    color_list,
+    read_colors,
+    () => made.map((v) => v.scene),
+    () => made.forEach((v) => v.invalidate())
+  )
+);
 
 /**
  * 遠景ビューを1つ作る。
@@ -69,6 +97,8 @@ export function createVinfView(canvasId, { centerStyle = "body" } = {}) {
     useSunLight: true,
     adaptiveScale: false,
   });
+
+  made.push(view);
 
   return {
     init: () => view.init(),

@@ -12,7 +12,9 @@ import {
   attachHandleDrag,
   closestOnAxis,
   makeRenderLoop,
+  makeThemeApplier,
 } from './view3d.js';
+import { cssHex, onThemeChange } from '../ui/theme.js';
 
 // 周回軌道投入 / 軌道脱出の操作パネル用の小さな3Dビュー。
 // 天体を中心に、V∞で入ってくる(出ていく)双曲線と、近点を共有する周回軌道の
@@ -54,12 +56,30 @@ const CANVAS_BORDER = 1;
 const GRID_SPAN = 3;
 const GRID_DIVISIONS = 24;
 
-const COLOR_ORBIT = 0x3b6fe0; // 周回軌道 (楕円)
-const COLOR_HYPERBOLA = 0x1a1c20; // 双曲線 (B面ビューの軌道と同じ色)
-const COLOR_COAST = 0x8a8f99; // 近点ΔVを打たなかった場合 (B面ビューと同じ)
-const COLOR_RP = 0xd6543f;
-const COLOR_RA = 0xe0a03b;
-const COLOR_DV = 0x9b4fd8;
+// 色は css/tokens.css の --line-* から取る (明るい配色と暗い配色で入れ替わる)
+let COLOR_ORBIT = 0x3b6fe0; // 周回軌道 (楕円)
+let COLOR_HYPERBOLA = 0x1a1c20; // 双曲線 (B面ビューの軌道と同じ色)
+let COLOR_COAST = 0x8a8f99; // 近点ΔVを打たなかった場合 (B面ビューと同じ)
+let COLOR_RP = 0xd6543f;
+let COLOR_RA = 0xe0a03b;
+let COLOR_DV = 0x9b4fd8;
+let COLOR_TRAVEL = 0x5b6472; // 進む向きの印
+
+function read_colors() {
+  COLOR_ORBIT = cssHex("--line-blue", 0x3b6fe0);
+  COLOR_HYPERBOLA = cssHex("--line-dark", 0x1a1c20);
+  COLOR_COAST = cssHex("--line-gray", 0x8a8f99);
+  COLOR_RP = cssHex("--line-red", 0xd6543f);
+  COLOR_RA = cssHex("--line-orange", 0xe0a03b);
+  COLOR_DV = cssHex("--line-purple", 0x9b4fd8);
+  COLOR_TRAVEL = cssHex("--line-arrowhead", 0x5b6472);
+}
+
+function color_list() {
+  return [COLOR_ORBIT, COLOR_HYPERBOLA, COLOR_COAST, COLOR_RP, COLOR_RA, COLOR_DV, COLOR_TRAVEL];
+}
+read_colors();
+onThemeChange(makeThemeApplier(color_list, read_colors, () => scene, () => invalidate()));
 
 const PLANET_COLORS = [
   0x9c9c9c, 0xe0c58f, 0x3a7bd5, 0xc1440e, 0xd9a066, 0xe4d2a4, 0x9fd8e0, 0x4f6fd8, 0xc9b28a,
@@ -91,7 +111,7 @@ export function initOrbitView() {
   // (掴んで動かしている最中にグリッドが伸び縮みすると縮尺の感覚が崩れる)。
   planeGrid = new THREE.LineSegments(
     new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.16, depthWrite: false })
+    new THREE.LineBasicMaterial({ color: COLOR_COAST, transparent: true, opacity: 0.16, depthWrite: false })
   );
   planeGrid.renderOrder = -1;
   scene.add(planeGrid);
@@ -126,7 +146,7 @@ export function initOrbitView() {
 
   // 進行方向の矢じるし。双曲線はグリッドの端まで引くので、先端ではなく途中に
   // 置く。ここに描くのは入る側か出る側の片方だけなので1つで足りる
-  travelArrowhead = makeArrowTrail(0x5b6472, 1);
+  travelArrowhead = makeArrowTrail(COLOR_TRAVEL, 1);
   root.add(travelArrowhead);
 
   rpLine = makeLine([new THREE.Vector3()], COLOR_RP, 1);

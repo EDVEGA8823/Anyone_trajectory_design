@@ -1,20 +1,43 @@
 import { State, PlotState } from '../core/state.js';
 import { AU } from '../core/trajectory.js';
 import { makeRenderLoop } from '../panel/view3d.js';
+import { cssHex, onThemeChange } from '../ui/theme.js';
 
 export let renderer, scene, camera, sun, labelRenderer, controls;
 
 // --- 太陽系ビューの配色 ---
 // 「いまどのノードのどのレグを触っているか」が一目で分かるよう、選択中の
 // ノードに繋がる2本のレグとそのノードだけを濃く描き、残りは淡く落とす。
-export const COLOR_LEG_ACTIVE = 0x2a5bd7; // 選択中ノードに繋がるレグ
-export const COLOR_LEG_IDLE = 0x9fb0cc; // それ以外のレグ
-const COLOR_NODE_SELECTED = 0x1f4fd8;
+//
+// 値は css/tokens.css の --line-* / --plot-* から取る。明るい配色と暗い配色で
+// 入れ替わるので const にはできない。export let なので、取り込んでいる側
+// (js/main.js) からも切り替え後の値が見える。
+export let COLOR_LEG_ACTIVE = 0x2a5bd7; // 選択中ノードに繋がるレグ
+export let COLOR_LEG_IDLE = 0x9fb0cc; // それ以外のレグ
+let COLOR_NODE_SELECTED = 0x1f4fd8;
 // 破線で描く2種類の軌道。マヌーバ未実行(赤)と、最終軌道で到達した軌道(緑)。
-export const COLOR_COAST = 0xd6543f;
-export const COLOR_ACHIEVED = 0x2f9e6e;
-const COLOR_NODE_NEIGHBOR = 0xa8bcdd;
+export let COLOR_COAST = 0xd6543f;
+export let COLOR_ACHIEVED = 0x2f9e6e;
+let COLOR_NODE_NEIGHBOR = 0xa8bcdd;
+let COLOR_GRID = 0xaaaaaa;
+export let COLOR_PLANET_ORBIT = 0x999999;
+export let COLOR_SMALL_BODY_ORBIT = 0x8fa0b8;
 const LEG_IDLE_OPACITY = 0.4;
+
+/** 配色が切り替わったときに、上の色を取り直す */
+function readColors() {
+  COLOR_LEG_ACTIVE = cssHex("--line-track", 0x2a5bd7);
+  COLOR_LEG_IDLE = cssHex("--line-leg-idle", 0x9fb0cc);
+  COLOR_NODE_SELECTED = cssHex("--line-node", 0x1f4fd8);
+  COLOR_COAST = cssHex("--line-red", 0xd6543f);
+  COLOR_ACHIEVED = cssHex("--line-achieved", 0x2f9e6e);
+  COLOR_NODE_NEIGHBOR = cssHex("--line-node-dim", 0xa8bcdd);
+  COLOR_GRID = cssHex("--plot-grid", 0xaaaaaa);
+  COLOR_PLANET_ORBIT = cssHex("--plot-orbit", 0x999999);
+  COLOR_SMALL_BODY_ORBIT = cssHex("--plot-orbit-small", 0x8fa0b8);
+  VINF_COLOR = cssHex("--line-vinf", 0xff8c1a);
+  DSM_COLOR = cssHex("--line-purple", 0x9b4fd8);
+}
 
 // css/elements.css の --header-height / --canvas-padding と一致させること
 const CANVAS_PADDING = 24;
@@ -75,7 +98,7 @@ function createTickGroup(coords, half, fade) {
     geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(arr), 3));
     const line = new THREE.LineSegments(
       geometry,
-      new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true })
+      new THREE.LineBasicMaterial({ color: COLOR_GRID, transparent: true })
     );
     line.material.depthTest = false;
     // 軸いっぱいに広がっていて常に画面内にあるうえ、Y軸の目盛りは向きを
@@ -110,7 +133,7 @@ export function initPlot() {
   renderer.setSize(PlotState.width, PlotState.height);
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xffffff);
+  scene.background = new THREE.Color(cssHex("--plot-bg", 0xffffff));
 
   camera = new THREE.PerspectiveCamera(30, PlotState.width / PlotState.height, 0.01, 50000);
   camera.position.set(0, PlotState.camera_dist, 0);
@@ -143,9 +166,9 @@ export function initPlot() {
   controls.enablePan = false;
   controls.maxDistance = 200;
 
-  axis.push(createLine([new THREE.Vector3(-50, 0, 0), new THREE.Vector3(50, 0, 0)], 0xaaaaaa));
-  axis.push(createLine([new THREE.Vector3(0, 50, 0), new THREE.Vector3(0, -50, 0)], 0xaaaaaa));
-  axis.push(createLine([new THREE.Vector3(0, 0, -50), new THREE.Vector3(0, 0, 50)], 0xaaaaaa));
+  axis.push(createLine([new THREE.Vector3(-50, 0, 0), new THREE.Vector3(50, 0, 0)], COLOR_GRID));
+  axis.push(createLine([new THREE.Vector3(0, 50, 0), new THREE.Vector3(0, -50, 0)], COLOR_GRID));
+  axis.push(createLine([new THREE.Vector3(0, 0, -50), new THREE.Vector3(0, 0, 50)], COLOR_GRID));
 
   const coords0_1 = [], coords1 = [], coords5 = [];
   for (let i = -5; i < 5; i = i + 0.1) coords0_1.push(i);
@@ -236,8 +259,8 @@ export function initPlot() {
 // 長さは大きさに比例させるが、同時にカメラ距離にも比例させて、ズームしても
 // 画面上の見え方が変わらないようにする (惑星マーカーの拡大と同じ考え方)。
 // これで、内惑星を見ている縮尺でも外惑星まで引いた縮尺でも同じ操作感になる。
-const VINF_COLOR = 0xff8c1a;
-const DSM_COLOR = 0x9b4fd8; // B面ビューの近点ΔVと同じ色
+let VINF_COLOR = 0xff8c1a;
+let DSM_COLOR = 0x9b4fd8; // B面ビューの近点ΔVと同じ色
 const VEC_AU_PER_KMS = 0.12; // camera_dist = 7 のときの 1 km/s あたりの長さ [AU]
 const VEC_CAMERA_DIST_REF = 7;
 // 現実的な大きさ(数km/s)では長さをそのまま比例させたいが、遷移がうまく繋がって
@@ -628,3 +651,39 @@ const loop = makeRenderLoop(() => {
 export function invalidate(frames) {
   loop.invalidate(frames);
 }
+
+/* ==================================================================
+   配色の切り替え
+   ================================================================== */
+// 遷移軌道の弧と最終軌道の破線は、引き直しのたびに色を入れ直しているので
+// (styleLeg / update_coast_orbit)、ここで触らなくても次の描画で追いつく。
+// ここで塗り直すのは「作ったきり色を変えない」ものだけ。
+export function applyPlotTheme() {
+  readColors();
+  if (!scene) return;
+  scene.background = new THREE.Color(cssHex("--plot-bg", 0xffffff));
+  for (const a of axis) if (a) a.line.material.color.setHex(COLOR_GRID);
+  for (const g of tick_groups) {
+    for (const k of ["x", "y", "z"]) g[k].material.color.setHex(COLOR_GRID);
+  }
+  PlotState.marker_spheres.forEach((m, i) => {
+    m.material.color.setHex(i === 1 ? COLOR_NODE_SELECTED : COLOR_NODE_NEIGHBOR);
+  });
+  for (const m of node_markers) if (m) m.material.color.setHex(COLOR_NODE_NEIGHBOR);
+  if (vinf_arrow) {
+    vinf_arrow.line.material.color.setHex(VINF_COLOR);
+    vinf_arrow.cone.material.color.setHex(VINF_COLOR);
+  }
+  for (const a of dsm_arrows) {
+    if (!a) continue;
+    a.line.material.color.setHex(DSM_COLOR);
+    a.cone.material.color.setHex(DSM_COLOR);
+  }
+  invalidate();
+}
+
+// 読み込んだ時点で一度取る。<html data-theme> は index.html の先頭ですでに
+// 書かれているので、ここで正しい値が取れる。呼ぶのはこのファイルの末尾
+// (VINF_COLOR などの let はここまで来ないと代入できない)
+readColors();
+onThemeChange(applyPlotTheme);

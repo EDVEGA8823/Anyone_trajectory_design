@@ -1,4 +1,5 @@
 import { MU_SUN, get_planet_elements, get_planets_pos, JulianToDate, lambert_min_tof } from '../core/trajectory.js';
+import { cssColor, onThemeChange, isDark } from './theme.js';
 
 // ポークチョップ図。
 //
@@ -552,6 +553,65 @@ function to_date(rect, px, py) {
   };
 }
 
+/* ------------------------------------------------------------------
+   配色
+
+   色の帯そのもの (値の大小を表す色) は、明るい配色でも暗い配色でも同じ。
+   意味を持つ色なので、地に合わせて変えると読み方が変わってしまう。
+   帯の上に重ねる線 (等高線の白、周回数の境界の黒破線、十字線) も、帯の色の
+   上に乗るので変えない。ここで変えるのは、帯の外側 — 地・枠・目盛りの文字。
+   ------------------------------------------------------------------ */
+let PC = {};
+
+/**
+ * 図の上に重ねる線と文字の色。
+ *
+ * 重ねる先が2種類ある — 色の帯そのものと、まだ計算していないところの地。
+ * 帯は明暗どちらでも同じ色なので、地の側に合わせて反対の側に置けば
+ * どちらの上でも読める。
+ */
+function ink(a) {
+  return isDark() ? "rgba(232,235,240," + a + ")" : "rgba(23,24,26," + a + ")";
+}
+
+/** #rrggbb を [r, g, b] に。図の中身は画素を直に書くので数値が要る */
+function rgb_of(css, fallback) {
+  const m = /^#([0-9a-f]{6})$/i.exec((css || "").trim());
+  if (!m) return fallback;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function read_colors() {
+  PC = {
+    field: cssColor("--pc-field", "#f7f7f9"),
+    over: cssColor("--pc-over", "rgb(226,226,229)"),
+    hatch: cssColor("--pc-hatch", "rgba(23,24,26,0.14)"),
+    frame: cssColor("--gray-300", "#c9ccd3"),
+    border: cssColor("--border", "#e3e4e8"),
+    label: cssColor("--gray-600", "#52545c"),
+    labelDim: cssColor("--gray-500", "#71747c"),
+    title: cssColor("--gray-700", "#3c3e45"),
+    // 打てない日の境界と、その日付
+    warn: isDark() ? "#f0705a" : "#b5341f",
+    // 図の外に出た「いまの設定」を指す三角と、その丸
+    hint: isDark() ? "#7ea6ff" : "#2451b8",
+    // 飛行時間の目盛りに敷く下地 (地と同じ側に置いて、線を切って読ませる)
+    labelBg: isDark() ? "rgba(11,12,14,0.78)" : "rgba(255,255,255,0.8)",
+    // 印そのもの。帯の上に置くので、明暗どちらでも白抜きに濃い縁で通る
+    markFill: "#ffffff",
+    markLine: "#17181a",
+  };
+  // 図の中身は createImageData に画素を直に書くので、数値でも持っておく
+  PC.fieldRGB = rgb_of(PC.field, [246, 246, 248]);
+  PC.overRGB = rgb_of(PC.over, [226, 226, 229]);
+}
+read_colors();
+onThemeChange(() => {
+  read_colors();
+  draw();
+});
+
 function draw() {
   if (!canvas) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -569,11 +629,11 @@ function draw() {
   const rect = plot_rect();
   if (rect.w <= 10 || rect.h <= 10) return;
 
-  ctx.fillStyle = "#f7f7f9";
+  ctx.fillStyle = PC.field;
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
   if (!view) {
-    ctx.strokeStyle = "#e3e4e8";
+    ctx.strokeStyle = PC.border;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
     return;
   }
@@ -593,7 +653,7 @@ function draw() {
   draw_axes(ctx, rect);
   draw_markers(ctx, rect, range);
 
-  ctx.strokeStyle = "#c9ccd3";
+  ctx.strokeStyle = PC.frame;
   ctx.lineWidth = 1;
   ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
 }
@@ -610,18 +670,19 @@ function draw_field(ctx, rect, range) {
       const v = cell_value(g, k * g.cols + j);
       const o = (row + j) * 4;
       if (!(v === v)) {
-        // 解が無い (到着が出発より前など)
-        d[o] = 246;
-        d[o + 1] = 246;
-        d[o + 2] = 248;
+        // 解が無い (到着が出発より前など)。図の地と同じ色にして、そこに
+        // 何も無いことを示す
+        d[o] = PC.fieldRGB[0];
+        d[o + 1] = PC.fieldRGB[1];
+        d[o + 2] = PC.fieldRGB[2];
         d[o + 3] = 255;
         continue;
       }
       if (v > range.hi) {
-        // 高すぎて検討に値しない領域。灰色にして谷を目立たせる
-        d[o] = 226;
-        d[o + 1] = 226;
-        d[o + 2] = 229;
+        // 高すぎて検討に値しない領域。地に近い灰色にして谷を目立たせる
+        d[o] = PC.overRGB[0];
+        d[o + 1] = PC.overRGB[1];
+        d[o + 2] = PC.overRGB[2];
         d[o + 3] = 255;
         continue;
       }
@@ -729,7 +790,7 @@ function draw_rev_borders(ctx, rect) {
   ctx.rect(rect.x, rect.y, rect.w, rect.h);
   ctx.clip();
   ctx.setLineDash([3, 3]);
-  ctx.strokeStyle = "rgba(23,24,26,0.55)";
+  ctx.strokeStyle = ink(0.55);
   ctx.lineWidth = 1;
   ctx.beginPath();
 
@@ -776,7 +837,7 @@ function draw_dep_min(ctx, rect) {
   ctx.beginPath();
   ctx.rect(rect.x, rect.y, w, rect.h);
   ctx.clip();
-  ctx.strokeStyle = "rgba(23,24,26,0.14)";
+  ctx.strokeStyle = PC.hatch;
   ctx.lineWidth = 1;
   ctx.beginPath();
   const step = 7;
@@ -790,7 +851,7 @@ function draw_dep_min(ctx, rect) {
   if (t > view.dep1) return; // 境界そのものは窓の外 (右)。斜線だけで済ませる
 
   ctx.save();
-  ctx.strokeStyle = "#b5341f";
+  ctx.strokeStyle = PC.warn;
   ctx.setLineDash([5, 3]);
   ctx.lineWidth = 1.4;
   ctx.beginPath();
@@ -801,7 +862,7 @@ function draw_dep_min(ctx, rect) {
 
   ctx.save();
   ctx.font = "10px " + FONT;
-  ctx.fillStyle = "#b5341f";
+  ctx.fillStyle = PC.warn;
   const near_right = x > rect.x + rect.w - 70;
   ctx.textAlign = near_right ? "right" : "left";
   ctx.textBaseline = "top";
@@ -820,8 +881,8 @@ function draw_tof_lines(ctx, rect) {
 
   ctx.save();
   ctx.setLineDash([4, 4]);
-  ctx.strokeStyle = "rgba(23,24,26,0.35)";
-  ctx.fillStyle = "rgba(23,24,26,0.55)";
+  ctx.strokeStyle = ink(0.35);
+  ctx.fillStyle = ink(0.55);
   ctx.font = "10px " + FONT;
   ctx.lineWidth = 1;
 
@@ -845,9 +906,9 @@ function draw_tof_lines(ctx, rect) {
     ctx.save();
     ctx.setLineDash([]);
     const tw = ctx.measureText(text).width;
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.fillStyle = PC.labelBg;
     ctx.fillRect(lx - tw / 2 - 2, ly - 6, tw + 4, 12);
-    ctx.fillStyle = "rgba(23,24,26,0.65)";
+    ctx.fillStyle = ink(0.65);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(text, lx, ly);
@@ -862,8 +923,8 @@ function draw_axes(ctx, rect) {
   const g = view;
   ctx.save();
   ctx.font = "10px " + FONT;
-  ctx.fillStyle = "#52545c";
-  ctx.strokeStyle = "#c9ccd3";
+  ctx.fillStyle = PC.label;
+  ctx.strokeStyle = PC.frame;
 
   const N = 4;
   ctx.textAlign = "center";
@@ -889,7 +950,7 @@ function draw_axes(ctx, rect) {
     ctx.fillText(fmt_date(jd, true), rect.x - 6, y);
   }
 
-  ctx.fillStyle = "#3c3e45";
+  ctx.fillStyle = PC.title;
   ctx.font = "600 11px " + FONT;
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
@@ -911,11 +972,11 @@ function draw_colorbar(ctx, rect, range) {
   const h = rect.h - over_h;
 
   // 上限より上は図でも灰色にしてあるので、色帯の上にその分を継ぎ足しておく
-  ctx.fillStyle = "rgb(226,226,229)";
+  ctx.fillStyle = PC.over;
   ctx.fillRect(x, rect.y, w, over_h);
   ctx.save();
   ctx.font = "9px " + FONT;
-  ctx.fillStyle = "#71747c";
+  ctx.fillStyle = PC.labelDim;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillText("以上", x + w + 5, rect.y + over_h / 2);
@@ -926,7 +987,7 @@ function draw_colorbar(ctx, rect, range) {
     ctx.fillStyle = "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
     ctx.fillRect(x, y + i, w, 1);
   }
-  ctx.strokeStyle = "#c9ccd3";
+  ctx.strokeStyle = PC.frame;
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, w, h);
 
@@ -934,7 +995,7 @@ function draw_colorbar(ctx, rect, range) {
   const { levels } = nice_levels(range.lo, range.hi, 5);
   ctx.save();
   ctx.font = "10px " + FONT;
-  ctx.fillStyle = "#52545c";
+  ctx.fillStyle = PC.label;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   for (const L of levels) {
@@ -946,7 +1007,7 @@ function draw_colorbar(ctx, rect, range) {
     ctx.stroke();
     ctx.fillText(L.toFixed(m.digits), x + w + 5, ly);
   }
-  ctx.fillStyle = "#71747c";
+  ctx.fillStyle = PC.labelDim;
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
   ctx.fillText(m.unit, x + w + 30, rect.y - 4);
@@ -981,8 +1042,8 @@ function draw_markers(ctx, rect, range) {
         ctx.lineTo(0, 5);
         ctx.lineTo(-5, 0);
         ctx.closePath();
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#17181a";
+        ctx.fillStyle = PC.markFill;
+        ctx.strokeStyle = PC.markLine;
         ctx.lineWidth = 1.4;
         ctx.fill();
         ctx.stroke();
@@ -998,7 +1059,7 @@ function draw_markers(ctx, rect, range) {
       draw_offscreen_hint(ctx, rect, p);
     } else {
       ctx.save();
-      ctx.strokeStyle = "#17181a";
+      ctx.strokeStyle = ink(0.85);
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
@@ -1010,10 +1071,10 @@ function draw_markers(ctx, rect, range) {
       ctx.setLineDash([]);
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = PC.markFill;
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = "#2451b8";
+      ctx.strokeStyle = PC.hint;
       ctx.stroke();
       ctx.restore();
     }
@@ -1025,7 +1086,7 @@ function draw_markers(ctx, rect, range) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(23,24,26,0.7)";
+    ctx.strokeStyle = ink(0.7);
     ctx.lineWidth = 1.2;
     ctx.stroke();
     ctx.restore();
@@ -1056,7 +1117,7 @@ function draw_offscreen_hint(ctx, rect, p) {
   ctx.lineTo(-3, 4.5);
   ctx.lineTo(-3, -4.5);
   ctx.closePath();
-  ctx.fillStyle = "#2451b8";
+  ctx.fillStyle = PC.hint;
   ctx.fill();
   ctx.restore();
 }

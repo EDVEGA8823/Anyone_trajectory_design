@@ -77,6 +77,8 @@
 
   /* 濃い帯 (上部バー・見出し) と、その上に乗る文字 */
   --chrome: #17181a;
+  /* 一段控えめな濃い帯 (ダイアログの見出し・シーケンスの番号) */
+  --chrome-alt: #26272b;
   --chrome-text: #ffffff;
   --chrome-dim: #d1d3d9;
   --chrome-faint: #a1a4ad;
@@ -100,8 +102,22 @@
   --line-purple: #9b4fd8;
   --line-green: #4caf82;
   --line-vinf: #ff8c1a;
+  --line-faint: #a1a4ad; /* 漸近線など、あることだけ分かればよい線 */
+  --line-arrowhead: #5b6472; /* 濃い線の上に置く進行方向の印 */
   --line-track: #2a5bd7; /* 選んでいるレグ (太陽系ビューの遷移軌道) */
+  --line-leg-idle: #9fb0cc; /* 選んでいないレグ */
+  --line-node: #1f4fd8; /* 選んでいるノードの玉 */
+  --line-node-dim: #a8bcdd; /* その前後のノードの玉 */
+  --line-achieved: #2f9e6e; /* 最終軌道 (届いた先の軌道) */
   --plot-bg: #ffffff; /* 太陽系ビューの地の色 */
+  --plot-grid: #aaaaaa; /* 目盛りと軸 */
+  --plot-orbit: #999999; /* 惑星の公転軌道 */
+  --plot-orbit-small: #8fa0b8; /* 取り込んだ小天体の公転軌道 */
+  /* ポークチョップ図。色の帯そのもの (色の付いた等高線) は配色で変えない。
+     変えるのは、その周りの地・枠・目盛りだけ */
+  --pc-field: #f7f7f9; /* まだ計算していないところの地 */
+  --pc-over: #e2e2e5; /* 上限より上 (図でも灰色にしてある) */
+  --pc-hatch: rgba(23, 24, 26, 0.14); /* 打てない日の斜線 */
 
   --radius-lg: 16px;
   --radius-md: 12px;
@@ -170,6 +186,8 @@
 
   /* 帯は地よりさらに沈める。明るい配色と同じく「濃い帯」であり続ける */
   --chrome: #0c0d0f;
+  /* 暗い配色では、面より沈めると番号が読みにくい。少し浮かせる */
+  --chrome-alt: #383d45;
   --chrome-text: #f0f2f5;
   --chrome-dim: #b6bbc3;
   --chrome-faint: #7d838d;
@@ -190,8 +208,20 @@
   --line-purple: #b673ea;
   --line-green: #4fc492;
   --line-vinf: #ffa040;
+  --line-faint: #767d88;
+  --line-arrowhead: #aab2bf;
   --line-track: #5f92ff;
+  --line-leg-idle: #64769a;
+  --line-node: #7ba4ff;
+  --line-node-dim: #6d7f9d;
+  --line-achieved: #4fc492;
   --plot-bg: #0b0c0e;
+  --plot-grid: #454b55;
+  --plot-orbit: #7e848d;
+  --plot-orbit-small: #6f7d92;
+  --pc-field: #16181b;
+  --pc-over: #3a3d43;
+  --pc-hatch: rgba(255, 255, 255, 0.13);
 
   /* 暗い地では影がほとんど見えない。濃くして、面の縁を立たせる */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);

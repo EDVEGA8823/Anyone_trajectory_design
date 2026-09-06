@@ -93,9 +93,14 @@ function palette() {
     text: get("--text", "#111827"),
     textMuted: get("--text-muted", "#6b7280"),
     accent: get("--accent", "#3b6fe0"),
-    badge: get("--gray-800", "#1f2937"),
+    // 連番の札。白い文字を乗せるので、暗い配色でも濃いまま
+    badge: get("--chrome-alt", "#1f2937"),
     // 節の丸と番号。太陽系ビューで選択中の節に使っている色に合わせる
-    node: "#1f4fd8",
+    node: get("--line-node", "#1f4fd8"),
+    // 太陽系ビューの地。写した図の下に敷くので、画面と同じ色にする
+    viewBg: get("--plot-bg", "#ffffff"),
+    // 線に重なっても粒や文字が分かるよう付ける縁。地と同じ側の色にする
+    halo: get("--plot-bg", "#ffffff"),
   };
 }
 
@@ -378,7 +383,7 @@ function drawHeader(ctx, c, name, period) {
 function drawView(ctx, c, shot, x, y) {
   ctx.save();
   roundRect(ctx, x, y, VIEW_W, VIEW_H, 12);
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = c.viewBg;
   ctx.fill();
   ctx.clip();
   ctx.drawImage(shot.image, x, y, VIEW_W, VIEW_H);
@@ -393,16 +398,16 @@ function drawView(ctx, c, shot, x, y) {
     ctx.arc(cx, cy, NODE_R, 0, Math.PI * 2);
     ctx.fillStyle = c.node;
     ctx.fill();
-    // 軌道の線と重なっても粒が分かるよう、白で縁取る
+    // 軌道の線と重なっても粒が分かるよう、地の色で縁取る
     ctx.lineWidth = 2;
-    ctx.strokeStyle = "#ffffff";
+    ctx.strokeStyle = c.halo;
     ctx.stroke();
 
-    // 番号は右横。線の上に乗っても読めるよう、白で縁を付けてから塗る
+    // 番号は右横。線の上に乗っても読めるよう、地の色で縁を付けてから塗る
     ctx.font = "700 14px " + FONT;
     ctx.textAlign = "left";
     ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.strokeStyle = c.halo;
     ctx.strokeText(String(n.n), cx + NODE_LABEL_GAP, cy);
     ctx.fillStyle = c.node;
     ctx.fillText(String(n.n), cx + NODE_LABEL_GAP, cy);
@@ -413,10 +418,10 @@ function drawView(ctx, c, shot, x, y) {
   for (const l of shot.labels) {
     ctx.globalAlpha = l.opacity;
     ctx.font = l.font;
-    // 天体名は軌道の線に重なりやすいので、こちらも白で縁を付ける
+    // 天体名は軌道の線に重なりやすいので、こちらも地の色で縁を付ける
     if (l.planet) {
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.strokeStyle = c.halo;
       ctx.strokeText(l.text, x + l.x, y + l.y);
     }
     ctx.fillStyle = l.color;

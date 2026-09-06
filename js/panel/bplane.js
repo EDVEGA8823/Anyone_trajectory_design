@@ -17,7 +17,9 @@ import {
   closestOnAxis,
   intersectPlane,
   makeRenderLoop,
+  makeThemeApplier,
 } from './view3d.js';
+import { cssHex, onThemeChange } from '../ui/theme.js';
 
 // スイングバイ操作パネル用の小さな3Dビュー。
 // 通過天体を中心に、実際の双曲線軌道がB面(入射漸近線に垂直で天体中心を通る平面)を
@@ -73,14 +75,38 @@ const CANVAS_MAX = 460;
 const CANVAS_BORDER = 1; // CSSで引いている境界線の太さ
 let resizeToDisplaySize;
 
-const COLOR_ORBIT = 0x1a1c20;
-const COLOR_ASYMPTOTE = 0xa1a4ad;
-const COLOR_BPLANE = 0x3b6fe0;
-const COLOR_RP = 0xd6543f;
-const COLOR_BETA = 0xe0a03b;
-const COLOR_DV = 0x9b4fd8;
-const COLOR_PLANET_ORBIT = 0x4caf82;
-const COLOR_COAST = 0x8a8f99; // 近点ΔVを打たなかった場合の出射側
+// 色は css/tokens.css の --line-* から取る。明るい配色と暗い配色で入れ替わる
+// ので const にはできない。凡例の色見本 (css/panel.css) も同じ名前を見ている
+let COLOR_ORBIT = 0x1a1c20;
+let COLOR_ASYMPTOTE = 0xa1a4ad;
+let COLOR_BPLANE = 0x3b6fe0;
+let COLOR_RP = 0xd6543f;
+let COLOR_BETA = 0xe0a03b;
+let COLOR_DV = 0x9b4fd8;
+let COLOR_PLANET_ORBIT = 0x4caf82;
+let COLOR_COAST = 0x8a8f99; // 近点ΔVを打たなかった場合の出射側
+let COLOR_TRAVEL = 0x5b6472; // 進む向きの印 (軌道本体と同じ色だと重なって見えない)
+
+/** 変数から色を取り直す */
+function read_colors() {
+  COLOR_ORBIT = cssHex("--line-dark", 0x1a1c20);
+  COLOR_ASYMPTOTE = cssHex("--line-faint", 0xa1a4ad);
+  COLOR_BPLANE = cssHex("--line-blue", 0x3b6fe0);
+  COLOR_RP = cssHex("--line-red", 0xd6543f);
+  COLOR_BETA = cssHex("--line-orange", 0xe0a03b);
+  COLOR_DV = cssHex("--line-purple", 0x9b4fd8);
+  COLOR_PLANET_ORBIT = cssHex("--line-green", 0x4caf82);
+  COLOR_COAST = cssHex("--line-gray", 0x8a8f99);
+  COLOR_TRAVEL = cssHex("--line-arrowhead", 0x5b6472);
+}
+
+/** いまの色を並べて返す (塗り直しの対応表を作るのに使う) */
+function color_list() {
+  return [COLOR_ORBIT, COLOR_ASYMPTOTE, COLOR_BPLANE, COLOR_RP, COLOR_BETA,
+          COLOR_DV, COLOR_PLANET_ORBIT, COLOR_COAST, COLOR_TRAVEL];
+}
+read_colors();
+onThemeChange(makeThemeApplier(color_list, read_colors, () => scene, () => invalidate()));
 
 const PLANET_COLORS = [
   0x9c9c9c, 0xe0c58f, 0x3a7bd5, 0xc1440e, 0xd9a066, 0xe4d2a4, 0x9fd8e0, 0x4f6fd8, 0xc9b28a,
@@ -121,7 +147,7 @@ export function initBPlane() {
   // 広さは fitEcliptic が決め、向きは毎回のupdateBPlaneでnorthHatに合わせる。
   eclipticPlane = new THREE.LineSegments(
     squareGridGeometry(1, ECLIPTIC_CELLS),
-    new THREE.LineBasicMaterial({ color: 0x8a8f99, transparent: true, opacity: 0.16, depthWrite: false })
+    new THREE.LineBasicMaterial({ color: COLOR_COAST, transparent: true, opacity: 0.16, depthWrite: false })
   );
   eclipticPlane.name = "ecliptic";
   eclipticPlane.renderOrder = -1;
@@ -198,7 +224,7 @@ export function initBPlane() {
   // 探査機の進行方向。双曲線はグリッドの端まで引いてあるので、先端ではなく
   // 線の途中に置く。軌道本体(COLOR_ORBIT=ほぼ黒)と同じ色だと重なって
   // 見分けがつかないため、はっきり明るい色にする。
-  travelArrowhead = makeArrowTrail(0x5b6472, 2);
+  travelArrowhead = makeArrowTrail(COLOR_TRAVEL, 2);
   root.add(travelArrowhead);
 
   // 入射漸近線 (重力が無ければ通っていた道筋)。参照線なので矢じるしは付けない

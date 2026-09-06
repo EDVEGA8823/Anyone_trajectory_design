@@ -118,7 +118,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 10px 10px 16px;
-  background: var(--chrome);
+  background: var(--chrome-alt);
   color: var(--chrome-text);
   flex: 0 0 auto;
 }

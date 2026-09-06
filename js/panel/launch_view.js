@@ -1,5 +1,7 @@
 import { launch_frame } from '../core/trajectory.js';
 import { createVectorView } from './vector_view.js';
+import { makeThemeApplier } from './view3d.js';
+import { cssHex, onThemeChange } from '../ui/theme.js';
 
 // 打上げ操作パネル用の小さな3Dビュー。
 // 出発天体を中心に、脱出速度ベクトル V∞ と、それを決める2つの角度
@@ -11,10 +13,23 @@ import { createVectorView } from './vector_view.js';
 //   基準方向 = 天体の公転方向、1目盛 = 1 km/s (固定)、陰影 = 太陽方向
 // という打上げ向けの取り決めだけを持つ。
 
-const COLOR_VINF = 0xff8c1a;
-const COLOR_ALPHA = 0x3b6fe0;
-const COLOR_DELTA = 0xe0a03b;
-const COLOR_PLANET_ORBIT = 0x4caf82;
+// 色は css/tokens.css の --line-* から取る (明るい配色と暗い配色で入れ替わる)
+let COLOR_VINF = 0xff8c1a;
+let COLOR_ALPHA = 0x3b6fe0;
+let COLOR_DELTA = 0xe0a03b;
+let COLOR_PLANET_ORBIT = 0x4caf82;
+
+function read_colors() {
+  COLOR_VINF = cssHex("--line-vinf", 0xff8c1a);
+  COLOR_ALPHA = cssHex("--line-blue", 0x3b6fe0);
+  COLOR_DELTA = cssHex("--line-orange", 0xe0a03b);
+  COLOR_PLANET_ORBIT = cssHex("--line-green", 0x4caf82);
+}
+
+function color_list() {
+  return [COLOR_VINF, COLOR_ALPHA, COLOR_DELTA, COLOR_PLANET_ORBIT];
+}
+read_colors();
 
 const PLANET_COLORS = [
   0x9c9c9c, 0xe0c58f, 0x3a7bd5, 0xc1440e, 0xd9a066, 0xe4d2a4, 0x9fd8e0, 0x4f6fd8, 0xc9b28a,
@@ -42,6 +57,9 @@ const view = createVectorView({
   useSunLight: true,
   adaptiveScale: false, // 打上げのV∞は常に数km/sなので目盛りは固定でよい
 });
+
+// 天体の色 (PLANET_COLORS) は配色に関わらず同じなので、対応表には入らない
+onThemeChange(makeThemeApplier(color_list, read_colors, () => view.scene, () => view.invalidate()));
 
 export function initLaunchView() {
   view.init();
