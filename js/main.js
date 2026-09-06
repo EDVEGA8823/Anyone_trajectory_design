@@ -892,6 +892,51 @@ export function import_small_body(body) {
   return num;
 }
 
+const HELP_URL = "docs/index.html";
+// 開いた窓を覚えておく。2回目からは開き直さずに前へ出すため
+let help_window = null;
+
+/**
+ * 使い方を別の窓で開く。
+ *
+ * 設計を抱えたまま同じ場所で遷移すると失われるので、どちらにしても別の場所で
+ * 開く。窓にすると画面の右側に置いて、アプリを触りながら読める。
+ * 名前を付けてあるので、2回目からは同じ窓が前に出る (増えていかない)。
+ */
+export function openHelpWindow() {
+  // すでに開いているなら前に出すだけ。読んでいた場所へ戻したいので、
+  // 一覧に送り直したりはしない (窓の中の「使い方」から戻れる)
+  if (help_window && !help_window.closed) {
+    help_window.focus();
+    return;
+  }
+  // 画面の右端に、高さいっぱいで置く。幅は資料の本文が入る 940px を上限に、
+  // 画面の半分弱。残った左半分でアプリの3段組みが成立する。
+  // 狭い画面ではこの指定が効かず、ブラウザが適当な大きさで開く (それでも困らない)
+  const sw = window.screen.availWidth || 1280;
+  const sh = window.screen.availHeight || 800;
+  const w = Math.max(420, Math.min(940, Math.round(sw * 0.45)));
+  const h = Math.max(400, Math.round(sh * 0.94));
+  const left = Math.max(0, (window.screen.availLeft || 0) + sw - w);
+  const top = window.screen.availTop || 0;
+  help_window = window.open(
+    HELP_URL,
+    "atd_help",
+    "popup=yes,width=" + w + ",height=" + h + ",left=" + left + ",top=" + top
+  );
+  if (!help_window) {
+    // ポップアップを止められている場合。押しても何も起きないと壊れて見える
+    notify("窓を開けませんでした。ポップアップの許可を確かめてください");
+    return;
+  }
+  help_window.focus();
+}
+
+/** 使い方を新しいタブで開く (窓が邪魔なとき用) */
+export function openHelpTab() {
+  window.open(HELP_URL, "_blank", "noopener");
+}
+
 /**
  * ミッションを空にして最初からやり直す。
  *
@@ -3145,8 +3190,8 @@ function boot() {
     share_x: () => shareOnX(missionName() || DEFAULT_NAME),
     shortcuts: openShortcuts,
     examples: openExamples,
-    // 使い方は別ページ (docs/)。設計を抱えたまま遷移すると失われるので新しいタブで開く
-    help: () => window.open("docs/index.html", "_blank", "noopener"),
+    help: openHelpWindow,
+    help_tab: openHelpTab,
   });
   // 画像を作る間だけ「使っている天体だけ」に切り替えてもらう
   // (天体名の表は main.js 側にあるので、export_image.js からは手を借りる)

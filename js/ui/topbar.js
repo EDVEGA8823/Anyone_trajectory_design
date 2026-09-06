@@ -60,7 +60,14 @@ const ACTIONS = [
   { id: "save", label: "保存", icon: "save", hint: "いまのミッションをファイルに保存する (Ctrl+S)", where: "both" },
   { id: "load", label: "読込", icon: "load", hint: "保存したミッションを読み込む (Ctrl+O)", where: "both" },
   { id: "share_x", label: "Xで共有", icon: "x", hint: "いまのミッションをXに投稿する", where: "both", compact: true },
-  { id: "help", label: "ヘルプ", icon: "help", hint: "使い方のドキュメントを開く", where: "both", compact: true },
+  {
+    id: "help",
+    label: "ヘルプ",
+    icon: "help",
+    hint: "使い方のドキュメントを別の窓で開く (アプリを触りながら読める)",
+    where: "both",
+    compact: true,
+  },
   { sep: true },
 
   { id: "new", label: "新規作成", icon: "file", hint: "ミッションを空にして最初からやり直す", where: "menu" },
@@ -69,6 +76,7 @@ const ACTIONS = [
   { id: "export_image", label: "画像で保存", icon: "image", hint: "いまの軌道図を画像として保存する", where: "menu" },
   { id: "share_link", label: "共有リンクをコピー", icon: "link", hint: "このミッションを開けるURLをコピーする", where: "menu" },
   { sep: true },
+  { id: "help_tab", label: "ヘルプをタブで開く", icon: "help", hint: "使い方のドキュメントを新しいタブで開く", where: "menu" },
   { id: "shortcuts", label: "キーボード操作", icon: "keyboard", hint: "ショートカットの一覧を見る", where: "menu" },
   { id: "settings", label: "表示設定", icon: "settings", hint: "単位や配色などの表示の設定", where: "menu" },
   { id: "feedback", label: "フィードバックを送る", icon: "feedback", hint: "要望や不具合を伝える", where: "menu" },
@@ -254,7 +262,7 @@ export function initTopbar() {
 
 /**
  * ボタンが押されたときに呼ぶ関数を登録する。
- * キーは ACTIONS の id (add_body, save, load, share_x, help, new, examples,
+ * キーは ACTIONS の id (add_body, save, load, share_x, help, help_tab, new, examples,
  * export_image, share_link, shortcuts, settings, feedback) と language。
  * 登録されていないボタンは「準備中」と出すだけになる。
  */
