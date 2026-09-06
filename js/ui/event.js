@@ -408,7 +408,10 @@ function handleTouchEnd(event) {
 
 function endDrag() {
   if (State.selected_planet !== -1 && PlotState.planet_speres[State.selected_planet]) {
-    PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "black";
+    // 掴んでいる間の赤を外す。黒を入れ直すのではなく空にするのは、そのまま
+    // 書き込むとCSS (.label_planet) の色を上書きし続けてしまうため。
+    // 暗い配色では地も黒なので、天体の名前が消えてしまっていた
+    PlotState.planet_speres[State.selected_planet].children[0].element.style.color = "";
   }
   if (controls) controls.enableRotate = true;
   const was_dragging = State.is_change_time;
