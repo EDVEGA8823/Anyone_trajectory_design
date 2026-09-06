@@ -10,6 +10,8 @@
   ΔVEGA短     2年より短い同期軌道 (678日) を使う ΔVEGA
   VEGA        地球 → 金星 → 地球 → 木星
   VEEGA       地球 → 金星 → 地球 → 地球 → 木星
+  EVE1回      地球 → 金星 → 地球 のあと、地球スイングバイ1回で終わり (最終軌道)
+  EVE2回      そこに2年同期を挟んで、地球スイングバイ2回で終わり (最終軌道)
 """
 import json
 
@@ -188,6 +190,88 @@ MISSIONS = json.loads(r"""
     "type": "Orbit",
     "date": 2464707.1074003913,
     "planet": 4
+   }
+  ]
+ },
+ "EVE1回": {
+  "format": "anyone-trajectory-design",
+  "version": 1,
+  "name": "地球→金星→地球 + 1回",
+  "launcher": "h3_24",
+  "launch": {
+   "vinf": 3,
+   "alpha": 0,
+   "delta": 0
+  },
+  "nodes": [
+   {
+    "type": "Launch",
+    "date": 2462412.5,
+    "planet": 2
+   },
+   {
+    "type": "Swingby",
+    "date": 2462599.5,
+    "planet": 1,
+    "rp": 15216.421742635303,
+    "beta": -1.148743749131587
+   },
+   {
+    "type": "Swingby",
+    "date": 2462915.5,
+    "planet": 2,
+    "manual": true,
+    "rp": 6678.137,
+    "beta": 4.71238898038469
+   },
+   {
+    "type": "End",
+    "date": 2463476.5
+   }
+  ]
+ },
+ "EVE2回": {
+  "format": "anyone-trajectory-design",
+  "version": 1,
+  "name": "地球→金星→地球 + 2回",
+  "launcher": "h3_24",
+  "launch": {
+   "vinf": 3,
+   "alpha": 0,
+   "delta": 0
+  },
+  "nodes": [
+   {
+    "type": "Launch",
+    "date": 2462412.5,
+    "planet": 2
+   },
+   {
+    "type": "Swingby",
+    "date": 2462599.5,
+    "planet": 1,
+    "rp": 15216.421742635303,
+    "beta": -1.148743749131587
+   },
+   {
+    "type": "Swingby",
+    "date": 2462915.5,
+    "planet": 2,
+    "rp": 11838.985414334926,
+    "beta": -1.552812704896748,
+    "rev": 1
+   },
+   {
+    "type": "Swingby",
+    "date": 2463743.5,
+    "planet": 2,
+    "manual": true,
+    "rp": 6678.137,
+    "beta": 4.71238898038469
+   },
+   {
+    "type": "End",
+    "date": 2464937.5
    }
   ]
  }

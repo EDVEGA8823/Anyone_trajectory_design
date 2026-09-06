@@ -434,6 +434,40 @@ def sw2_dvega():
     ]
 
 
+def sw2_eve():
+    """地球 → 金星 → 地球 (EVE) を作って、最終軌道がどこまで届くかを見る"""
+    from docs_missions import js
+    return [
+        # --- 地球 → 金星の窓をポークチョップ図で探すところ ---
+        ("シーケンスを2つ用意する", "__D.add(2)", None, None),
+        ("2番目を金星のスイングバイに",
+         "(async()=>{await __D.pick(1); await __D.body('金星'); await __D.type('スイングバイ');})()",
+         None, None),
+        ("日付を入れる", "__D.dates(['2029-10-03','2030-04-08'])", None, None),
+        ("出発日と到着日の地図",
+         "(async()=>{await __D.pick(0); await __D.porkchop();})()", "sw2-eve-pc", ".pc-window"),
+        ("閉じる", "__D.pcClose()", None, None),
+
+        # --- 地球スイングバイ1回で終わる ---
+        ("1回で終わるものを読み込む", js("EVE1回"), None, None),
+        ("時刻を最後の日に合わせる", "__D.when('2032-09-01')", None, None),
+        ("シーケンス一覧", "__D.wait(200)", "sw2-eve-list", "#sequence"),
+        ("全体 (木星の軌道まで枠に入れる)",
+         "(async()=>{await __D.deselect(); await %s;})()" % _SW2_TOP, "sw2-eve1", None),
+        ("地球スイングバイのシーケンス", "__D.pick(2)", "sw2-eve1-flyby", ".control-panel"),
+        ("最終軌道のシーケンス", "__D.pick(3)", "sw2-eve1-end", ".control-panel"),
+
+        # --- 2年同期を挟んで2回目のスイングバイ ---
+        ("2回にしたものを読み込む", js("EVE2回"), None, None),
+        ("時刻を最後の日に合わせる", "__D.when('2036-09-01')", None, None),
+        ("シーケンス一覧", "__D.wait(200)", "sw2-eve2-list", "#sequence"),
+        ("全体 (同じ画角で)",
+         "(async()=>{await __D.deselect(); await %s;})()" % _SW2_TOP, "sw2-eve2", None),
+        ("2回目の地球スイングバイ", "__D.pick(3)", "sw2-eve2-flyby", ".control-panel"),
+        ("最終軌道のシーケンス", "__D.pick(4)", "sw2-eve2-end", ".control-panel"),
+    ]
+
+
 def sw2_vega():
     """VEGA: 地球 → 金星 → 地球 → 木星"""
     return _sw2_show("VEGA", "vega", "2035-10-15", [(1, "venus"), (2, "flyby")])
@@ -450,6 +484,7 @@ SCENARIOS = {
     "hohmann_broken": hohmann_broken,
     "swingby_beta": swingby_beta,
     "sw2_direct": sw2_direct,
+    "sw2_eve": sw2_eve,
     "sw2_dvega": sw2_dvega,
     "sw2_vega": sw2_vega,
     "sw2_veega": sw2_veega,
