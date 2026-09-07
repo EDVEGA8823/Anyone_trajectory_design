@@ -7,7 +7,7 @@ import { isSmallBody, smallBody, smallBodyNumber, smallBodiesForSave } from '../
 import { normalizeBody } from '../core/bodies.js';
 import { confirmDialog } from '../ui/dialog.js';
 import { resetHistory, refreshHistoryState } from './history.js';
-import { t } from '../ui/i18n.js';
+import { t, allWordings } from '../ui/i18n.js';
 
 // ミッションの保存と読込。
 //
@@ -20,7 +20,23 @@ import { t } from '../ui/i18n.js';
 
 const FORMAT = "anyone-trajectory-design";
 const VERSION = 1;
+// ミッション名の既定。値そのものは日本語のまま持ち (保存ファイルとの
+// 突き合わせに使うため)、画面に出すときは defaultMissionName() を通す
 export const DEFAULT_NAME = "無題のミッション";
+
+/** いまの言語での「無題のミッション」 */
+export function defaultMissionName() {
+  return t(DEFAULT_NAME);
+}
+
+/**
+ * 名前が「まだ付けていない」ものかどうか。
+ * 言語を切り替えると既定の文字が変わるので、どちらの言葉でも既定とみなす
+ * (英語で始めて日本語に切り替えた人の名前を、勝手に付けた名前と扱わない)。
+ */
+export function isDefaultMissionName(name) {
+  return !name || allWordings(DEFAULT_NAME).includes(name);
+}
 
 /* ==================================================================
    保存し忘れの見張り
@@ -67,7 +83,7 @@ export function missionData() {
     version: VERSION,
     app: "だれでも軌道設計",
     saved_at: new Date().toISOString(),
-    name: missionName() || DEFAULT_NAME,
+    name: missionName() || defaultMissionName(),
     launcher: State.launcher,
     ...mission.serialize(),
   };
@@ -93,7 +109,7 @@ export function missionData() {
 
 // ファイル名に使えない文字を落とす
 function safe_filename(name) {
-  const base = (name || DEFAULT_NAME).replace(/[\\/:*?"<>|]/g, "_").trim();
+  const base = (name || defaultMissionName()).replace(/[\\/:*?"<>|]/g, "_").trim();
   return (base.length > 0 ? base : "mission") + ".json";
 }
 
@@ -247,7 +263,7 @@ export function applyMissionData(data, { keepSelection = false } = {}) {
     if (select) select.value = data.launcher;
   }
 
-  setMissionName(typeof data.name === "string" && data.name ? data.name : DEFAULT_NAME);
+  setMissionName(typeof data.name === "string" && data.name ? data.name : defaultMissionName());
 
   update_plot();
   updateAfterAdd(); // 一覧・操作パネル・時刻欄・マーカーをまとめて作り直す

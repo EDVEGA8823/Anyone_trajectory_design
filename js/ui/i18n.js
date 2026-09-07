@@ -59,6 +59,20 @@ export function t(s, params) {
   return out;
 }
 
+/**
+ * その原文の、すべての言語での言い方を返す (原文自身を含む)。
+ *
+ * 「まだ名前を付けていないミッション」の判定に使う。英語で始めて日本語に
+ * 切り替えた人の "Untitled mission" を、その人が付けた名前と取り違えないため。
+ */
+export function allWordings(s) {
+  const out = [s];
+  for (const table of Object.values(TABLES)) {
+    if (table && table[s] !== undefined) out.push(table[s]);
+  }
+  return out;
+}
+
 /* ==================================================================
    決める
    ================================================================== */
@@ -120,11 +134,13 @@ export function onLangChange(fn) {
    data-i18n-title / data-i18n-placeholder / data-i18n-aria。
    原文は属性の値に持たせているので、HTMLだけ読んでも何が出るか分かる。 */
 
+// value は入れない。入力欄の中身は人が打ったものかもしれず、言語を
+// 切り替えるたびに書き戻すと、付けた名前が消える。既定のままかどうかの
+// 判断が要るので、そこは js/main.js が受け持つ
 const ATTRS = [
   ["data-i18n-title", "title"],
   ["data-i18n-placeholder", "placeholder"],
   ["data-i18n-aria", "aria-label"],
-  ["data-i18n-value", "value"],
 ];
 
 export function applyStaticText() {

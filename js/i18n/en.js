@@ -828,6 +828,7 @@ export const EN = {
   "リンクのミッションを開く": "open the mission from the link",
   "共有リンクのミッションを開けませんでした": "Could not open the mission from the share link",
   "共有リンクからミッションを開きました": "Opened the mission from a share link",
+  "「{name}」": "“{name}”",
   "#だれでも軌道設計 でミッションを作成しました": "Designed a mission with #AnyoneTrajectoryDesign",
   "Xの投稿画面を開きます": "Opening the post window on X",
   "本文と共有リンクを入れた状態で開きます。\n\n画像はクリップボードにコピーしました。投稿欄で貼り付け (Ctrl+V) してください。":

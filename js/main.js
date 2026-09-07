@@ -123,6 +123,8 @@ import {
   missionData,
   applyMissionData,
   DEFAULT_NAME,
+  defaultMissionName,
+  isDefaultMissionName,
 } from './mission/mission_file.js';
 import { tuneMission } from './opt/optimize.js';
 import { exportMissionImage, setExportViewHooks } from './mission/export_image.js';
@@ -989,7 +991,7 @@ export async function new_mission() {
   State.checked.clear();
   State.tmp_date = DateToJulian(new Date());
   State.old_date = State.tmp_date;
-  setMissionName(DEFAULT_NAME);
+  setMissionName(defaultMissionName());
   closePorkchop();
   reload_small_bodies([]); // 取り込んだ小天体も一緒にまっさらにする
 
@@ -3173,7 +3175,7 @@ function boot() {
   // ブラウザが再読み込み時にフォームの入力値を勝手に復元することがあり、
   // HTMLのvalue属性任せだと前回入力した名前が残ってしまう。中身は空の
   // ミッションなので、名前も明示的に既定へ揃えておく
-  setMissionName(DEFAULT_NAME);
+  setMissionName(defaultMissionName());
 
   // Set up events
   initEvents();
@@ -3231,9 +3233,9 @@ function boot() {
     load: openMissionFile,
     add_body: openBodyPicker,
     new: new_mission,
-    export_image: () => exportMissionImage(missionName() || DEFAULT_NAME),
+    export_image: () => exportMissionImage(missionName() || defaultMissionName()),
     share_link: copyShareLink,
-    share_x: () => shareOnX(missionName() || DEFAULT_NAME),
+    share_x: () => shareOnX(missionName() || defaultMissionName()),
     shortcuts: openShortcuts,
     examples: openExamples,
     feedback: openFeedback,
@@ -3271,6 +3273,8 @@ function boot() {
   // 言語が変わったら、文字を持っている画面をまとめて作り直す。
   // CSSと違って文字は書き換えないと変わらないので、ここで一通り触る
   onLangChange(() => {
+    // 名前をまだ付けていないミッションは、既定の名前も言語に合わせる
+    if (isDefaultMissionName(missionName())) setMissionName(defaultMissionName());
     initLauncherSelect();
     update_sequence_times();
     update_stat_bar();

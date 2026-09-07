@@ -29,7 +29,7 @@ import {
   applyMissionData,
   confirmDiscard,
   markMissionSaved,
-  DEFAULT_NAME,
+  isDefaultMissionName,
 } from './mission_file.js';
 import { resetHistory } from './history.js';
 import { notify } from '../ui/topbar.js';
