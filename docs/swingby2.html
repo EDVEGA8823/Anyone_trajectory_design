@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>スイングバイの極意 その2: 木星行きの軌道 — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- 配色 (明るい/暗い) を、スタイルより先に決めておく。
+       docs/theme.js を待つと、暗い配色の人に一瞬だけ白い画面が出てしまう。
+       ここと docs/theme.js、アプリ側は同じ鍵 (atd_theme) を読む -->
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css" />
+  <script src="theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="en/swingby2.html" class="lang-link">English</a>
+    <a href="swingby2.html" target="_blank" rel="noopener">タブで開く</a>
+  </header>
+
+  <main>
+    <h1>スイングバイの極意 その2: 木星行きの軌道</h1>
+    <p class="lead">
+      ΔVEGA・VEGA・VEEGA。木星まで届く軌道を3通り、実際に組み立てながら作り方を追いかけます。
+      <a href="swingby.html">その1</a>の最後に出てきた「地球で放り出してもらうには V∞ 8.79 km/s 以上」という
+      壁を、どうやって越えるかの話です。
+    </p>
+
+    <div class="note">
+      <strong>この資料に出てくる軌道について</strong>
+      すべてこのアプリで実際に組み立てたものです (木星に着くものは自動調整で詰めてあります)。
+      図も数字も同じ設計から起こしているので、画面に出る値とそのまま一致します。
+      ただし、いちばん良い軌道を探し当てたものではありません。日付を少し動かせばもっと良いものが見つかります。
+    </div>
+
+    <h2>下敷き: 木星へ直行すると</h2>
+    <p>
+      まず比べるものを作ります。地球から木星へ、スイングバイを使わずにまっすぐ飛ぶ軌道です。
+      打上げの窓は<a href="hohmann.html">ポークチョップ図</a>で探します。
+    </p>
+
+    <figure>
+      <img src="img/sw2-porkchop.png" alt="地球から木星へのポークチョップ図" />
+      <figcaption>
+        2032年の窓。安いところが2つの島に割れているのは<a href="hohmann.html">ホーマン遷移の資料</a>で見たとおりです。
+        いちばん安い ◇ は 2032/3/31 出発。
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/sw2-direct.png" alt="木星へ直行する軌道" />
+      <figcaption>2032/3/31 に出て、2034/3/21 に木星。2年で着きます。</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/sw2-direct-stat.png" alt="直行の成績" />
+      <figcaption>打上げエネルギー C3 83.32 km²/s²。H3-24 形態で打ち上げられるのは 29 kg で、木星で周回軌道に入る 2252 m/s を使うと残りは 14 kg。</figcaption>
+    </figure>
+
+    <p>
+      2年で着くのは速いのですが、14 kg では観測機器どころか探査機の骨組みも載りません。C3 が 83.32 もあるのが効いていて、<a href="launchers.html">ロケットの能力</a>の曲線のいちばん右の端にいます。ここから先は、この C3 をどこまで下げられるかの話です。
+    </p>
+
+    <h2>ΔVEGA: 遠日点でちょっと噴いて、V∞ を育てる</h2>
+    <p>
+      その1で見たとおり、地球のスイングバイで木星へ放り出してもらうには、
+      地球に近づいてくるときの V∞ が <strong>8.79 km/s 以上</strong>要ります。
+      素直に打ち上げて地球へ戻ってくるだけでは 5 km/s 前後にしかなりません。
+      その差を、深宇宙での小さな噴射で作るのが <strong>ΔVEGA</strong> (Delta-V Earth Gravity Assist) です。
+    </p>
+
+    <h3>ちょうど2年で戻ると、何も起きない</h3>
+    <p>
+      まず、うまくいかないほうから見ます。地球を出て、2年後にまた地球に戻ってくる軌道
+      (<strong>2年同期軌道</strong>) を考えます。周期がちょうど2年 = 730.5 日になる打上げは、
+      脱出速度 <strong>5.03 km/s</strong> (C3 25.3)。軌道の長半径は 1.587 AU、遠日点は 2.19 AU になります。
+    </p>
+    <p>
+      これで飛ばすと、730.5 日後には、地球がいる場所から <strong>33,700 km</strong> のところに戻ってきます (地球の重力が効く範囲の内側です)。ところが、そこでの探査機の速さは 35.16 km/s、地球の公転は 30.13 km/s で、<strong>向きも同じ</strong>。つまり V∞ は <strong>5.03 km/s</strong> ── 打ち上げたときのままです。きれいに戻ってきたのに、何ももらえていません。
+    </p>
+
+    <h3>離角ができると V∞ が増える</h3>
+    <p>
+      そこで、ほんの少しだけ強く打ち上げます。脱出速度 5.22 km/s (C3 27.21)。たった 0.19 km/s の違いですが、周期は 757 日 = 2年より 27 日長くなり、遠日点も 2.26 AU まで伸びます。
+      このままでは地球のいない場所に戻ってきてしまうので、
+      <strong>遠日点で 588 m/s だけ噴いて</strong>、地球に会うように時刻を合わせます。
+    </p>
+    <p>
+      この噴射は<strong>減速</strong>向きです (進む向きと 176.6°、速さが 15.59 → 15.00 km/s に落ちる)。遠日点でブレーキをかけると近日点が下がるので、軌道は近日点 0.988 AU・周期 757 日から、<strong>近日点 0.886 AU・周期 722 日</strong>に変わります。遠日点は 2.26 AU のままです。探査機はいったん地球の軌道の内側まで潜り、外へ戻ってくる途中で地球に追いつくことになります。
+    </p>
+    <p>
+      おかげで、戻ってくるときに地球の軌道を<strong>斜めに横切る</strong>ことになります。
+      速度の向きに<strong>離角</strong>ができるわけです。
+    </p>
+
+    <figure class="chart-wrap chart-big">
+      <svg class="chart" viewBox="0 0 700 450" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="700" height="450" fill="#fff"/>
+<defs><marker id="a-2f6df6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2f6df6"/></marker><marker id="a-e03131" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e03131"/></marker><marker id="a-6b6f76" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6b6f76"/></marker></defs>
+<text x="180.0" y="34.0" text-anchor="middle" font-size="13" fill="#17181a" font-weight="700">ちょうど2年で戻ると</text>
+<text x="180.0" y="54.0" text-anchor="middle" font-size="11" fill="#6b6f76">同じ場所に、同じ向きで帰ってくる</text>
+<image href="img/sw2-dvega-1.png" x="40.0" y="66" width="280" height="234" preserveAspectRatio="xMidYMid meet"/>
+<text x="204.0" y="354.0" text-anchor="middle" font-size="11" fill="#6b6f76">離角 0° (向きが同じ)</text>
+<line x1="72.0" y1="380.0" x2="304.1" y2="380.0" stroke="#2f6df6" stroke-width="2.4" marker-end="url(#a-2f6df6)"/>
+<line x1="72.0" y1="380.0" x2="270.9" y2="380.0" stroke="#6b6f76" stroke-width="2.4" marker-end="url(#a-6b6f76)"/>
+<line x1="270.9" y1="380.0" x2="304.1" y2="380.0" stroke="#e03131" stroke-width="3" marker-end="url(#a-e03131)"/>
+<text x="80.0" y="400.0" text-anchor="start" font-size="11" fill="#6b6f76">地球の公転 30.13</text>
+<text x="80.0" y="358.0" text-anchor="start" font-size="11" fill="#2f6df6">探査機 35.16</text>
+<text x="312.1" y="374.0" text-anchor="start" font-size="12.5" fill="#e03131" font-weight="700" stroke="#fff" stroke-width="3.5" paint-order="stroke">V∞ 5.03</text>
+<circle cx="72.0" cy="380.0" r="3" fill="#17181a"/>
+<text x="520.0" y="34.0" text-anchor="middle" font-size="13" fill="#17181a" font-weight="700">遠日点で 588 m/s 噴くと</text>
+<text x="520.0" y="54.0" text-anchor="middle" font-size="11" fill="#6b6f76">戻る場所がずれ、向きに離角ができる</text>
+<image href="img/sw2-dvega-2.png" x="380.0" y="66" width="280" height="234" preserveAspectRatio="xMidYMid meet"/>
+<path d="M 534.0 380.0 A 122 122 0 0 0 530.3 350.3" fill="none" stroke="#6b6f76" stroke-width="1.2"/>
+<text x="544.0" y="369.1" text-anchor="start" font-size="11" fill="#6b6f76">離角 14.1°</text>
+<line x1="412.0" y1="380.0" x2="634.4" y2="324.1" stroke="#2f6df6" stroke-width="2.4" marker-end="url(#a-2f6df6)"/>
+<line x1="412.0" y1="380.0" x2="608.2" y2="380.0" stroke="#6b6f76" stroke-width="2.4" marker-end="url(#a-6b6f76)"/>
+<line x1="608.2" y1="380.0" x2="634.4" y2="324.1" stroke="#e03131" stroke-width="3" marker-end="url(#a-e03131)"/>
+<text x="420.0" y="400.0" text-anchor="start" font-size="11" fill="#6b6f76">地球の公転 29.73</text>
+<text x="420.0" y="358.0" text-anchor="start" font-size="11" fill="#2f6df6">探査機 34.75</text>
+<text x="642.4" y="318.1" text-anchor="start" font-size="12.5" fill="#e03131" font-weight="700" stroke="#fff" stroke-width="3.5" paint-order="stroke">V∞ 9.36</text>
+<circle cx="412.0" cy="380.0" r="3" fill="#17181a"/>
+<line x1="350" y1="70" x2="350" y2="410" stroke="#e3e4e8"/>
+<text x="350.0" y="434.0" text-anchor="middle" font-size="11.5" fill="#17181a">速さは 35.16 → 34.75 km/s とほとんど変わらないのに、V∞ は 5.03 → 9.36 km/s</text>
+</svg>
+      <figcaption>
+        左右とも、探査機の速さ (青) はほとんど同じです。違うのは向きだけ。
+        それでも2本の差である V∞ (赤) は倍近くになります。
+      </figcaption>
+    </figure>
+
+    <p>
+      探査機の速さは 35.16 → 34.75 km/s と、むしろ少し落ちています。それでも離角が 14.1° つくだけで、V∞ は 5.03 → <strong>9.36 km/s</strong>。木星へ放り出してもらうのに要る 8.79 km/s を超えました。噴いた 588 m/s に対して V∞ が 4.33 km/s 増えたので、<strong>7.4 倍のてこ</strong>が効いたことになります。
+    </p>
+
+    <h3>なぜ遠日点で噴くのか</h3>
+    <p>
+      同じ「戻りの V∞」を得るのに、どこで噴くと楽で済むかを測ったのが次のグラフです。
+      打上げは上と同じで、噴射する場所だけを変えてあります。
+    </p>
+
+    <figure class="chart-wrap chart-big">
+      <svg class="chart" viewBox="0 0 700 430" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="700" height="430" fill="#fff"/>
+<defs><marker id="a-e03131" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e03131"/></marker></defs>
+<rect x="66" y="40" width="574" height="332" fill="#fff" stroke="#e3e4e8"/>
+<line x1="66" y1="372.0" x2="640" y2="372.0" stroke="#eff0f2"/>
+<text x="60.0" y="376.0" text-anchor="end" font-size="10.5" fill="#6b6f76">0</text>
+<line x1="66" y1="330.5" x2="640" y2="330.5" stroke="#eff0f2"/>
+<text x="60.0" y="334.5" text-anchor="end" font-size="10.5" fill="#6b6f76">250</text>
+<line x1="66" y1="289.0" x2="640" y2="289.0" stroke="#eff0f2"/>
+<text x="60.0" y="293.0" text-anchor="end" font-size="10.5" fill="#6b6f76">500</text>
+<line x1="66" y1="247.5" x2="640" y2="247.5" stroke="#eff0f2"/>
+<text x="60.0" y="251.5" text-anchor="end" font-size="10.5" fill="#6b6f76">750</text>
+<line x1="66" y1="206.0" x2="640" y2="206.0" stroke="#eff0f2"/>
+<text x="60.0" y="210.0" text-anchor="end" font-size="10.5" fill="#6b6f76">1000</text>
+<line x1="66" y1="164.5" x2="640" y2="164.5" stroke="#eff0f2"/>
+<text x="60.0" y="168.5" text-anchor="end" font-size="10.5" fill="#6b6f76">1250</text>
+<line x1="66" y1="123.0" x2="640" y2="123.0" stroke="#eff0f2"/>
+<text x="60.0" y="127.0" text-anchor="end" font-size="10.5" fill="#6b6f76">1500</text>
+<line x1="66" y1="81.5" x2="640" y2="81.5" stroke="#eff0f2"/>
+<text x="60.0" y="85.5" text-anchor="end" font-size="10.5" fill="#6b6f76">1750</text>
+<line x1="66" y1="40.0" x2="640" y2="40.0" stroke="#eff0f2"/>
+<text x="60.0" y="44.0" text-anchor="end" font-size="10.5" fill="#6b6f76">2000</text>
+<line x1="66.0" y1="40" x2="66.0" y2="372" stroke="#eff0f2"/>
+<text x="66.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">5</text>
+<line x1="148.0" y1="40" x2="148.0" y2="372" stroke="#eff0f2"/>
+<text x="148.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">6</text>
+<line x1="230.0" y1="40" x2="230.0" y2="372" stroke="#eff0f2"/>
+<text x="230.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">7</text>
+<line x1="312.0" y1="40" x2="312.0" y2="372" stroke="#eff0f2"/>
+<text x="312.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">8</text>
+<line x1="394.0" y1="40" x2="394.0" y2="372" stroke="#eff0f2"/>
+<text x="394.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">9</text>
+<line x1="476.0" y1="40" x2="476.0" y2="372" stroke="#eff0f2"/>
+<text x="476.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">10</text>
+<line x1="558.0" y1="40" x2="558.0" y2="372" stroke="#eff0f2"/>
+<text x="558.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">11</text>
+<line x1="640.0" y1="40" x2="640.0" y2="372" stroke="#eff0f2"/>
+<text x="640.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">12</text>
+<text x="60.0" y="30.0" text-anchor="start" font-size="11" fill="#6b6f76">要る噴射 (m/s)</text>
+<text x="640.0" y="426.0" text-anchor="end" font-size="11" fill="#6b6f76">地球に戻ってきたときの V∞ (km/s)</text>
+<text x="447.3" y="279.0" text-anchor="start" font-size="11" fill="#6b6f76">噴射する場所 (とそこでの速さ)</text>
+<polyline points="90.6,74.5 98.8,88.5 107.0,96.6 115.2,104.1 123.4,111.4 131.6,118.4 139.8,124.7 148.0,131.3 156.2,138.3 164.4,144.4 172.6,150.7 180.8,157.4 189.0,163.0 197.2,169.8 205.4,175.6 213.6,181.6 221.8,188.9 230.0,195.0 238.2,201.4 246.4,207.7 254.6,214.0 262.8,219.1 271.0,225.4 279.2,231.7 287.4,238.0 295.6,242.9 303.8,248.8 312.0,253.5 320.2,259.1 328.4,263.3 336.6,268.1 344.8,271.6 353.0,275.4 361.2,277.9 369.4,279.7 377.6,281.0 385.8,281.7 394.0,281.7 402.2,281.0 410.4,279.7 418.6,277.7 426.8,274.9 435.0,270.4 443.2,265.9 451.4,260.9 459.6,255.5 467.8,249.3 476.0,242.9 484.2,235.9 492.4,228.6 500.6,220.9 508.8,212.8 517.0,206.7 525.2,198.2 533.4,189.4 541.6,180.3 549.8,171.0 558.0,163.8 566.2,154.2 574.4,144.2 582.6,134.1 590.8,126.5 599.0,116.0 607.2,108.1 615.4,97.3 623.6,86.3 631.8,77.8 640.0,66.6" fill="none" stroke="#e03131" stroke-width="2.2"/>
+<line x1="447.3" y1="352.1" x2="465.3" y2="352.1" stroke="#e03131" stroke-width="2.4"/>
+<text x="471.3" y="356.1" text-anchor="start" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">遠日点 2.25 AU  15.6 km/s</text>
+<polyline points="74.2,248.3 82.4,253.1 90.6,257.3 98.8,261.3 107.0,265.8 115.2,269.4 123.4,273.2 131.6,277.2 139.8,280.7 148.0,284.2 156.2,287.8 164.4,291.5 172.6,294.5 180.8,298.1 189.0,300.8 197.2,303.6 205.4,306.1 213.6,308.4 221.8,310.6 230.0,312.2 238.2,313.6 246.4,314.2 254.6,314.6 262.8,314.6 271.0,314.2 279.2,313.6 287.4,311.9 295.6,310.2 303.8,308.3 312.0,305.1 320.2,302.3 328.4,299.1 336.6,294.5 344.8,290.5 353.0,286.3 361.2,282.0 369.4,277.4 377.6,272.6 385.8,267.6 394.0,262.3 402.2,256.8 410.4,251.2 418.6,245.3 426.8,239.4 435.0,233.2 443.2,228.9 451.4,222.4 459.6,216.0 467.8,209.2 476.0,204.5 484.2,197.5 492.4,190.2 500.6,185.4 508.8,177.9 517.0,170.3 525.2,165.2 533.4,157.4 541.6,152.1 549.8,143.9 558.0,138.4 566.2,130.0 574.4,124.3 582.6,115.7 590.8,109.9 599.0,103.9 607.2,94.9 615.4,88.8 623.6,82.7 631.8,73.2 640.0,66.9" fill="none" stroke="#2f9e44" stroke-width="2.2"/>
+<line x1="447.3" y1="332.1" x2="465.3" y2="332.1" stroke="#2f9e44" stroke-width="2.4"/>
+<text x="471.3" y="336.1" text-anchor="start" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">2.08 AU  17.5 km/s</text>
+<polyline points="66.0,307.1 74.2,311.9 82.4,315.7 90.6,319.4 98.8,322.9 107.0,325.9 115.2,328.5 123.4,330.5 131.6,331.7 139.8,332.0 148.0,332.0 156.2,331.3 164.4,329.7 172.6,327.2 180.8,324.9 189.0,320.9 197.2,317.2 205.4,311.7 213.6,307.3 221.8,302.3 230.0,297.1 238.2,291.5 246.4,287.0 254.6,282.2 262.8,272.4 271.0,265.4 279.2,260.6 287.4,253.1 295.6,245.3 303.8,240.0 312.0,231.6 320.2,225.9 328.4,219.9 336.6,211.0 344.8,204.7 353.0,198.2 361.2,188.4 369.4,181.6 377.6,174.8 385.8,167.7 394.0,160.4 402.2,153.0 410.4,141.6 418.6,133.8 426.8,125.8 435.0,117.7 443.2,113.5 451.4,105.1 459.6,96.6 467.8,87.8 476.0,78.8 484.2,69.7 492.4,60.3 500.6,55.6 508.8,46.0" fill="none" stroke="#2f6df6" stroke-width="2.2"/>
+<line x1="447.3" y1="312.1" x2="465.3" y2="312.1" stroke="#2f6df6" stroke-width="2.4"/>
+<text x="471.3" y="316.1" text-anchor="start" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">1.52 AU  25.0 km/s</text>
+<circle cx="423.5" cy="274.4" r="5" fill="#fff" stroke="#17181a" stroke-width="2.6"/>
+<text x="411.5" y="278.4" text-anchor="end" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">この資料の ΔVEGA 588 m/s</text>
+<line x1="376.8" y1="40" x2="376.8" y2="372" stroke="#b9bcc4" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="384.8" y="56.0" text-anchor="start" font-size="11" fill="#6b6f76" stroke="#fff" stroke-width="3.5" paint-order="stroke">この線より右が、木星へ放り出してもらえる V∞</text>
+</svg>
+      <figcaption>同じ V∞ 9.3 km/s を出すのに、遠日点 (2.25 AU) で噴けば 568 m/s、2.08 AU なら 763 m/s、1.52 AU なら 1435 m/s。噴く場所が太陽に近いほど高くつきます。</figcaption>
+    </figure>
+
+    <p>
+      遠日点は探査機がいちばんゆっくり進んでいる場所です
+      (2.25 AU で 15.6 km/s、1.52 AU では 25.0 km/s)。
+      ゆっくり動いているものほど、同じ噴射で向きが大きく変わります。
+      速度の向きが変われば軌道の形が変わり、戻ってくる時刻と場所が大きく動く。
+      これが「遠日点で噴く」の中身です。
+    </p>
+
+    <div class="note">
+      <strong>近点で噴くのとは逆</strong>
+      周回軌道から出るときは<strong>近点</strong>で噴くのが得でした (速いところで噴くとエネルギーが稼げる、オーベルト効果)。
+      ここで狙っているのはエネルギーではなく<strong>向き</strong>なので、逆に遅いところが効きます。
+    </div>
+
+    <h3>作り方</h3>
+    <p>
+      木星に着く日から逆算するのではなく、<strong>地球スイングバイの日から</strong>組み立てるのがコツです。
+      その日はポークチョップ図で決まります。
+    </p>
+
+    <ol>
+      <li>打ち上げたい年の<strong>2年後</strong>で、地球 → 木星のポークチョップ図を見て安い日を選ぶ (上でやった 2032/3/31)。</li>
+      <li>その2つのシーケンス (打上げ・木星) を置いたら、一覧の<strong>いちばん上</strong>の「+ シーケンスを追加」を押す。
+        先頭に新しい打上げが入り、もとの打上げが空のシーケンスになるので、これを<strong>地球のスイングバイ</strong>にする。</li>
+      <li>新しい打上げの日付を<strong>2年前</strong>に戻す。</li>
+      <li>打上げを<strong>手動モード</strong>にする。ちょうど2年後の地球は打ち上げた場所に戻ってきているので、
+        出発と到着が同じ点になってうまくランベール問題が解けません。自動モードのままでは組めません。</li>
+      <li>付いてきた噴射のシーケンスを、<strong>1年ちょっと後</strong> (遠日点のあたり) に置く。</li>
+      <li>打上げの脱出速度に <strong>5.2 km/s</strong>、方位角と仰角に 0 を入れる。</li>
+      <li><strong>自動調整</strong>を押す。</li>
+    </ol>
+
+    <div class="note">
+      <strong>⑥ を飛ばすと自動調整が効きません</strong>
+      手動モードに切り替えた直後の欄には、自動モードのときの値がそのまま残っています。
+      地球 → 地球うまくいっていないので、その値は意味のない大きな数 (この例では 45 km/s 台) です。
+      そこから自動調整を始めても、まともな設計には辿り着きません。
+    </div>
+
+    <figure class="seq">
+      <img src="img/sw2-dvega-list.png" alt="先頭に打上げを足したシーケンス一覧" />
+      <figcaption>② 先頭に打上げが入り、もとの打上げが空のシーケンスになる。これを地球のスイングバイにしたところ。</figcaption>
+    </figure>
+
+    <div class="shots2">
+      <img src="img/sw2-dvega-auto.png" alt="地球から地球は自動では解けない" />
+      <img src="img/sw2-dvega-set.png" alt="手動モードで脱出速度を入れる" />
+      <div class="cap"><b>④ 自動モードのまま</b>地球 → 地球は解けないので、まともな打上げの数字が出ない</div>
+      <div class="cap"><b>⑥ 手動モードにして入れる</b>脱出速度 5.2 km/s、方位角と仰角は 0</div>
+    </div>
+
+    <figure>
+      <img src="img/sw2-dvega-rough.png" alt="自動調整の前" />
+      <figcaption>
+        ⑥ まで終わったところ。もう「2年で戻ってきて木星へ飛ぶ」形にはなっていますが、
+        地球のところで曲げきれず、近点で 2465 m/s も噴くことになっています (成績の総ΔV が 5280 m/s、残る質量 592 kg)。ここから自動調整が、打上げの速さと向き・噴射の日・地球に会う日を少しずつ動かして詰めます。
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/sw2-dvega.png" alt="自動調整のあとのΔVEGA" />
+      <figcaption>自動調整のあと。打上げ 2030/2/19 (C3 27.21)、2031/4/6 に 588 m/s の噴射、2032/4/10 に地球スイングバイ、2034/7/21 に木星。</figcaption>
+    </figure>
+
+    <div class="shots2">
+      <img src="img/sw2-dvega-dsm.png" alt="噴射のシーケンス" />
+      <img src="img/sw2-dvega-flyby.png" alt="地球スイングバイのシーケンス" />
+      <div class="cap"><b>噴射</b>太陽から 2.25 AU のところで 588 m/s。</div>
+      <div class="cap"><b>地球スイングバイ</b>V∞ 9.363 km/s で入って 47.8° 曲がる。近点高度 300 km、近点ΔV は 0。</div>
+    </div>
+
+    <figure>
+      <img src="img/sw2-dvega-stat.png" alt="ΔVEGAの成績" />
+      <figcaption>成績。C3 27.21、打上げ 3174 kg、残り <b>1339 kg</b>、期間 4.4年。</figcaption>
+    </figure>
+
+    <p>
+      地球のところで噴いた量は 0 です。588 m/s の噴射ひとつで、14 kg しか運べなかった直行が <strong>1339 kg</strong> になりました。木星に着くまでは 4.4年 かかりますが、積める量が 95 倍以上違います。
+    </p>
+
+    <h3>2年同期には、短いのと長いのがある</h3>
+    <p>
+      上の設計は、打上げから地球に戻るまでが <strong>781 日</strong>でした。2年より2か月ほど長い。
+      これは偶然ではありません。地球に戻るまでの日数を変えながら、
+      「V∞ 9.13 km/s を、600 m/s 以下の噴射で出せる最小の打上げ C3」を探すと、こうなります。
+    </p>
+
+    <figure class="chart-wrap chart-big">
+      <svg class="chart" viewBox="0 0 700 400" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="700" height="400" fill="#fff"/>
+<rect x="66" y="40" width="574" height="300" fill="#fff" stroke="#e3e4e8"/>
+<line x1="66" y1="340.0" x2="640" y2="340.0" stroke="#eff0f2"/>
+<text x="60.0" y="344.0" text-anchor="end" font-size="10.5" fill="#6b6f76">0</text>
+<line x1="66" y1="297.1" x2="640" y2="297.1" stroke="#eff0f2"/>
+<text x="60.0" y="301.1" text-anchor="end" font-size="10.5" fill="#6b6f76">10</text>
+<line x1="66" y1="254.3" x2="640" y2="254.3" stroke="#eff0f2"/>
+<text x="60.0" y="258.3" text-anchor="end" font-size="10.5" fill="#6b6f76">20</text>
+<line x1="66" y1="211.4" x2="640" y2="211.4" stroke="#eff0f2"/>
+<text x="60.0" y="215.4" text-anchor="end" font-size="10.5" fill="#6b6f76">30</text>
+<line x1="66" y1="168.6" x2="640" y2="168.6" stroke="#eff0f2"/>
+<text x="60.0" y="172.6" text-anchor="end" font-size="10.5" fill="#6b6f76">40</text>
+<line x1="66" y1="125.7" x2="640" y2="125.7" stroke="#eff0f2"/>
+<text x="60.0" y="129.7" text-anchor="end" font-size="10.5" fill="#6b6f76">50</text>
+<line x1="66" y1="82.9" x2="640" y2="82.9" stroke="#eff0f2"/>
+<text x="60.0" y="86.9" text-anchor="end" font-size="10.5" fill="#6b6f76">60</text>
+<line x1="66" y1="40.0" x2="640" y2="40.0" stroke="#eff0f2"/>
+<text x="60.0" y="44.0" text-anchor="end" font-size="10.5" fill="#6b6f76">70</text>
+<line x1="66.0" y1="40" x2="66.0" y2="340" stroke="#eff0f2"/>
+<text x="66.0" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">620</text>
+<line x1="161.7" y1="40" x2="161.7" y2="340" stroke="#eff0f2"/>
+<text x="161.7" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">660</text>
+<line x1="257.3" y1="40" x2="257.3" y2="340" stroke="#eff0f2"/>
+<text x="257.3" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">700</text>
+<line x1="353.0" y1="40" x2="353.0" y2="340" stroke="#eff0f2"/>
+<text x="353.0" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">740</text>
+<line x1="448.7" y1="40" x2="448.7" y2="340" stroke="#eff0f2"/>
+<text x="448.7" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">780</text>
+<line x1="544.3" y1="40" x2="544.3" y2="340" stroke="#eff0f2"/>
+<text x="544.3" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">820</text>
+<line x1="640.0" y1="40" x2="640.0" y2="340" stroke="#eff0f2"/>
+<text x="640.0" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">860</text>
+<text x="60.0" y="30.0" text-anchor="start" font-size="11" fill="#6b6f76">要る打上げエネルギー C3 (km²/s²)</text>
+<text x="640.0" y="396.0" text-anchor="end" font-size="11" fill="#6b6f76">打上げから地球に戻るまでの日数</text>
+<line x1="330.3" y1="40" x2="330.3" y2="340" stroke="#b9bcc4" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="330.3" y="30.0" text-anchor="middle" font-size="11" fill="#6b6f76">ちょうど2年 (730.5日)</text>
+<polyline points="89.9,72.6 101.9,92.3 113.8,124.0 125.8,142.0 137.8,164.3 149.7,180.6 161.7,196.0 173.6,205.4 185.6,214.9" fill="none" stroke="#862e9c" stroke-width="2.4"/>
+<polyline points="209.5,224.3 221.5,224.3 233.4,219.6 245.4,210.6 257.3,196.0 269.3,175.4 281.2,142.0 293.2,118.0 305.2,99.1" fill="none" stroke="#862e9c" stroke-width="2.4"/>
+<polyline points="353.0,92.3 365.0,130.0 376.9,159.1 388.9,180.6 400.8,196.0 412.8,210.6 424.8,214.9 436.7,219.6 448.7,224.3 460.6,224.3 472.6,214.9 484.5,200.7 496.5,190.9 508.5,180.6 520.4,159.1 532.4,136.0 544.3,105.1 556.3,85.9" fill="none" stroke="#862e9c" stroke-width="2.4"/>
+<rect x="311.1" y="41" width="35.9" height="298" fill="#f3f0f8"/>
+<text x="329.1" y="80.0" text-anchor="middle" font-size="11" fill="#6b6f76">この辺りは</text>
+<text x="329.1" y="96.0" text-anchor="middle" font-size="11" fill="#6b6f76">解が無い</text>
+<circle cx="204.7" cy="225.7" r="5" fill="#fff" stroke="#17181a" stroke-width="2.6"/>
+<text x="204.7" y="211.7" text-anchor="middle" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">短いほう 678日 C3 26.7</text>
+<circle cx="451.1" cy="223.4" r="5" fill="#fff" stroke="#17181a" stroke-width="2.6"/>
+<text x="451.1" y="209.4" text-anchor="middle" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">長いほう 781日 C3 27.2</text>
+</svg>
+      <figcaption>谷が2つあります。<strong>ちょうど2年のところには解が無い</strong>のがこの図の要点です。</figcaption>
+    </figure>
+
+    <p>
+      ちょうど2年で戻ると地球は打ち上げた場所に戻ってきていて、探査機も同じ向きで帰ってくる。
+      離角が作れないので V∞ が増えません。
+      使えるのは、そこから前後にずれた<strong>短いほう (678 日)</strong> と
+      <strong>長いほう (781 日)</strong> の2つです。
+    </p>
+
+    <figure>
+      <img src="img/sw2-dvega-short.png" alt="短いほうの2年同期を使ったΔVEGA" />
+      <figcaption>短いほう。打上げ 2030/5/17、地球スイングバイ 2032/3/25。678 日で戻ってきます。</figcaption>
+    </figure>
+
+    <div class="table-wide">
+      <table>
+<tr><th></th><th>打上げ</th><th>噴射</th><th>地球スイングバイ</th><th>木星</th><th>地球に戻るまで</th><th>C3</th><th>残る質量</th><th>かかる時間</th></tr>
+<tr><td>短いほう</td><td class="num">2030/5/17</td><td class="num">658 m/s</td><td class="num">2032/3/25</td><td class="num">2035/3/6</td><td class="num"><b>678 日</b></td><td class="num">26.68</td><td class="num">1324 kg</td><td class="num">4.8年</td></tr>
+<tr><td>長いほう</td><td class="num">2030/2/19</td><td class="num">588 m/s</td><td class="num">2032/4/10</td><td class="num">2034/7/21</td><td class="num"><b>781 日</b></td><td class="num">27.21</td><td class="num">1339 kg</td><td class="num">4.4年</td></tr>
+</table>
+    </div>
+
+    <p>
+      成績はほとんど同じです。違うのは形と、木星に着くまでの時間。
+      短いほうは地球へ早く戻るぶん、木星へ向かう区間が長くなります。
+    </p>
+
+    <h3>いいところ: 窓が毎年来る</h3>
+    <p>
+      ΔVEGA が使うのは地球と木星だけです。だから打上げの機会は、
+      地球 → 木星の窓 (13か月おき) と同じ間隔で回ってきます。
+      窓のたびに同じ手順で組めるかを試したのが次の表です。
+    </p>
+
+    <div class="table-wide">
+      <table>
+<tr><th>地球 → 木星の窓</th><th>打上げ</th><th>地球に戻るまで</th><th>打上げ C3</th><th>噴射</th><th>戻ってきたときの V∞</th></tr>
+<tr><td>2030/1/21</td><td class="num">2028/3/7</td><td class="num">685 日</td><td class="num">26.0</td><td class="num">573 m/s</td><td class="num">9.06 km/s</td></tr>
+<tr><td>2031/2/25</td><td class="num">2029/4/21</td><td class="num">675 日</td><td class="num">27.0</td><td class="num">593 m/s</td><td class="num">9.25 km/s</td></tr>
+<tr><td>2032/3/31</td><td class="num">2030/5/26</td><td class="num">675 日</td><td class="num">27.0</td><td class="num">656 m/s</td><td class="num">9.61 km/s</td></tr>
+<tr><td>2033/5/30</td><td class="num">2031/7/25</td><td class="num">675 日</td><td class="num">27.0</td><td class="num">694 m/s</td><td class="num">9.50 km/s</td></tr>
+<tr><td>2034/7/5</td><td class="num">2032/8/24</td><td class="num">680 日</td><td class="num">27.0</td><td class="num">658 m/s</td><td class="num">9.57 km/s</td></tr>
+<tr><td>2035/8/10</td><td class="num">2033/6/11</td><td class="num">790 日</td><td class="num">29.2</td><td class="num">634 m/s</td><td class="num">9.50 km/s</td></tr>
+</table>
+    </div>
+
+    <p>
+      どの窓でも C3 30 以下で組めています。あとで出てくる VEGA・VEEGA は金星の位置にも縛られるので、
+      ここが ΔVEGA のいちばんの取り柄です。
+    </p>
+
+    <h2>VEGA: 金星を挟んで、V∞ を育てる</h2>
+    <p>
+      噴射で V∞ を作るかわりに、<strong>途中で別の天体に寄る</strong>のが VEGA
+      (Venus-Earth Gravity Assist) です。地球 → 金星 → 地球と回ってから、地球で木星へ放り出してもらいます。
+      この軌道の良い点は地球からは金星にたどり着くだけの打上げエネルギー(惑星の中でで最も楽)で十分であることです。
+    </p>
+    <p>
+      ここは ΔVEGA と違って、地球と木星だけでなく、金星の位置関係も関わるため、木星に「着く」日付まで一度に決めようとすると途端に難しくなります。
+      そこでまずは<strong>「最終軌道」</strong>を使います。行き先を決めずに、
+      スイングバイを出たあとどんな軌道に乗ったかだけを見る節です。
+      まず<strong>最終軌道が木星の軌道 (5.2 AU) まで届くか</strong>を作り、
+      木星そのものに当てるのはその後の話にします。
+    </p>
+
+    <h3>手順1: 地球 → 金星 → 地球 を作る</h3>
+    <ol>
+      <li>シーケンスを3つ置いて、2番目を<strong>金星のスイングバイ</strong>、3番目を<strong>地球のスイングバイ</strong>にする。</li>
+      <li>打上げと金星の日付を、地球 → 金星のポークチョップ図で決める。
+        窓は<strong>約1年7か月おき</strong>に来ます。</li>
+      <li>金星から地球へ戻る日を入れる。<strong>300日前後</strong>で素直に戻ってきます。</li>
+      <li>金星のところの<strong>近点ΔV</strong>が小さくなるように、日付を数日ずつ動かす。
+        ここが0に近いほど、燃料を使わずに曲げてもらえているということです。</li>
+    </ol>
+
+    <figure>
+      <img src="img/sw2-eve-pc.png" alt="地球から金星へのポークチョップ図" />
+      <figcaption>手順2。地球 → 金星の窓。木星行きと違って、こちらは C3 10 台で行けます。</figcaption>
+    </figure>
+
+    <p>
+      この資料では 2029/10/3 打上げ、2030/4/8 金星、2031/2/18 地球にしました。打上げの脱出速度は 3.59 km/s (C3 12.86) と小さいのに、金星に着くときの V∞ が 5.426 km/s、金星で 49.3° 曲げてもらうと、地球に戻ってきたときの V∞ は <strong>9.592 km/s</strong>。金星を1回通っただけで、V∞ がほぼ2倍になりました。その1で見た「木星へ放り出してもらうのに要る 8.79 km/s」も超えています。
+    </p>
+
+    <h3>手順2: 最終軌道を付けて、どこまで届くか見る</h3>
+    <ol start="5">
+      <li>地球スイングバイを<strong>手動モード</strong>にする。行き先を自分で決めるモードです。</li>
+      <li>いちばん後ろのシーケンスを<strong>最終軌道</strong>にする
+        (手動モードに付いてきたマヌーバの節は、ここで消えます)。</li>
+      <li>地球スイングバイの<strong>近点高度</strong>と<strong>回転角</strong>を動かして、
+        最終軌道の遠日点がいちばん大きくなるところを探す。</li>
+    </ol>
+
+    <figure class="seq">
+      <img src="img/sw2-eve-list.png" alt="最終軌道を付けたシーケンス一覧" />
+      <figcaption>4つ目が「最終軌道」。行き先の天体は持ちません。</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/sw2-eve1.png" alt="地球スイングバイ1回で届くところ" />
+      <figcaption>地球スイングバイ1回で乗れた軌道。遠日点は 3.298 AU で、木星の軌道 (灰色の外側の円) までは届いていません。</figcaption>
+    </figure>
+
+    <div class="shots2">
+      <img src="img/sw2-eve1-flyby.png" alt="地球スイングバイのシーケンス" />
+      <img src="img/sw2-eve1-end.png" alt="最終軌道のシーケンス" />
+      <div class="cap"><b>地球スイングバイ</b>V∞ 9.592 km/s、近点高度 300 km (下限)、曲げ角 46.3°。噴射なし。</div>
+      <div class="cap"><b>最終軌道</b>近日点 0.941 AU、遠日点 <b>3.298 AU</b>、1周 3.09 年。</div>
+    </div>
+
+    <h3>なぜ届かないのか</h3>
+    <p>
+      足りないのは V∞ ではなく<strong>曲げ角</strong>のほうです。地球に入ってくる V∞ の向きは、地球の公転方向から <strong>95.7°</strong> もずれています。これを公転方向に向けきれば速さは足りるのですが、いちばん低いところ (高度 300 km) を通っても曲げられるのは <strong>46.3°</strong> まで。49.4° 残ってしまいます。斜めを向いたまま放り出されるので、遠日点が伸びません。
+    </p>
+
+    <div class="note warn">
+      <strong>これは日付の選び方が悪いのではありません</strong>
+      2029年から2032年半ばまでの打上げ日を総当たりして、金星のスイングバイが噴射なしで成立する 地球 → 金星 → 地球 を 157 通り見つけ、そのすべてについて「1回の地球スイングバイでどこまで伸ばせるか」を計算しました。木星の軌道に届いたものは <strong>1つもありません</strong>。いちばん伸びたもので遠日点 4.43 AU (2030/1/16 打上げ、戻りの V∞ 13.26 km/s) でした。
+    </div>
+
+    <h3>噴射で埋めるといくら要るか</h3>
+    <p>
+      足りないぶんをマヌーバ (深宇宙での噴射) で埋めることもできます。スイングバイを出たあとの軌道 (近日点 0.941 AU・遠日点 3.30 AU) の近日点で、進む向きに <strong>1656 m/s</strong> 噴けば遠日点が 5.2 AU に届きます。地球の近点で噴く (パワードフライバイ) なら <strong>2544 m/s</strong>。近点で噴くほうが高くつくのは、V∞ が増えると曲げられる角度が下がってしまう (46.3° → 38.1°) からです。ΔVEGA の噴射が 588 m/s だったことを思えば、どちらも高い買い物です。この後で見るように、<strong>2年同期を挟んでもう一度地球に会えば、この噴射は丸ごと要りません</strong>。
+    </p>
+
+    <h3>木星に着かせる</h3>
+    <p>
+      ここまでは「木星の軌道まで届くか」だけを見てきました。
+      木星そのものに当てるには、木星が来る日と探査機が来る日を合わせる必要があります。
+      日付を動かして試すことになりますが、そうやって見つけたのが次の軌道です。
+      金星 → 地球の区間を<strong>1周回</strong>にして、戻りの V∞ を 12.9 km/s まで伸ばしてあります。
+    </p>
+
+    <figure>
+      <img src="img/sw2-vega.png" alt="VEGAの全体" />
+      <figcaption>打上げ 2031/8/1、金星 2032/1/15、地球 2033/6/22、木星 2035/10/15。C3 は 18.16 まで下がりました。</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/sw2-vega-in.png" alt="VEGAの内側" />
+      <figcaption>内側だけを拡大したところ。金星まで内側に落ちてから、地球に戻ってきます。</figcaption>
+    </figure>
+
+    <figure class="seq">
+      <img src="img/sw2-vega-list.png" alt="VEGAのシーケンス一覧" />
+      <figcaption>シーケンスは4つ。行き先が木星なので、最終軌道ではなく周回軌道投入で終わります。</figcaption>
+    </figure>
+
+    <p>
+      打上げの脱出速度は 4.26 km/s しかありません。金星に着くときの V∞ が 9.27 km/s、そこで 35.7° 曲げてもらうと、地球に戻ってきたときの V∞ は <strong>12.93 km/s</strong>。ΔVEGA が噴射で 9.36 km/s まで育てたのと同じことを、燃料なしでやったことになります。
+    </p>
+
+    <div class="table-wide">
+      <table>
+<tr><th>区間</th><th>日数</th><th>周回数</th><th>この区間の遠日点</th><th>着いたときの V∞</th><th>そこでの曲げ角</th></tr>
+<tr><td>打上げ → 金星</td><td class="num">167 日</td><td class="num">直行</td><td class="num">1.02 AU</td><td class="num">9.27 km/s</td><td class="num">35.7°</td></tr>
+<tr><td>金星 → 地球</td><td class="num">524 日</td><td class="num">1 周</td><td class="num">1.72 AU</td><td class="num">12.93 km/s</td><td class="num">31.1°</td></tr>
+<tr><td>地球 → 木星</td><td class="num">845 日</td><td class="num">直行</td><td class="num">4.99 AU</td><td class="num">6.28 km/s</td><td class="num">-</td></tr>
+</table>
+    </div>
+
+    <p>
+      金星は公転が速く (35.1 km/s)、その1で見たとおりスイングバイの相手として優秀です。
+      遠日点も、打上げ直後の 1.02 AU から 1.72 AU、そして地球で放り出されたあとは 4.99 AU まで伸びます。
+    </p>
+
+    <div class="shots2">
+      <img src="img/sw2-vega-venus.png" alt="金星スイングバイのシーケンス" />
+      <img src="img/sw2-vega-flyby.png" alt="地球スイングバイのシーケンス" />
+      <div class="cap"><b>金星スイングバイ</b>V∞ 9.27 km/s、曲げ角 35.7°、近点高度 2,493 km。噴射なし。</div>
+      <div class="cap"><b>地球スイングバイ</b>V∞ 12.93 km/s。31.1° 曲げても足りず、近点で 843 m/s 噴いている。</div>
+    </div>
+
+    <figure>
+      <img src="img/sw2-vega-stat.png" alt="VEGAの成績" />
+      <figcaption>成績。C3 18.16、打上げ 3913 kg、残り <b>1517 kg</b>、期間 4.2年。</figcaption>
+    </figure>
+
+    <div class="note warn">
+      <strong>ここでも曲げきれていない</strong>
+      この到着版でも、地球に戻ってきた V∞ が 12.93 km/s まで上がった結果、こんどは<strong>曲げきれなく</strong>なりました。その1で見たとおり、曲げられる角度は V∞ が大きいほど小さくなります。この V∞ での上限は 29.2° ほどで、木星へ向けるのに要る角度に 1.9° 足りません。アプリはその不足を近点での噴射で埋めるので、地球のところに 843 m/s が残っています。
+    </div>
+
+    <h2>VEEGA: 2年同期を挟んで、もう一度地球に会う</h2>
+    <p>
+      曲げきれないなら、<strong>2回に分ければいい</strong>。
+      1回目の地球で少しだけ曲げて2年同期軌道に乗り、2年後にもう一度地球に会って、そこで残りを曲げる。
+      これが <strong>VEEGA</strong> (Venus-Earth-Earth Gravity Assist) です。
+      木星へ向かったガリレオ探査機が使った並びでもあります。
+    </p>
+
+    <h3>手順3: 2年同期に乗せて、2回目のスイングバイ</h3>
+    <p>
+      手順1で作った 地球 → 金星 → 地球 の後ろに、もう1回ぶんの地球を足します。
+    </p>
+    <ol start="8">
+      <li>手順5でいじった地球スイングバイを<strong>自動モードに戻す</strong>。</li>
+      <li>その後ろに<strong>2つ目の地球のスイングバイ</strong>を足し、日付を <strong>800〜850日後</strong>にする。
+        ちょうど1年・ちょうど2年は、出発と到着が同じ点になって解けません。</li>
+      <li>その区間の<strong>周回数を1</strong>にする (太陽のまわりを1周多く回ってから地球に会う)。</li>
+      <li>2つ目の地球スイングバイを<strong>手動モード</strong>にして、いちばん後ろを<strong>最終軌道</strong>にする。</li>
+      <li>また<strong>近点高度</strong>と<strong>回転角</strong>を回して、遠日点を最大にする。</li>
+    </ol>
+
+    <figure class="seq">
+      <img src="img/sw2-eve2-list.png" alt="2回目の地球を足したシーケンス一覧" />
+      <figcaption>地球が2回。4つ目を手動モードにして、5つ目を最終軌道にしてあります。</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/sw2-eve2.png" alt="地球スイングバイ2回で届くところ" />
+      <figcaption>2年同期を挟んで、地球スイングバイ2回。同じ画角です。遠日点 5.934 AU で、木星の軌道 (灰色の外側の円) を越えました。噴射は使っていません。</figcaption>
+    </figure>
+
+    <div class="shots2">
+      <img src="img/sw2-eve2-flyby.png" alt="2回目の地球スイングバイ" />
+      <img src="img/sw2-eve2-end.png" alt="最終軌道のシーケンス" />
+      <div class="cap"><b>2回目の地球スイングバイ</b>V∞ 9.634 km/s、近点高度 300 km (下限)、曲げ角 46.1°。噴射なし。</div>
+      <div class="cap"><b>最終軌道</b>近日点 1.004 AU、遠日点 <b>5.934 AU</b>、1周 6.46 年。</div>
+    </div>
+
+    <p>
+      1回目の地球で 31.1° 曲げて2年同期に乗り、2回目の地球で 46.1° 曲げる。合わせて 77.2°。1回では 46.3° しか曲げられなかったものが、2回に分ければ 77.2° 曲げられます。V∞ は 9.592 → 9.634 km/s とほとんど変わっていません (同じ天体に戻ってくる区間では V∞ は増えない)。増えたのは<strong>曲げられる角度の合計</strong>だけで、それだけで遠日点が 3.30 → 5.934 AU になりました。
+    </p>
+
+    <h3>木星に着かせる</h3>
+    <p>
+      あとは木星が来る日に合わせるだけ ── と言いたいところですが、ここも試行錯誤になります。
+      日付を動かしながら、木星のシーケンスを足して近点ΔVが0になるところを探しました。
+      見つかったのが次の軌道です。
+    </p>
+
+    <figure>
+      <img src="img/sw2-veega.png" alt="VEEGAの全体" />
+      <figcaption>打上げ 2029/10/3、金星 2030/4/8、地球 2031/2/18、もう一度地球 2033/5/26、木星 2036/1/14。C3 は 12.85。</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/sw2-veega-in.png" alt="VEEGAの内側" />
+      <figcaption>内側だけ。金星までいったん落ちて、地球に戻り、太陽のまわりを大きく回ってから、もう一度地球に会います。</figcaption>
+    </figure>
+
+    <figure class="seq">
+      <img src="img/sw2-veega-list.png" alt="VEEGAのシーケンス一覧" />
+      <figcaption>シーケンスは5つ。地球が2回出てきます。こちらは全部自動モードのままで、深宇宙での噴射はありません。</figcaption>
+    </figure>
+
+    <div class="table-wide">
+      <table>
+<tr><th>区間</th><th>日数</th><th>周回数</th><th>この区間の遠日点</th><th>着いたときの V∞</th><th>そこでの曲げ角</th></tr>
+<tr><td>打上げ → 金星</td><td class="num">187 日</td><td class="num">直行</td><td class="num">1.01 AU</td><td class="num">5.45 km/s</td><td class="num">49.3°</td></tr>
+<tr><td>金星 → 地球</td><td class="num">316 日</td><td class="num">直行</td><td class="num">1.36 AU</td><td class="num">9.60 km/s</td><td class="num">31.0°</td></tr>
+<tr><td>地球 → 地球</td><td class="num">828 日</td><td class="num">1 周</td><td class="num">2.34 AU</td><td class="num">9.64 km/s</td><td class="num">42.8°</td></tr>
+<tr><td>地球 → 木星</td><td class="num">963 日</td><td class="num">直行</td><td class="num">5.00 AU</td><td class="num">5.96 km/s</td><td class="num">-</td></tr>
+</table>
+    </div>
+
+    <p>
+      1回目の地球で 31.0°、2回目で 42.8°。合わせて 73.8° 曲げています。VEGA が1回で曲げようとして 1.9° 足りなかったことを思えば、分けたぶんだけ余裕ができました。V∞ は 9.60 km/s と VEGA より小さく、そのぶん1回あたりの曲げ角を大きく取れます。遠日点は 1.01 → 1.36 → 2.34 → 5.00 AU と、階段のように伸びていきます。
+    </p>
+
+    <p>
+      間に挟んだ地球 → 地球の区間は 828 日。その軌道は長半径 1.62 AU・周期 754 日で、ΔVEGA で使った2年同期軌道 (周期 757 日) とほとんど同じ形です。違うのは、噴射で日付のつじつまを合わせるかわりに、<strong>区間の周回数を1</strong>にして、太陽のまわりを1周多く回ってから地球に会いに行くこと。そのぶん地球は 2.27 周し、828 日かけて出会います。噴射は要りません。
+    </p>
+
+    <div class="note">
+      <strong>金星に残った噴射</strong>
+      金星のところに 44 m/s だけ噴射が残っています。曲げ足りないからではなく (曲げ角 49.3° は余裕で足りています)、入っていく V∞ 5.448 km/s と出ていく V∞ 5.517 km/s が わずかに食い違っているぶんです。日付をもう少し詰めれば消せます。
+    </div>
+
+    <div class="shots2">
+      <img src="img/sw2-veega-earth1.png" alt="1回目の地球スイングバイ" />
+      <img src="img/sw2-veega-earth2.png" alt="2回目の地球スイングバイ" />
+      <div class="cap"><b>1回目の地球</b>V∞ 9.60 km/s、曲げ角 31.0°、近点高度 5,465 km。</div>
+      <div class="cap"><b>2回目の地球</b>V∞ 9.64 km/s、曲げ角 42.8°、近点高度 1,089 km。ここで木星へ。</div>
+    </div>
+
+    <figure>
+      <img src="img/sw2-veega-stat.png" alt="VEEGAの成績" />
+      <figcaption>成績。C3 12.85、打上げ 4390 kg、残り <b>2223 kg</b>、期間 6.3年。</figcaption>
+    </figure>
+
+    <h3>木星に当てるところの当たりの付け方</h3>
+    <p>
+      正直に書くと、木星に「着く」ところまで含めて<strong>必ずこうすれば出てくる</strong>という手順は
+      見つけられませんでした。日付が5つあり、そのすべてが噛み合わないと成立しないためです。
+      この資料の到着版も、条件を決めて総当たりで探したものです。
+      それでも、探すときの当たりの付け方は分かってきたので書いておきます。
+    </p>
+
+    <ol>
+      <li><strong>戻ってきたときの V∞ を見る。</strong>
+        シーケンスを選ぶと「次の○○での V∞」が出ます。9〜10 km/s あれば、
+        2回目の地球で木星へ放り出せます。</li>
+      <li><strong>金星 → 地球を「1周回」にすると V∞ がよく伸びる。</strong>
+        この資料の VEGA では 12.9 km/s まで伸びました。ただし伸ばしすぎると曲げきれません。</li>
+      <li><strong>地球 → 地球は 800〜850 日 + 周回数1。</strong>ここが2年同期にあたります。</li>
+      <li>最後に木星のシーケンスを足して、<strong>自動調整</strong>。
+        地球や金星に近点ΔVが残っていたら、日付を数日ずつ動かして試します。</li>
+    </ol>
+
+    <div class="note">
+      <strong>機会は多くない</strong>
+      2029年1月から2032年6月までの打上げ日をすべて当たってみたところ (打上げ C3 30 以下、どのスイングバイも噴射で補わずに成立する、という条件)、5つの日付が全部かみ合ったのは <strong>2029年秋 (9月末〜11月) の1回ぶんだけ</strong>でした。ΔVEGA が13か月ごとに組めるのとは対照的です。
+    </div>
+
+    <h2>4つを並べる</h2>
+
+    <div class="table-wide">
+      <table>
+<tr><th>軌道</th><th>打上げ C3</th><th>打ち上げられる質量</th><th>途中の噴射</th><th>木星で軌道に入る噴射</th><th>残る質量</th><th>かかる時間</th></tr>
+<tr><td>木星へ直行</td><td class="num">83.32</td><td class="num">29 kg</td><td class="num">-</td><td class="num">2252 m/s</td><td class="num"><b>14 kg</b></td><td class="num">2.0年</td></tr>
+<tr><td>ΔVEGA (長い2年同期)</td><td class="num">27.21</td><td class="num">3174 kg</td><td class="num">588 m/s<br /><small>遠日点での噴射</small></td><td class="num">2121 m/s</td><td class="num"><b>1339 kg</b></td><td class="num">4.4年</td></tr>
+<tr><td>VEGA</td><td class="num">18.16</td><td class="num">3913 kg</td><td class="num">843 m/s<br /><small>地球での近点ΔV</small></td><td class="num">2130 m/s</td><td class="num"><b>1517 kg</b></td><td class="num">4.2年</td></tr>
+<tr><td>VEEGA</td><td class="num">12.85</td><td class="num">4390 kg</td><td class="num">44 m/s<br /><small>金星での近点ΔV</small></td><td class="num">2091 m/s</td><td class="num"><b>2223 kg</b></td><td class="num">6.3年</td></tr>
+</table>
+    </div>
+
+    <p>
+      下へ行くほど打上げが軽くなり、載せられる荷物が増え、そのかわり時間がかかります。直行の 14 kg と VEEGA の 2223 kg では 158 倍以上の差です。スイングバイを1回増やすたびに C3 が下がっているのが分かります。
+    </p>
+
+    <h2>まとめ</h2>
+    <ul>
+      <li>地球で木星へ放り出してもらうには V∞ 8.79 km/s 以上。素直に飛んだだけでは足りない。</li>
+      <li><strong>ΔVEGA</strong>: 2年で地球に戻る軌道を組み、遠日点で 600 m/s ほど噴いて離角を作る。
+        速さはほとんど変わらないのに V∞ が倍近くになる。窓は13か月おきに来る。</li>
+      <li>2年同期は<strong>ちょうど2年では使えない</strong>。短いほう (678 日) と長いほう (781 日) の2つ。</li>
+      <li><strong>VEGA</strong>: 金星に寄るだけで V∞ がほぼ2倍になる。
+        ただし地球に入ってくる向きが公転方向から大きくずれていて、1回では曲げきれない。
+        最終軌道の遠日点は 3.298 AU 止まりで、木星の軌道には届かない。</li>
+      <li><strong>VEEGA</strong>: 2年同期を挟んで2回に分けて曲げると、噴射なしで遠日点 5.934 AU。
+        木星の軌道を越える。いちばん軽く打ち上げられるが、いちばん時間がかかる。</li>
+    </ul>
+
+    <div class="note">
+      <strong>関連する資料</strong>
+      <a href="swingby.html">スイングバイの極意 その1</a> — 原理と、どの天体がどれだけ効くか。<br />
+      <a href="hohmann.html">ホーマン遷移と、3次元の壁</a> — ポークチョップ図の島が2つある理由。<br />
+      <a href="launchers.html">ロケットの打上げ能力</a> — C3 と打ち上げられる質量の関係。<br />
+      <a href="jupiter.html">チュートリアル ④</a> — Juno風の ΔVEGA を、手を動かして作る。
+    </div>
+
+    <div class="nav-bottom">
+      <a href="swingby.html">← スイングバイの極意 その1</a>
+      <a href="index.html">使い方の目次 →</a>
+    </div>
+  </main>
+</body>
+
+</html>

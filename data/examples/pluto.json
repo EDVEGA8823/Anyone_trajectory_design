@@ -1,0 +1,31 @@
+{
+ "format": "anyone-trajectory-design",
+ "version": 1,
+ "app": "だれでも軌道設計",
+ "name": "③ 木星に押してもらって冥王星へ",
+ "launcher": "atlas551_star48b",
+ "launch": {
+  "vinf": 3,
+  "alpha": 0,
+  "delta": 0
+ },
+ "nodes": [
+  {
+   "type": "Launch",
+   "date": 2453754.5,
+   "planet": 2
+  },
+  {
+   "type": "Swingby",
+   "date": 2454159.5,
+   "planet": 4,
+   "rp": 2332083.0885539586,
+   "beta": -1.4365236320698576
+  },
+  {
+   "type": "Swingby",
+   "date": 2457217.5,
+   "planet": 8
+  }
+ ]
+}

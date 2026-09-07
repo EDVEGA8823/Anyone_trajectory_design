@@ -7,4 +7,8 @@ __pycache__/
 *.pyc
 
 # docs_shots.py がスクリーンショット用に立てる Edge のプロファイル
+<<<<<<< HEAD
 tools/cdpprof_*/
+=======
+tools/cdpprof_*/
+>>>>>>> dev

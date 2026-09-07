@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>④ 地球をもう一度使って木星へ — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- 配色 (明るい/暗い) を、スタイルより先に決めておく。
+       docs/theme.js を待つと、暗い配色の人に一瞬だけ白い画面が出てしまう。
+       ここと docs/theme.js、アプリ側は同じ鍵 (atd_theme) を読む -->
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css" />
+  <script src="theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="en/jupiter.html" class="lang-link">English</a>
+    <a href="jupiter.html" target="_blank" rel="noopener">タブで開く</a>
+  </header>
+
+  <main>
+    <h1>④ 地球をもう一度使って木星へ</h1>
+    <p class="lead">
+      木星は遠い。まっすぐ行こうとすると、どのロケットでも探査機が軽くなりすぎます。
+      NASAのJunoが採った答えは、<strong>いったん外へ出て、2年後に地球へ戻ってきて、その重力を借りる</strong>ことでした。
+      ΔVEGA (Delta-V Earth Gravity Assist) と呼ばれる手です。
+    </p>
+
+    <div class="aim">
+      <h3>ここで覚えること</h3>
+      <ul>
+        <li>まっすぐ木星へ行くと何 kg 積めるか</li>
+        <li>地球から地球への区間は、自動では解けない</li>
+        <li>手動モードと、後ろに付いてくる噴射のシーケンス</li>
+        <li>遠日点で噴くと何が起きるか</li>
+        <li>自動調整の使いどころ</li>
+      </ul>
+    </div>
+
+    <h2>まず、まっすぐ木星へ行ってみる</h2>
+    <p>
+      なぜそんな遠回りが要るのか。<strong>まっすぐ行こうとするとどうなるか</strong>を先に見ておきます。
+      木星は<strong>通り過ぎるだけ</strong>にして (2番目のシーケンスを木星のスイングバイに)、
+      いちばん安く行ける日付を探してください。
+      2011年7月16日に出て920日 (2年6か月) で着くあたりが底です。
+    </p>
+
+    <figure>
+      <img src="img/jupiter-direct.png" alt="木星へ直行する軌道" />
+      <figcaption>地球から木星へ、まっすぐ向かう軌道。</figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="img/jupiter-direct-launch.png" alt="直行したときの打上げの読み値" />
+      <figcaption>脱出速度 8.983 km/s。木星には 5.614 km/s で着きます。</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/jupiter-direct-stat.png" alt="直行したときの成績" />
+      <figcaption>打上げエネルギー 80.69 km²/s²。打ち上げられるのは 137 kg です。</figcaption>
+    </figure>
+
+    <p>
+      行けないわけではありません。ただし<strong>137 kg</strong>。
+      Junoの探査機は3625 kgありますから、まったく足りません。
+    </p>
+    <p>
+      C3 80.69 は、火星へ行くとき (9.30) の9倍近く。
+      遠くへ行くほど、出発時に持たせなければならないエネルギーが増え、
+      ロケットが持ち上げられる質量はそのぶん落ちていきます。
+    </p>
+    <p>
+      この 80.69 は、木星までの<strong>ホーマン遷移</strong> (理屈のうえでいちばん安い行き方) の
+      C3 77.3 にほぼ一致します。つまり、直行できるいちばん安い軌道を選んでもこの値です。
+      詳しくは資料<a href="hohmann.html">ホーマン遷移と、3次元の壁</a>に書きました。
+    </p>
+
+    <div class="note">
+      <strong>他の探査機はどうしたか</strong>
+      ボイジャーは大きなロケット(タイタンIIIE)を用いて木星まで行きましたが、周回軌道投入のマヌーバは行いません。
+      ガリレオは金星と地球を3回 (VEEGA)。カッシーニは金星2回・地球・木星で4回。
+      ニューホライズンズは、当時最大級のロケットで小さな探査機 (478 kg) を
+      C3 158 で撃ち出すという力技を使いました。
+      Junoが選んだのは、地球にもう一度戻ってくる手です。
+    </div>
+
+    <h2>地球にもう一度会いに行く</h2>
+
+    <ol class="steps">
+      <li>
+        <p>作り直して、シーケンスを3つ。すべてJunoの実際の日付です。</p>
+        <table>
+          <tr><th>番号</th><th>種別</th><th>天体</th><th>日付</th></tr>
+          <tr><td>1</td><td>打上げ</td><td>地球</td><td>2011/08/05</td></tr>
+          <tr><td>2</td><td>スイングバイ</td><td>地球</td><td>2013/10/09</td></tr>
+          <tr><td>3</td><td>周回軌道投入</td><td>木星</td><td>2016/07/05</td></tr>
+        </table>
+        <figure>
+          <img src="img/jupiter-auto.png" alt="自動モードでは解けていない状態" />
+          <figcaption>軌道が引けていません。太陽系ビューには線らしい線が出ていないはずです。</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <p>
+      うまくいきません。打上げのシーケンスを選ぶと、脱出速度がとんでもない値になっています。
+    </p>
+
+    <figure class="panel">
+      <img src="img/jupiter-auto-panel.png" alt="自動モードの打上げの読み値" />
+      <figcaption>自動モードは「出発点と到着点を結ぶ軌道」を解きますが、この区間は解が意味を持ちません。</figcaption>
+    </figure>
+
+    <p>
+      理由ははっきりしています。この区間は<strong>地球から地球へ</strong>で、しかも2年後。
+      地球は2年でほぼ2周して元の場所に戻ってくるので、
+      「出発点と到着点がほぼ同じ場所」という問題になってしまいます。
+      そんな軌道は、まっすぐ行って戻ってくるような無茶なものしかありません。
+    </p>
+
+    <div class="note warn">
+      <strong>これはアプリの不具合ではありません</strong>
+      同じ天体に戻ってくる区間は、途中で何かをしない限り成立しません。
+      その「何か」が深宇宙での噴射で、これがΔVEGAの正体です。
+    </div>
+
+    <h2>手動モードに切り替える</h2>
+
+    <ol class="steps">
+      <li>
+        <p>打上げのシーケンスを選び、<strong>手動</strong>を押します。</p>
+        <figure class="seq">
+          <img src="img/jupiter-manual.png" alt="手動モードにしたシーケンス" />
+          <figcaption>「マヌーバ」というシーケンスが自動で1つ増えます。これが深宇宙での噴射です。</figcaption>
+        </figure>
+        <p>
+          手動モードでは、あなたが<strong>飛び出す向きと速さ</strong>を決めます。
+          その代わり「次の目的地に届く」保証がなくなるので、
+          後ろに付いた噴射のシーケンスが、届かせる役目を引き受けます。
+        </p>
+      </li>
+
+      <li>
+        <p>
+          噴射のシーケンスの日付を <strong>2012/08/31</strong> あたりにします。打上げの約1年後です。
+        </p>
+      </li>
+
+      <li>
+        <p>
+          打上げのシーケンスに戻り、<strong>脱出速度 5.6 km/s</strong>、方位角 α = 0、仰角 δ = 0 を入れます。
+        </p>
+        <figure class="panel">
+          <img src="img/jupiter-set.png" alt="手動モードの打上げ設定" />
+          <figcaption>α = 0 は「地球が進む向きにまっすぐ」という意味です。</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <figure>
+      <img src="img/jupiter-rough.png" alt="手で置いた段階の軌道" />
+      <figcaption>形になりました。外へ膨らんで、地球に戻ってきて、木星へ。ただしまだ雑です。</figcaption>
+    </figure>
+
+    <h2>自動調整で詰める</h2>
+    <p>
+      ここから先は手で詰めてもよいのですが、動かせるつまみが多すぎます
+      (脱出速度・2つの角度・4つの日付)。
+      ミッションシーケンスの見出しにある<strong>「自動調整」</strong>を押してください。
+    </p>
+
+    <p>
+      いまの設計を出発点にして、その<strong>近くだけ</strong>を探します。
+      別物の軌道を持ってくることはないので、あなたが決めた骨格 (地球へ戻って木星へ) は変わりません。
+      数秒で終わります。
+    </p>
+
+    <figure>
+      <img src="img/jupiter-tuned.png" alt="自動調整の後" />
+      <figcaption>整いました。残る質量が大きく増えているはずです。</figcaption>
+    </figure>
+
+    <h2>何が起きたのかを読む</h2>
+    <figure class="panel">
+      <img src="img/jupiter-dsm.png" alt="噴射のシーケンスの読み値" />
+      <figcaption>噴射のシーケンス。ΔV 668.5 m/s、太陽からの距離 2.254 AU。</figcaption>
+    </figure>
+
+    <p>
+      時刻の欄に<strong>近日点・遠日点・交点の一覧</strong>が出ていることに注目してください。
+      2012/8/27 に遠日点 2.25 AU とあり、噴射の日付 (2012/9/4) はそのすぐ後ろです。
+      つまりこの噴射は<strong>いちばん太陽から遠いところで打たれています</strong>。
+    </p>
+
+    <p>
+      これがΔVEGAの要点です。遠日点は探査機がいちばんゆっくり動いているところで、
+      そこで少し減速すると、地球軌道との離角が増え、相対速度が大きく増えます。
+      打上げ時はV∞ 5.3 km/sだったものが670 m/s ほどの小さな噴射によって、地球に戻ってきたときの速さV∞が 9.9 km/sまで増えます。
+      まっすぐ木星へ向かうためにこの速さを打上げで出そうとすると、
+      C3 は 98 km²/s² 前後。普通のロケットでは探査機はほとんど積めません。
+    </p>
+
+    <figure class="panel">
+      <img src="img/jupiter-flyby.png" alt="地球スイングバイの読み値" />
+      <figcaption>地球スイングバイ。近点ΔVが0。燃料を一切使わずに44度曲げています。</figcaption>
+    </figure>
+
+    <p>
+      そして地球のそばを通ることで、太陽から見た速度が跳ね上がります。
+      <strong>近点ΔVは0</strong>。重力だけで足りているので、噴射はしていません。
+      ここから先はもう木星まで届きます。
+    </p>
+
+    <h2>地球を使うと何が変わったか</h2>
+    <table>
+      <tr><th></th><th>木星へ直行</th><th>地球をもう一度使う</th></tr>
+      <tr><td>打上げエネルギー C3</td><td class="num">80.69 km²/s²</td><td class="num">28.8 km²/s²</td></tr>
+      <tr><td>H3で打ち上げられる質量</td><td class="num">137 kg</td><td class="num">3052 kg</td></tr>
+      <tr><td>木星に着く速さ</td><td class="num">5.61 km/s</td><td class="num">5.59 km/s</td></tr>
+      <tr><td>かかる時間</td><td class="num">2.5年</td><td class="num">4.6年</td></tr>
+    </table>
+
+    <p>
+      着く速さはほとんど同じなのに、<strong>打ち上げられる質量が22倍</strong>になりました。
+      代償は、670 m/s ほどの噴射と、2年ほど余分にかかる時間です。
+      Junoの3625 kgという探査機は、この遠回りがあって初めて成立しています。
+    </p>
+
+    <h2>できあがり</h2>
+    <figure>
+      <img src="img/jupiter-final.png" alt="完成したJunoの軌道" />
+    </figure>
+
+    <table>
+      <tr><th>項目</th><th>この設計</th><th>実際のJuno</th></tr>
+      <tr><td>打上げ</td><td class="num">2011/08/10</td><td class="num">2011/08/05</td></tr>
+      <tr><td>打上げエネルギー C3</td><td class="num">28.8 km²/s²</td><td class="num">31.1 km²/s²</td></tr>
+      <tr><td>深宇宙での噴射</td><td class="num">669 m/s (2012年9月)</td><td class="num">約730 m/s (2012年8-9月、2回)</td></tr>
+      <tr><td>地球スイングバイ</td><td class="num">2013/10/02</td><td class="num">2013/10/09</td></tr>
+      <tr><td>スイングバイ時のV∞</td><td class="num">9.9 km/s</td><td class="num">約9.3 km/s</td></tr>
+      <tr><td>木星到着</td><td class="num">2016/04</td><td class="num">2016/07/05</td></tr>
+      <tr><td>打上げ質量 (H3-24形態)</td><td class="num">3052 kg</td><td class="num">3625 kg (アトラスV)</td></tr>
+    </table>
+
+    <p>
+      手で大まかに置いて、自動調整に詰めさせるだけで、実機の設計にここまで近づきます。
+      日付が数日ずれているのは、自動調整が探しているのが
+      「残る質量がいちばん大きい設計」だからです。実機が抱えていた他の事情
+      (打上げ日の制約、通信、機器の運用) までは知りません。
+    </p>
+
+    <div class="note real">
+      <strong>実際のJunoとの違い</strong>
+      実機の深宇宙噴射は2012年8月30日と9月14日の2回に分かれています。
+      噴射のシーケンスを2つ並べれば同じことができますが、
+      合計のΔVはほとんど変わらないので、ここでは1回にまとめました。
+    </div>
+
+    <div class="note">
+      <strong>もっと詳しく</strong>
+      なぜ遠日点で噴くと V∞ が増えるのか、2年で戻ってくる軌道になぜ「短いの」と「長いの」があるのか、
+      金星を挟むとどうなるのか。資料<a href="swingby2.html">スイングバイの極意 その2: 木星行きの軌道</a>で、
+      ΔVEGA・VEGA・VEEGA を実際に組み立てながらまとめています。
+    </div>
+
+    <div class="nav-bottom">
+      <a href="pluto.html">← ③ 木星に押してもらって冥王星へ</a>
+      <a href="ryugu.html">⑤ 小惑星にランデブーする →</a>
+    </div>
+  </main>
+</body>
+
+</html>

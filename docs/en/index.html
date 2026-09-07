@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guide — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Pick the theme (light/dark) before the stylesheet loads.
+       Waiting for theme.js would flash a white page at dark-theme readers.
+       This, ../theme.js and the app all read the same key (atd_theme). -->
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../index.html" class="lang-link">日本語</a>
+    <a href="index.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+    <h1>Guide</h1>
+    <p class="lead">
+      An app for putting together the trajectory of a planetary spacecraft with your own hands.
+      The hard equations are hidden inside, so you build a trajectory just by laying out dates
+      and destinations.
+    </p>
+
+    <p>
+      Start with <a href="basics.html">Reading the screen</a> and draw a single trajectory to Mars.
+      After that there are five tutorials, each based on a spacecraft that actually flew.
+      <strong>Every one can be reproduced with the real launch date</strong>, so you can see in
+      numbers why it had to be that day.
+      If you would rather see the finished article first, the app's “⋯” → “Load an example”
+      loads the very trajectories built here.
+    </p>
+
+    <h2>Tutorials</h2>
+    <div class="cards">
+      <a class="card" href="basics.html">
+        <div class="no">To begin</div>
+        <h3>Reading the screen</h3>
+        <p>Sequences, time, the summary bar. Up to drawing one leg from Earth to Mars.</p>
+      </a>
+      <a class="card" href="mars.html">
+        <div class="no">Tutorial ①</div>
+        <h3>There and back from Mars</h3>
+        <p>MMX-like. A Hohmann transfer, orbit insertion, orbit departure and atmospheric entry, all in one go.</p>
+      </a>
+      <a class="card" href="mercury.html">
+        <div class="no">Tutorial ②</div>
+        <h3>To Mercury on Venus' gravity</h3>
+        <p>Mariner 10-like. A swingby, and the resonance that meets Mercury three times.</p>
+      </a>
+      <a class="card" href="pluto.html">
+        <div class="no">Tutorial ③</div>
+        <h3>To Pluto with a push from Jupiter</h3>
+        <p>New Horizons-like. What a Jupiter swingby is worth, and choosing a rocket.</p>
+      </a>
+      <a class="card" href="jupiter.html">
+        <div class="no">Tutorial ④</div>
+        <h3>To Jupiter by using Earth twice</h3>
+        <p>Juno-like. ΔVEGA, manual mode, and a burn out in deep space.</p>
+      </a>
+      <a class="card" href="ryugu.html">
+        <div class="no">Tutorial ⑤</div>
+        <h3>Rendezvous with an asteroid</h3>
+        <p>Hayabusa2-like. Adding a body, an Earth swingby through resonance, and rendezvous.</p>
+      </a>
+    </div>
+
+    <h2>Reference</h2>
+    <div class="cards">
+      <a class="card" href="launchers.html">
+        <div class="no">Reference</div>
+        <h3>What rockets can launch</h3>
+        <p>C3-versus-mass curves for 13 vehicles. Where the “mass you can launch” actually comes from.</p>
+      </a>
+      <a class="card" href="hohmann.html">
+        <div class="no">Reference</div>
+        <h3>Hohmann transfers and the third dimension</h3>
+        <p>Why the cheapest transfer cannot be flown in reality. Why a porkchop plot has two islands.</p>
+      </a>
+      <a class="card" href="swingby.html">
+        <div class="no">Reference</div>
+        <h3>Swingbys, part 1</h3>
+        <p>How speed changes without burning anything. Speeding up and slowing down. Which body,
+          approached how fast, actually helps.</p>
+      </a>
+      <a class="card" href="swingby2.html">
+        <div class="no">Reference</div>
+        <h3>Swingbys, part 2</h3>
+        <p>Trajectories to Jupiter. How to build ΔVEGA, VEGA and VEEGA, and what each is good and bad at.</p>
+      </a>
+    </div>
+
+    <h2>What it can and cannot do</h2>
+    <table>
+      <tr>
+        <th>Can</th>
+        <th>Cannot</th>
+      </tr>
+      <tr>
+        <td>
+          Trajectories to planets and small bodies (asteroids, comets)<br />
+          Swingbys (gravity alone, or topped up with a burn)<br />
+          Deep-space burns, entering and leaving orbits, atmospheric entry<br />
+          Pick a rocket and estimate the launch mass and the mass left<br />
+          A map of departure and arrival dates (a porkchop plot)<br />
+          Auto-tune, which tightens the current design without changing its shape
+        </td>
+        <td>
+          Continuous thrust, as from an ion engine<br />
+          (think of it as a single burn instead)<br />
+          Orbits around the Moon or a planet's satellites<br />
+          Fine effects such as solar radiation pressure or other planets' pull<br />
+          Spacecraft design: attitude control, communications, power
+        </td>
+      </tr>
+    </table>
+
+    <div class="note">
+      <strong>One number to read above all</strong>
+      “Mass left”, at the bottom right of the screen, is the score that matters.
+      It is the mass the chosen rocket can launch, less the fuel spent on burns —
+      <strong>the weight available for the spacecraft itself</strong>. The larger it is, the better the design.
+    </div>
+
+    <h2>About this site</h2>
+    <p>
+      The trajectories you build stay <strong>inside your browser</strong>. Nothing is kept on a server,
+      so unless you hand out a share link, none of it leaves your machine.
+      Your theme and language settings are likewise stored only on your device.
+    </p>
+    <p>
+      We do, however, use <strong>Google Analytics (GA4)</strong> to see which pages get read and how often.
+      The URL of the page, the referrer, an approximate region, your device and browser type,
+      and an identifier used to tell visits apart (a cookie) are sent to Google.
+      <strong>The trajectories you build are not included.</strong>
+      See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's privacy policy</a>
+      for details; to opt out, use Google's
+      <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">opt-out add-on</a>
+      or your browser's tracking-protection settings.
+    </p>
+    <p>
+      This app is under the MIT License. The libraries it uses and the sources of its data are listed in the
+      README of the <a href="https://github.com/EDVEGA8823/Anyone_trajectory_design" target="_blank" rel="noopener">repository</a>.
+    </p>
+
+    <div class="nav-bottom">
+      <span></span>
+      <a href="basics.html">Reading the screen →</a>
+    </div>
+  </main>
+</body>
+
+</html>

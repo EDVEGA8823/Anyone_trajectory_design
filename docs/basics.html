@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>画面の見方 — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- 配色 (明るい/暗い) を、スタイルより先に決めておく。
+       docs/theme.js を待つと、暗い配色の人に一瞬だけ白い画面が出てしまう。
+       ここと docs/theme.js、アプリ側は同じ鍵 (atd_theme) を読む -->
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css" />
+  <script src="theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="en/basics.html" class="lang-link">English</a>
+    <a href="basics.html" target="_blank" rel="noopener">タブで開く</a>
+  </header>
+
+  <main>
+    <h1>画面の見方</h1>
+    <p class="lead">地球から火星まで、1本の軌道を引いてみます。</p>
+
+    <div class="aim">
+      <h3>ここで覚えること</h3>
+      <ul>
+        <li>ミッションは「シーケンス」を並べて作る</li>
+        <li>日付を決めると軌道が決まる</li>
+        <li>成績は左下のバーで読む</li>
+      </ul>
+    </div>
+
+    <h2>3つの区画</h2>
+    <figure>
+      <img src="img/basics-empty.png" alt="起動直後の画面" />
+      <figcaption>起動直後。左が太陽系ビュー、真ん中がミッションシーケンス、右が操作パネル。</figcaption>
+    </figure>
+
+    <p>
+      <strong>太陽系ビュー</strong>は、いま何がどこにあるかを見る場所です。
+      ドラッグで回転、ホイールで拡大縮小できます。
+      何も選んでいないときは、ここに出ている時刻はプレビューです。
+      <kbd>←</kbd> <kbd>→</kbd> を押すと日付が動いて、惑星がぐるぐる回ります。
+      この状態でいくら動かしても、ミッションの日付は変わりません。
+    </p>
+    <figure>
+      <img src="img/basics-preview.png" alt="何も選んでいないときの画面" />
+      <figcaption>
+        何も選んでいないと、操作パネルには「時刻」だけが残ります。
+        右上の札が<strong>「見ている時刻」</strong>になっていて、どのシーケンスの日付でもないことを示しています。
+      </figcaption>
+    </figure>
+
+    <p>
+      <strong>ミッションシーケンス</strong>は、探査機がこれから何をするかの一覧です。
+      「打上げ」「スイングバイ」「周回軌道投入」などといった<em>シーケンス</em>を上から順に並べていきます。
+    </p>
+    <figure class="seq">
+      <img src="img/basics-list.png" alt="ミッションシーケンスの一覧" />
+      <figcaption>上から順に実行されます。間の「+ シーケンスを追加」で好きな位置に差し込めます。</figcaption>
+    </figure>
+
+    <p>
+      <strong>操作パネル</strong>には、一覧で選んだシーケンスの設定と読み取りが出ます。
+      選んでいるシーケンスによって中身がまるごと入れ替わります。
+    </p>
+
+    <h2>火星まで引いてみる</h2>
+
+    <ol class="steps">
+      <li>
+        <p>
+          「+ シーケンスを追加」を2回押します。1つ目は必ず<strong>打上げ</strong>になります。
+          続けて2つ目のカードを押して選びます。
+        </p>
+        <figure>
+          <img src="img/basics-two.png" alt="2つ目のシーケンスを選んだところ" />
+          <figcaption>
+            2つ目は種別が「---」のまま。天体には仮に地球が入っています。
+            次でこの2つを変えます。
+          </figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>
+          操作パネルの<strong>天体</strong>を「火星」に変えます。
+          続けて<strong>シーケンス</strong>の「変更」から「周回軌道投入」を選びます。
+        </p>
+        <p>
+          種別の選択肢は天体によって変わります。惑星ならスイングバイ・周回軌道投入・大気圏突入、
+          小惑星ならフライバイ・ランデブーです。重力の大きさが違うので、できることも違います。
+        </p>
+      </li>
+
+      <li>
+        <p>
+          日付を入れます。カードを選ぶと操作パネルの<strong>時刻</strong>にそのシーケンスの日付が出るので、
+          打上げを 2026/10/30、火星到着を 2027/09/15 にします。
+        </p>
+        <p>
+          日付欄に直接打ち込むほか、<kbd>-10</kbd> <kbd>-1</kbd> <kbd>+1</kbd> <kbd>+10</kbd> のボタン、
+          キーボードの <kbd>←</kbd> <kbd>→</kbd>、太陽系ビューで惑星を掴んでドラッグ、のどれでも動かせます。
+        </p>
+        <figure>
+          <img src="img/basics-mars.png" alt="地球から火星への軌道" />
+          <figcaption>青い線が探査機の通り道です。日付を決めた瞬間に、それを結ぶ軌道が計算されます。</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <div class="note">
+      <strong>なぜ日付だけで軌道が決まるのか</strong>
+      出発する場所 (その日の地球) と着く場所 (その日の火星)、そしてかかる日数。
+      この3つが決まると、それを結ぶ軌道は (ほぼ) 1本に決まります。
+      これを解く問題を<strong>ランベール問題</strong>といいます。このアプリの心臓部です。
+      裏返せば、あなたが決めるのは「いつ出て、いつ着くか」だけで済みます。
+    </div>
+
+    <h2>成績を読む</h2>
+    <figure>
+      <img src="img/basics-statbar.png" alt="ミッションの成績バー" />
+      <figcaption>太陽系ビューの下のバー。この設計の良し悪しはここに出ます。</figcaption>
+    </figure>
+
+    <table>
+      <tr>
+        <th>読み値</th>
+        <th>意味</th>
+        <th>大きいと</th>
+      </tr>
+      <tr>
+        <td>脱出速度</td>
+        <td>地球の重力を振り切った後に残る速度</td>
+        <td>遠くへ早く行けるが、打ち上げられる質量が減る</td>
+      </tr>
+      <tr>
+        <td>総ΔV</td>
+        <td>探査機が自分の燃料で出す速度変化の合計</td>
+        <td>燃料を食うので、残る質量が減る</td>
+      </tr>
+      <tr>
+        <td>打上げ質量 → 残る質量</td>
+        <td>選んだロケットで打ち上げられる質量と、燃料を使い切った後に残る質量</td>
+        <td>残る質量が大きいほど良い設計</td>
+      </tr>
+    </table>
+
+    <p>
+      色が付きます。青緑なら楽、黄色やオレンジなら苦しい、赤ならかなり苦しい、という目安です。
+      カーソルを乗せると、その色の境目がいくつなのかも読めます。
+    </p>
+
+    <h2>自動調整で詰める</h2>
+    <p>
+      日付を手で決めるのは、当たりを付けるところまでで構いません。
+      ミッションシーケンスの見出しにある<strong>自動調整</strong>を押すと、
+      <strong>残る質量がいちばん大きくなる方へ</strong>、いまの設計を少しずつ動かしてくれます。
+    </p>
+
+    <figure>
+      <img src="img/basics-tune-btn.png" alt="自動調整のボタン" />
+      <figcaption>ミッションシーケンスの見出しの右にあります。押している間は、どれだけ良くなったかがボタンに出ます (この例なら「調整中 +0.4%」)。</figcaption>
+    </figure>
+
+    <p>いま引いた火星行きで押してみます。</p>
+
+    <figure>
+      <img src="img/basics-tune-before.png" alt="調整の前の成績" />
+      <figcaption>調整の前。残る質量 3701 kg。</figcaption>
+    </figure>
+    <figure>
+      <img src="img/basics-tune-after.png" alt="調整の後の成績" />
+      <figcaption>調整の後。残る質量 3717 kg。</figcaption>
+    </figure>
+    <figure class="seq">
+      <img src="img/basics-tune-list.png" alt="調整の後のシーケンス一覧" />
+      <figcaption>日付が動いています (打上げの時刻も少し動いて、表示は 2026/10/31 になりました)。</figcaption>
+    </figure>
+
+    <p>
+      火星に着く日が 2027/9/15 から <strong>2027/9/7</strong> へ動きました。それだけで
+      打上げエネルギーが 9.30 → 9.22 km²/s² に下がって打ち上げられる質量が 4728 → 4736 kg に増え、
+      投入の噴射も 769 → 760 m/s に減って、残るのが <strong>3701 → 3717 kg</strong>。
+      増えたのは 16 kg ですが、手で選んだ日付がすでにかなり良かった、ということでもあります。
+    </p>
+
+    <h3>何を動かすのか</h3>
+    <p>いま設計変数になっているものだけを動かします。</p>
+    <ul>
+      <li><strong>打上げ日</strong> — 前後30日まで</li>
+      <li><strong>各区間の飛行時間</strong> — いまの 1/1.2 〜 1.2 倍まで</li>
+      <li>手動モードにしてある<strong>打上げ・軌道脱出の速さと向き</strong></li>
+      <li>手動モードにしてある<strong>スイングバイの近点高度と回転角</strong></li>
+      <li>深宇宙での<strong>噴射の大きさと向き</strong></li>
+    </ul>
+    <p>
+      <strong>周回軌道の高度は動かしません</strong>。「その高度で観測したい」という要件であって、
+      燃料を減らすために勝手に上げ下げしてよい値ではないからです。
+      天体や種別の並びも変わりません。
+    </p>
+
+    <div class="note">
+      <strong>「探し直し」ではなく「詰める」</strong>
+      探すのは<strong>いまの設計のすぐ近く</strong>だけです。遠くまで見に行くと、
+      手で作ったものとは似ても似つかない軌道が返ってきて「調整」にならないからです。
+      どの天体をどう使うかという骨格は自分で決める必要があります。
+      裏を返せば、<strong>大まかに置いてから押せばよい</strong>ということでもあります。
+      チュートリアル<a href="jupiter.html">④</a>では、手で大まかに置いた設計がこれで実機に近いところまで詰まります。
+    </div>
+
+    <p>
+      押しても「これ以上は良くなりませんでした」と出ることがあります。
+      いまの設計のまわりに、もっと良いところが無いという意味です。
+      結果が気に入らなければ <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。
+    </p>
+
+    <h2>操作パネルの読み取り</h2>
+    <figure class="panel">
+      <img src="img/basics-launch-panel.png" alt="打上げの操作パネル" />
+      <figcaption>打上げのシーケンスを選んだところ。3Dビューは地球を中心にした近くの様子です。</figcaption>
+    </figure>
+
+    <p>
+      右側の細い欄に情報が並びます。ここには<strong>設計を決めるのに重要な数字だけ</strong>を出していて、
+      確かめるときにしか使わないものは「高度な情報」に畳んであります。押すと開きます。
+    </p>
+    <p>
+      「火星での V∞」は、この区間を飛んだ先で火星に着くときの、火星から見た速さです。
+      これから作る軌道の善し悪しは、たいていこの数字で決まります。
+    </p>
+
+    <h2>覚えておくと便利なショートカット</h2>
+    <table>
+      <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>シーケンスを選ぶ</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>時刻を1日ずつ動かす (<kbd>Shift</kbd> で10日)</td></tr>
+      <tr><td><kbd>A</kbd> / <kbd>Delete</kbd></td><td>シーケンスを足す / 消す</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>元に戻す</td></tr>
+      <tr><td><kbd>?</kbd></td><td>キーボード操作の一覧</td></tr>
+    </table>
+
+    <h2>保存する・人に共有する</h2>
+    <p>作ったミッションの保存や共有は、上のバーの右側にまとまっています。</p>
+    <figure>
+      <img src="img/basics-topbar.png" alt="上のバーの右側" />
+      <figcaption>
+        「保存」に付いている橙色の点は、まだ保存していない変更があるという印です。
+        ミッション名の隣にも同じ点が出ます。
+      </figcaption>
+    </figure>
+    <p>いちばん右の「…」を押すと、残りの操作が出てきます。</p>
+    <figure>
+      <img src="img/basics-menu.png" alt="「…」を押して出るメニュー" />
+      <figcaption>上のバーからぶら下がって出ます。</figcaption>
+    </figure>
+
+    <p>
+      <strong>例を読み込む</strong>には、このチュートリアルと資料で組み立てている軌道が
+      入っています。手を動かす前に出来上がりを見たいときや、
+      途中で分からなくなったときの答え合わせに使えます。
+    </p>
+
+    <h3>ファイルに保存する</h3>
+    <p>
+      <strong>保存</strong> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) を押すと、JSONファイルが1つ落ちてきます。
+      名前はミッション名から付きます (「火星へ」なら 火星へ.json)。
+      <strong>読込</strong> (<kbd>Ctrl</kbd>+<kbd>O</kbd>) で戻せます。
+    </p>
+    <p>
+      テキストエディタで開けば読めますし、日付を手で書き換えても構いません。
+    </p>
+    <div class="note">
+      <strong>保存し忘れの見張り</strong>
+      橙色の点が出ている状態で「読込」や「新規作成」を押すと、いったん止めて聞き返します。
+      共有リンクを開いたときも同じです。うっかり上書きすることはありません。
+    </div>
+
+    <h3>リンクで渡す</h3>
+    <p>
+      「…」から<strong>共有リンクをコピー</strong>を選ぶと、URLがクリップボードに入ります。
+      受け取った人がそれを開くと、あなたの設計がそのまま画面に出ます。
+      取り込んだ小天体も一緒に付いていくので、リュウグウを追加して作った設計なら、
+      相手の画面にもリュウグウが現れます。
+    </p>
+
+    <div class="note">
+      <strong>設計は「#」より後ろに入っています</strong>
+      このアプリは置き場所を持たない、ただの静的なファイルです。
+      そのため設計そのものをURLに詰めています。どこかのサーバーに預けているわけではありません。
+      なので、リンクを配ったあとにあなたが設計を変えても、配ったリンクの中身は変わりません。
+      逆に、リンクを消して回ることもできません。
+      ここはブラウザがサーバーに送らない場所です。作った軌道がアクセスログに残ることも、
+      他のサイトへ飛んだときに一緒に漏れることもありません。
+      長さも、いちばん込み入った設計で600字ほど。貼り付け先で折れる心配はありません。
+    </div>
+
+    <h3>画像にする</h3>
+    <p>
+      「…」から<strong>画像で保存</strong>。画面の写真を撮るのではなく、
+      載せたいものだけを並べ直して描き起こします。
+    </p>
+    <figure>
+      <img src="img/basics-export.png" alt="「画像で保存」で作った絵" />
+      <figcaption>ミッション名・軌道図・シーケンス・成績が1枚に収まります。</figcaption>
+    </figure>
+    <p>
+      ボタンや選択欄は写り込みません。画面の幅や高さで絵柄が変わらないので、
+      スマホで保存しても同じ形になります。太陽系ビューは画面で見えているより大きく、
+      高い解像度で描き直しています。
+    </p>
+
+    <h3>Xに投稿する</h3>
+    <p>
+      <strong>Xで共有</strong>を押すと、本文と共有リンクが入った状態で投稿画面が開きます。
+    </p>
+    <p>
+      パソコンでは、開く前に画像をクリップボードにコピーします。投稿欄で
+      <kbd>Ctrl</kbd>+<kbd>V</kbd> すれば絵も付きます。
+      Xの投稿画面をURLで開く仕組みには画像を渡す口がないので、こういう手順になっています。
+      スマホでは端末の共有シートが開くので、そこからXを選べば文字・リンク・画像がまとめて入ります。
+    </p>
+
+    <div class="nav-bottom">
+      <a href="index.html">← 目次</a>
+      <a href="mars.html">① 火星に行って帰ってくる →</a>
+    </div>
+  </main>
+</body>
+
+</html>

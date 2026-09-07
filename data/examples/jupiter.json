@@ -1,0 +1,36 @@
+{
+ "format": "anyone-trajectory-design",
+ "version": 1,
+ "app": "だれでも軌道設計",
+ "name": "④ 地球をもう一度使って木星へ",
+ "launcher": "h3_24",
+ "launch": {
+  "vinf": 5.371216304064543,
+  "alpha": 0.0017998870439656061,
+  "delta": -0.0009281593983923031
+ },
+ "nodes": [
+  {
+   "type": "Launch",
+   "date": 2455784.4476579214,
+   "planet": 2,
+   "manual": true
+  },
+  {
+   "type": "Maneuver",
+   "date": 2456171.3734358945
+  },
+  {
+   "type": "Swingby",
+   "date": 2456568.6116358484,
+   "planet": 2,
+   "rp": 6678.140587883838,
+   "beta": -1.1683716855531125
+  },
+  {
+   "type": "Orbit",
+   "date": 2457508.160779463,
+   "planet": 4
+  }
+ ]
+}

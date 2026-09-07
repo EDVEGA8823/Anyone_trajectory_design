@@ -1,0 +1,38 @@
+{
+ "format": "anyone-trajectory-design",
+ "version": 1,
+ "app": "だれでも軌道設計",
+ "name": "② 金星の重力で水星へ",
+ "launcher": "h3_24",
+ "launch": {
+  "vinf": 3,
+  "alpha": 0,
+  "delta": 0
+ },
+ "nodes": [
+  {
+   "type": "Launch",
+   "date": 2441989.5,
+   "planet": 2
+  },
+  {
+   "type": "Swingby",
+   "date": 2442083.5,
+   "planet": 1,
+   "rp": 11732.721679354941,
+   "beta": 1.2983859901330952
+  },
+  {
+   "type": "Swingby",
+   "date": 2442135.5,
+   "planet": 0,
+   "manual": true,
+   "rp": 2789.7,
+   "beta": 0.17453292519943295
+  },
+  {
+   "type": "End",
+   "date": 2442199.5
+  }
+ ]
+}

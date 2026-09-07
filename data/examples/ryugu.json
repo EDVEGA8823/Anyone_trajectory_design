@@ -1,0 +1,58 @@
+{
+ "format": "anyone-trajectory-design",
+ "version": 1,
+ "app": "だれでも軌道設計",
+ "name": "⑤ 小惑星にランデブーする",
+ "launcher": "h3_24",
+ "launch": {
+  "vinf": 4,
+  "alpha": 1.6406094968746698,
+  "delta": 0
+ },
+ "nodes": [
+  {
+   "type": "Launch",
+   "date": 2456994.5,
+   "planet": 2,
+   "manual": true
+  },
+  {
+   "type": "Maneuver",
+   "date": 2457086.5
+  },
+  {
+   "type": "Swingby",
+   "date": 2457359.5,
+   "planet": 2,
+   "rp": 22369.338975509723,
+   "beta": -0.45503532808267144,
+   "rev": 2
+  },
+  {
+   "type": "Rendezvous",
+   "date": 2458296.5,
+   "body": "a:162173"
+  }
+ ],
+ "bodies": [
+  {
+   "kind": "asteroid",
+   "set": "popular",
+   "num": 162173,
+   "name": "Ryugu",
+   "desig": "1999 JU3",
+   "epoch": 2461200.5,
+   "a": 1.1909189,
+   "e": 0.191073,
+   "i": 5.86644,
+   "node": 251.28971,
+   "peri": 211.609,
+   "M": 62.34067,
+   "H": 19.54,
+   "type": "Apollo",
+   "q": 0.9633664530203,
+   "id": "a:162173",
+   "closed": true
+  }
+ ]
+}

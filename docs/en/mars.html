@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>① There and back from Mars — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../mars.html" class="lang-link">日本語</a>
+    <a href="mars.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+    <h1>① There and back from Mars</h1>
+    <p class="lead">
+      Fly to Mars, enter orbit, stay a while, set off again, and finish by entering Earth's atmosphere.
+      We will build a mission shaped like JAXA's Martian Moons eXploration (MMX).
+    </p>
+
+    <div class="aim">
+      <h3>What you will learn here</h3>
+      <ul>
+        <li>Travel between planets has a fixed season (the launch window)</li>
+        <li>Entering orbit needs a burn, and the size of the orbit changes how big it is</li>
+        <li>Finding a window with a porkchop plot</li>
+        <li>The return window has to be found separately from the outbound one</li>
+        <li>Atmospheric entry sets its own speed. All you choose is the angle</li>
+      </ul>
+    </div>
+
+    <h2>Building it</h2>
+
+    <ol class="steps">
+      <li>
+        <p>Make four sequences and set them, from the top, like this.</p>
+        <table>
+          <tr><th>No.</th><th>Type</th><th>Body</th><th>Date</th></tr>
+          <tr><td>1</td><td>Launch</td><td>Earth</td><td>2026/10/30</td></tr>
+          <tr><td>2</td><td>Orbit insertion</td><td>Mars</td><td>2027/09/15</td></tr>
+          <tr><td>3</td><td>Orbit departure</td><td>Mars (matched automatically)</td><td>2030/08/25</td></tr>
+          <tr><td>4</td><td>Atmospheric entry</td><td>Earth</td><td>2031/08/20</td></tr>
+        </table>
+        <figure class="seq">
+          <img src="img/mars-types.png" alt="The four sequences" />
+          <figcaption>
+            “Orbit departure” matches itself to the body of the “Orbit insertion” just before it,
+            so its body selector is closed.
+          </figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>Fill in the dates and the four legs join up.</p>
+        <figure>
+          <img src="img/mars-all.png" alt="The whole round trip to Mars" />
+          <figcaption>
+            The outbound leg bulges outward, the stay rides along with Mars' own orbit, and the return leg falls inward.
+            During the stay the spacecraft moves with Mars, so it is drawn on top of Mars' orbit.
+          </figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <h2>Reading the outbound leg</h2>
+    <figure class="panel">
+      <img src="img/mars-launch.png" alt="The editor for the launch" />
+      <figcaption>The launch sequence. Escape velocity 3.05 km/s, arriving at Mars at 2.589 km/s.</figcaption>
+    </figure>
+
+    <p>
+      Leaving Earth at an <strong>escape velocity of 3.05 km/s</strong>, launch energy (C3) 9.30 km²/s².
+      As trajectories to Mars go, that is about as cheap as it gets.
+      It is very close to the ellipse that touches both Earth's and Mars' orbits — the Hohmann transfer.
+      Very close, but not the same. Why is set out in
+      <a href="hohmann.html">Hohmann transfers and the third dimension</a>.
+    </p>
+
+    <p>
+      Try moving the dates back and forth. Shift them by a month and the escape velocity leaps.
+      Earth and Mars only line up favourably <strong>about every 26 months</strong>.
+      That is the launch window, and it is why a spacecraft's launch date cannot be moved.
+    </p>
+
+    <div class="note">
+      <strong>How to find a window</strong>
+      Instead of guessing at dates, press “Find departure and arrival dates” in the editor and you get a map
+      of every departure/arrival combination, solved exhaustively (a porkchop plot).
+      We use it properly in <a href="#pc">Finding the return window on a map</a> below.
+    </div>
+
+    <h2>Entering orbit around Mars</h2>
+    <figure class="panel">
+      <img src="img/mars-insert.png" alt="The editor for orbit insertion" />
+      <figcaption>The default is a large ellipse, periapsis 200 km by apoapsis 64528 km. Insertion ΔV 768.6 m/s.</figcaption>
+    </figure>
+
+    <p>
+      You come in at Mars at 2.589 km/s (V∞). Left alone you would sail straight past, so you burn at closest
+      approach to slow down and get caught into an ellipse. That burn is the <strong>insertion ΔV</strong>.
+    </p>
+
+    <p>
+      The apoapsis altitude starts pinned to its ceiling. That ceiling is <strong>half the Hill radius</strong>;
+      beyond it the Sun's tidal pull will not let an orbit hold.
+      And <strong>if all you want is to be captured, that big ellipse is the cheapest thing there is</strong>.
+    </p>
+
+    <p>Try dropping the apoapsis altitude to 10000 km.</p>
+    <figure class="panel">
+      <img src="img/mars-insert2.png" alt="The insertion ΔV with a lower apoapsis" />
+      <figcaption>At 10000 km the insertion ΔV is 1191.4 m/s, and the period shrinks from 2.4 days to 6.6 hours.</figcaption>
+    </figure>
+
+    <p>
+      768.6 → 1191.4 m/s. <strong>One and a half times.</strong>
+      A low orbit is better for observing, or for landing, but you pay for it in fuel.
+      Where you circle is decided by what the mission is for.
+    </p>
+
+    <h3>Matching Phobos' altitude</h3>
+    <p>
+      MMX is not going to Mars itself but to its moon <strong>Phobos</strong>.
+      Phobos circles 9376 km from Mars' centre — <strong>an altitude of about 5980 km</strong>.
+      Let us put ourselves into a circular orbit at the same height: set both periapsis and apoapsis altitude
+      to <strong>5980</strong>.
+    </p>
+
+    <figure class="panel">
+      <img src="img/mars-phobos.png" alt="A circular orbit at Phobos' altitude" />
+      <figcaption>Insertion ΔV 1842.6 m/s, period 7.7 hours.</figcaption>
+    </figure>
+
+    <p>
+      <strong>The period is 7.7 hours</strong> — the same as Phobos' own (7 hours 39 minutes).
+      Circling at the same height gives the same period, so of course it does;
+      but that is what it means to be going round the same place at the same speed as Phobos.
+      The real MMX then moves on to a special orbit around Phobos itself (a quasi-satellite orbit).
+    </p>
+
+    <p>
+      The price is the insertion ΔV: 768.6 → 1842.6 m/s, 2.4 times the big ellipse.
+      Going to Phobos is where it gets expensive.
+      The real MMX eases that load by splitting the orbit insertion into three separate burns.
+    </p>
+
+    <figure>
+      <img src="img/mars-stat-before.png" alt="The score at this point" />
+      <figcaption>At this point the mass left is 1439 kg.</figcaption>
+    </figure>
+
+    <h2 id="pc">Finding the return window on a map</h2>
+    <p>
+      The way home also needs a season when Mars and Earth line up.
+      We found the outbound one by nudging dates on a hunch; this time let the app do the looking.
+    </p>
+
+    <figure class="panel">
+      <img src="img/mars-escape-before.png" alt="The editor for orbit departure" />
+      <figcaption>
+        Select the orbit-departure sequence and press <strong>“Find departure and arrival dates”</strong> at the bottom right.
+      </figcaption>
+    </figure>
+
+    <h3>Reading a porkchop plot</h3>
+    <figure>
+      <img src="img/mars-pc.png" alt="A porkchop plot" />
+      <figcaption>The Mars → Earth map of departure and arrival dates.</figcaption>
+    </figure>
+
+    <p>
+      Every combination of departure date (across) and arrival date (up) is solved exhaustively and coloured in.
+      In trajectory design this is called a <strong>porkchop plot</strong>
+      (one story has it that the contours look like a cut of pork).
+    </p>
+
+    <table>
+      <tr><td>Blue areas</td><td>Easy combinations. The redder, the harder</td></tr>
+      <tr><td>◇</td><td>The easiest point</td></tr>
+      <tr><td>The dashed cross</td><td>The current setting. Tells you at a glance how good a spot you are in</td></tr>
+      <tr><td>Grey</td><td>Too expensive to be worth colouring</td></tr>
+      <tr><td>Diagonal lines</td><td>Contours of flight time (200 days, 400 days…). A band sloping down to the right is a constant number of days</td></tr>
+    </table>
+
+    <p>
+      There are two islands. That is characteristic of a porkchop plot:
+      <strong>the upper island goes the long way round the Sun, the lower one the short way</strong>.
+      Joining the same two points, the direction you go round gives a different solution.
+      Why the two are not joined up is explained in
+      <a href="hohmann.html">Hohmann transfers and the third dimension</a>.
+    </p>
+
+    <p>
+      The current setting (where the dashed lines cross) sits on the edge of the upper island.
+      Not bad, but not the bottom. The ◇ is a little further up and to the right — departing around November 2030.
+    </p>
+
+    <h3>Changing the colour to see another face of it</h3>
+    <p>
+      The dropdown at the top left changes what the colour stands for. Try “Arrival speed”.
+    </p>
+
+    <figure>
+      <img src="img/mars-pc-arrive.png" alt="The porkchop plot coloured by arrival speed" />
+      <figcaption>The same range, coloured by how fast you arrive at Earth. The islands change shape.</figcaption>
+    </figure>
+
+    <p>
+      Where you can leave cheaply and where you can arrive gently are not the same place.
+      On a sample return the <strong>speed of the return is the speed of entry</strong>, so this map matters too.
+      The faster the capsule comes in, the harder it is to design against the heat.
+    </p>
+
+    <div class="note">
+      <strong>Using it</strong>
+      Drag on the plot to move the range, and use the wheel to zoom.
+      Hover and the date, flight time and values for that point appear below;
+      <strong>click and those become your dates</strong>.
+      “Reset the range” goes back to what it first showed, and “Rescale colours” refits the colour steps
+      to the range now in view.
+    </div>
+
+    <h3>Clicking, and checking that it improved</h3>
+    <p>Click around the ◇ (departing 2030/11/03, arriving 2031/09/19).</p>
+
+    <figure class="panel">
+      <img src="img/mars-escape.png" alt="The orbit departure after tightening" />
+      <figcaption>The departure ΔV fell from 1891 to 1683 m/s.</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/mars-stat.png" alt="The score after tightening" />
+      <figcaption>Mass left 1439 → 1537 kg. Shifting the dates by two months gained about 100 kg.</figcaption>
+    </figure>
+
+    <p>
+      The reason the mission <strong>stays at Phobos for over three years</strong> between the two legs is to wait
+      for this window. The real MMX likewise launches in 2026 and returns in 2031, and most of that is
+      observation at Phobos and waiting for the way home.
+    </p>
+
+    <h2>Re-entering the atmosphere</h2>
+    <figure class="panel">
+      <img src="img/mars-entry.png" alt="The editor for atmospheric entry" />
+      <figcaption>Entry speed 12.260 km/s, entry angle −8.0 degrees. The badge reads “within experience”.</figcaption>
+    </figure>
+
+    <p>
+      The last sequence is atmospheric entry. There is <strong>no field for the speed</strong>,
+      because the entry speed follows entirely from how fast you arrived and Earth's gravity.
+      The only thing this app lets you decide is <strong>the angle you come in at (the entry angle γ)</strong>.
+      A real mission can move the landing site by changing the rotation angle, but that does not change
+      how demanding the mission is.
+    </p>
+
+    <p>
+      Too shallow and the atmosphere throws you back into space; too steep and the heat and deceleration
+      are more than you can take. You can get down safely between roughly −14 and −5.5 degrees.
+      Move the angle and you will also see that the entry speed does not change.
+    </p>
+
+    <p>
+      The badge at the top right is a guide to how demanding that entry speed is.
+      12.260 km/s is “within experience” — inside the range set by Stardust,
+      the fastest re-entry any human-made object has made, at 12.9 km/s.
+    </p>
+
+    <h2>The finished article</h2>
+    <figure>
+      <img src="img/mars-final.png" alt="The completed Mars round trip" />
+    </figure>
+
+    <table>
+      <tr><th>Item</th><th>This design</th><th>The real MMX</th></tr>
+      <tr><td>Launch</td><td class="num">30 October 2026</td><td class="num">20 October 2026 (planned)</td></tr>
+      <tr><td>Launch energy C3</td><td class="num">9.30 km²/s²</td><td class="num">around 10</td></tr>
+      <tr><td>Arrival at Mars</td><td class="num">15 September 2027</td><td class="num">2027</td></tr>
+      <tr><td>Orbit</td><td class="num">circular at 5980 km (period 7.7 h)</td><td class="num">Phobos quasi-satellite orbit (period 7.7 h)</td></tr>
+      <tr><td>Return to Earth</td><td class="num">19 September 2031</td><td class="num">2031</td></tr>
+      <tr><td>Total ΔV</td><td class="num">3526 m/s</td><td class="num">around 4 km/s</td></tr>
+      <tr><td>Mass left</td><td class="num">1537 kg</td><td class="num">dry mass about 1450 kg</td></tr>
+    </table>
+
+    <p>
+      Against a mass left of 1537 kg, the real spacecraft's dry mass is about 1450 kg.
+      Getting that close from the skeleton of the trajectory alone works because most of a spacecraft's weight
+      is settled by where it goes and where it stops.
+    </p>
+
+    <div class="note real">
+      <strong>How this differs from the real MMX</strong>
+      MMX is headed not for Mars itself but for its moon Phobos, and enters a special orbit around it
+      (a quasi-satellite orbit). Orbits around a moon are outside what this app handles, so we approximate it
+      as an orbit around Mars. The skeleton of the round trip — when you leave, arrive and come home — is the same.
+    </div>
+
+    <div class="nav-bottom">
+      <a href="basics.html">← Reading the screen</a>
+      <a href="mercury.html">② To Mercury on Venus' gravity →</a>
+    </div>
+  </main>
+</body>
+
+</html>

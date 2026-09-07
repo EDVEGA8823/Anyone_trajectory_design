@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hohmann transfers and the third dimension — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Pick the theme before the stylesheet loads, so dark-theme readers get no white flash. -->
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../hohmann.html" class="lang-link">日本語</a>
+    <a href="hohmann.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+   <h1>Hohmann transfers and the third dimension</h1>
+   <p class="lead">
+      The cheapest transfer in the textbooks cannot be flown as written in the real solar system.
+      Taking Earth to Jupiter as the example, we look at what goes wrong.
+      Why the valley of a porkchop plot splits in two comes back to this as well.
+   </p>
+
+   <h2>First, the textbook Hohmann transfer</h2>
+   <p>
+      The cheapest way from an inner circular orbit to an outer one.
+      You move onto an ellipse touching both orbits and arrive <strong>exactly half a turn around the Sun</strong> later.
+   </p>
+
+   <div class="chart-wrap chart-big"><svg class="chart" viewBox="0 0 700 430" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="700" height="430" fill="#fff"/>
+<circle cx="250.0" cy="200.0" r="165.0" fill="none" stroke="#e3e4e8"/>
+<circle cx="250.0" cy="200.0" r="31.7" fill="none" stroke="#e3e4e8"/>
+<ellipse cx="183.4" cy="200.0" rx="98.4" ry="72.3" fill="none" stroke="#2f6df6" stroke-width="2.2" stroke-dasharray="6 4"/>
+<circle cx="250.0" cy="200.0" r="7" fill="#f2c200"/>
+<circle cx="281.7" cy="200.0" r="5" fill="#2f6df6"/>
+<text x="291.7" y="190.0" text-anchor="start" font-size="12" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Departure (Earth)</text>
+<circle cx="85.0" cy="200.0" r="6" fill="#e03131"/>
+<text x="95.0" y="186.0" text-anchor="start" font-size="12" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Arrival (Jupiter)</text>
+<text x="250.0" y="389.0" text-anchor="middle" font-size="11.5" fill="#6b6f76">Exactly half a turn around the Sun = transfer angle 180°</text>
+<text x="470.0" y="128.0" text-anchor="start" font-size="11.5" fill="#6b6f76">Semi-major axis of the transfer</text>
+<text x="684.0" y="128.0" text-anchor="end" font-size="12" fill="#17181a" font-weight="500">3.10 AU</text>
+<text x="470.0" y="154.0" text-anchor="start" font-size="11.5" fill="#6b6f76">Flight time</text>
+<text x="684.0" y="154.0" text-anchor="end" font-size="12" fill="#17181a" font-weight="500">997 days (2.73 years)</text>
+<line x1="470" y1="163.0" x2="684" y2="163.0" stroke="#e3e4e8"/>
+<text x="470.0" y="180.0" text-anchor="start" font-size="11.5" fill="#6b6f76">Earth's orbital speed</text>
+<text x="684.0" y="180.0" text-anchor="end" font-size="12" fill="#17181a" font-weight="500">29.78 km/s</text>
+<text x="470.0" y="206.0" text-anchor="start" font-size="11.5" fill="#6b6f76">Speed needed at departure</text>
+<text x="684.0" y="206.0" text-anchor="end" font-size="12" fill="#17181a" font-weight="500">38.58 km/s</text>
+<text x="470.0" y="232.0" text-anchor="start" font-size="11.5" fill="#17181a">→ V∞ required</text>
+<text x="684.0" y="232.0" text-anchor="end" font-size="12" fill="#17181a" font-weight="700">8.79 km/s</text>
+<text x="470.0" y="258.0" text-anchor="start" font-size="11.5" fill="#17181a">→ Launch energy C3</text>
+<text x="684.0" y="258.0" text-anchor="end" font-size="12" fill="#17181a" font-weight="700">77.3 km²/s²</text>
+<line x1="470" y1="267.0" x2="684" y2="267.0" stroke="#e3e4e8"/>
+<text x="470.0" y="284.0" text-anchor="start" font-size="11.5" fill="#6b6f76">Speed arriving at Jupiter (relative)</text>
+<text x="684.0" y="284.0" text-anchor="end" font-size="12" fill="#17181a" font-weight="500">5.64 km/s</text>
+</svg></div>
+
+   <p>
+      It is cheap because at both ends <strong>the velocities point the same way</strong>.
+      Earth is already moving at 29.78 km/s, and adding straight to that momentum wastes nothing.
+      Leave at an angle and the sideways component does no work toward distance; it is thrown away.
+   </p>
+   <p>
+      To Jupiter that comes to <strong>C3 77.3 km²/s²</strong> over 997 days.
+      The C3 of 80.69 for the direct run to Jupiter in tutorial ④ is very nearly this figure.
+   </p>
+
+   <div class="note">
+     <strong>What these numbers rest on</strong>
+      The Hohmann formula is set up assuming the two orbits are <strong>perfect circles in the same plane</strong>.
+      In fact Earth's orbit is slightly elliptical (eccentricity 0.017) and Jupiter's is 0.048,
+      and their planes differ by 1.30 degrees. Both the 997 days and the C3 of 77.3 above
+      are guides that rest on that assumption, not values the real solar system hands you.
+   </div>
+
+   <h2>But the solar system is not flat</h2>
+   <p>
+      What defines a Hohmann transfer is not the flight time.
+     <strong>the transfer angle is 180 degrees</strong>— that is, departure and arrival lie directly opposite each other
+      across the Sun. That is the definition.
+   </p>
+   <p>
+      What now tells is that Jupiter's orbit is tilted <strong>1.30 degrees</strong> out of the ecliptic plane.
+      Lambert's problem, which this app solves, takes <strong>departure point, arrival point and flight time</strong> and hands back one trajectory. Turned around, that means
+     <strong>you do not get to choose the transfer plane</strong>. It is settled by three points: the Sun, the departure and the arrival.
+   </p>
+
+   <div class="note warn">
+     <strong>At exactly 180 degrees the plane is undefined</strong>
+      When departure and arrival line up straight through the Sun, the number of planes containing all three <strong>is infinite</strong>.
+      There is no way to pick one. A Hohmann transfer sits exactly at that 180 degrees,
+      so in principle it stands where the solution is undetermined.
+   </div>
+
+   <p>
+      So what happens as you approach 180 degrees? Departure is in the ecliptic plane and arrival is a
+      little off it. The closer to directly opposite, the more the plane through both points
+>>><strong>has no choice but to stand up toward vertical</strong>.
+   </p>
+
+   <div class="chart-wrap chart-big"><svg class="chart" viewBox="0 0 700 430" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="700" height="430" fill="#fff"/>
+<rect x="62" y="26" width="578" height="210" fill="#fff" stroke="#e3e4e8"/>
+<rect x="62" y="286" width="578" height="100" fill="#fff" stroke="#e3e4e8"/>
+<line x1="62" y1="208.6" x2="640" y2="208.6" stroke="#e3e4e8"/>
+<line x1="62" y1="85.0" x2="640" y2="85.0" stroke="#e3e4e8"/>
+<text x="56.0" y="240.0" text-anchor="end" font-size="10.5" fill="#6b6f76">60</text>
+<text x="56.0" y="212.6" text-anchor="end" font-size="10.5" fill="#6b6f76">100</text>
+<text x="56.0" y="153.6" text-anchor="end" font-size="10.5" fill="#6b6f76">300</text>
+<text x="56.0" y="89.0" text-anchor="end" font-size="10.5" fill="#6b6f76">1000</text>
+<text x="56.0" y="30.0" text-anchor="end" font-size="10.5" fill="#6b6f76">3000</text>
+<text x="56.0" y="18.0" text-anchor="start" font-size="11" fill="#6b6f76">Launch energy C3 (km²/s²)</text>
+<line x1="62" y1="386.0" x2="640" y2="386.0" stroke="#eff0f2"/>
+<text x="56.0" y="390.0" text-anchor="end" font-size="10.5" fill="#6b6f76">0°</text>
+<line x1="62" y1="352.7" x2="640" y2="352.7" stroke="#eff0f2"/>
+<text x="56.0" y="356.7" text-anchor="end" font-size="10.5" fill="#6b6f76">30°</text>
+<line x1="62" y1="319.3" x2="640" y2="319.3" stroke="#eff0f2"/>
+<text x="56.0" y="323.3" text-anchor="end" font-size="10.5" fill="#6b6f76">60°</text>
+<line x1="62" y1="286.0" x2="640" y2="286.0" stroke="#eff0f2"/>
+<text x="56.0" y="290.0" text-anchor="end" font-size="10.5" fill="#6b6f76">90°</text>
+<text x="56.0" y="278.0" text-anchor="start" font-size="11" fill="#6b6f76">Tilt of the transfer plane from the ecliptic</text>
+<line x1="62.0" y1="26" x2="62.0" y2="236" stroke="#eff0f2"/>
+<line x1="62.0" y1="286" x2="62.0" y2="386" stroke="#eff0f2"/>
+<text x="62.0" y="402.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">700</text>
+<line x1="144.6" y1="26" x2="144.6" y2="236" stroke="#eff0f2"/>
+<line x1="144.6" y1="286" x2="144.6" y2="386" stroke="#eff0f2"/>
+<text x="144.6" y="402.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">800</text>
+<line x1="227.1" y1="26" x2="227.1" y2="236" stroke="#eff0f2"/>
+<line x1="227.1" y1="286" x2="227.1" y2="386" stroke="#eff0f2"/>
+<text x="227.1" y="402.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">900</text>
+<line x1="309.7" y1="26" x2="309.7" y2="236" stroke="#eff0f2"/>
+<line x1="309.7" y1="286" x2="309.7" y2="386" stroke="#eff0f2"/>
+<text x="309.7" y="402.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">1000</text>
+<line x1="392.3" y1="26" x2="392.3" y2="236" stroke="#eff0f2"/>
+<line x1="392.3" y1="286" x2="392.3" y2="386" stroke="#eff0f2"/>
+<text x="392.3" y="402.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">1100</text>
+<line x1="474.9" y1="26" x2="474.9" y2="236" stroke="#eff0f2"/>
+<line x1="474.9" y1="286" x2="474.9" y2="386" stroke="#eff0f2"/>
+<text x="474.9" y="402.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">1200</text>
+<line x1="557.4" y1="26" x2="557.4" y2="236" stroke="#eff0f2"/>
+<line x1="557.4" y1="286" x2="557.4" y2="386" stroke="#eff0f2"/>
+<text x="557.4" y="402.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">1300</text>
+<line x1="640.0" y1="26" x2="640.0" y2="236" stroke="#eff0f2"/>
+<line x1="640.0" y1="286" x2="640.0" y2="386" stroke="#eff0f2"/>
+<text x="640.0" y="402.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">1400</text>
+<text x="640.0" y="426.0" text-anchor="end" font-size="11" fill="#6b6f76">Days from leaving Earth to reaching Jupiter</text>
+<polyline points="62.0,219.0 62.8,219.1 63.7,219.1 64.5,219.2 65.3,219.2 66.1,219.2 67.0,219.3 67.8,219.3 68.6,219.4 69.4,219.4 70.3,219.5 71.1,219.5 71.9,219.5 72.7,219.6 73.6,219.6 74.4,219.6 75.2,219.7 76.0,219.7 76.9,219.8 77.7,219.8 78.5,219.8 79.3,219.9 80.2,219.9 81.0,220.0 81.8,220.0 82.6,220.0 83.5,220.1 84.3,220.1 85.1,220.1 85.9,220.2 86.8,220.2 87.6,220.2 88.4,220.3 89.2,220.3 90.1,220.3 90.9,220.4 91.7,220.4 92.6,220.4 93.4,220.5 94.2,220.5 95.0,220.5 95.9,220.6 96.7,220.6 97.5,220.6 98.3,220.7 99.2,220.7 100.0,220.7 100.8,220.8 101.6,220.8 102.5,220.8 103.3,220.9 104.1,220.9 104.9,220.9 105.8,221.0 106.6,221.0 107.4,221.0 108.2,221.1 109.1,221.1 109.9,221.1 110.7,221.1 111.5,221.2 112.4,221.2 113.2,221.2 114.0,221.3 114.8,221.3 115.7,221.3 116.5,221.3 117.3,221.4 118.1,221.4 119.0,221.4 119.8,221.5 120.6,221.5 121.5,221.5 122.3,221.5 123.1,221.6 123.9,221.6 124.8,221.6 125.6,221.6 126.4,221.7 127.2,221.7 128.1,221.7 128.9,221.7 129.7,221.8 130.5,221.8 131.4,221.8 132.2,221.8 133.0,221.9 133.8,221.9 134.7,221.9 135.5,221.9 136.3,222.0 137.1,222.0 138.0,222.0 138.8,222.0 139.6,222.1 140.4,222.1 141.3,222.1 142.1,222.1 142.9,222.1 143.7,222.2 144.6,222.2 145.4,222.2 146.2,222.2 147.0,222.2 147.9,222.3 148.7,222.3 149.5,222.3 150.4,222.3 151.2,222.3 152.0,222.4 152.8,222.4 153.7,222.4 154.5,222.4 155.3,222.4 156.1,222.4 157.0,222.5 157.8,222.5 158.6,222.5 159.4,222.5 160.3,222.5 161.1,222.5 161.9,222.6 162.7,222.6 163.6,222.6 164.4,222.6 165.2,222.6 166.0,222.6 166.9,222.6 167.7,222.6 168.5,222.7 169.3,222.7 170.2,222.7 171.0,222.7 171.8,222.7 172.6,222.7 173.5,222.7 174.3,222.7 175.1,222.7 175.9,222.7 176.8,222.7 177.6,222.7 178.4,222.8 179.3,222.8 180.1,222.8 180.9,222.8 181.7,222.8 182.6,222.8 183.4,222.8 184.2,222.8 185.0,222.8 185.9,222.8 186.7,222.8 187.5,222.8 188.3,222.8 189.2,222.8 190.0,222.8 190.8,222.8 191.6,222.8 192.5,222.7 193.3,222.7 194.1,222.7 194.9,222.7 195.8,222.7 196.6,222.7 197.4,222.7 198.2,222.7 199.1,222.7 199.9,222.6 200.7,222.6 201.5,222.6 202.4,222.6 203.2,222.6 204.0,222.5 204.8,222.5 205.7,222.5 206.5,222.5 207.3,222.4 208.2,222.4 209.0,222.4 209.8,222.3 210.6,222.3 211.5,222.3 212.3,222.2 213.1,222.2 213.9,222.1 214.8,222.1 215.6,222.0 216.4,222.0 217.2,221.9 218.1,221.8 218.9,221.8 219.7,221.7 220.5,221.6 221.4,221.6 222.2,221.5 223.0,221.4 223.8,221.3 224.7,221.2 225.5,221.1 226.3,221.0 227.1,220.9 228.0,220.8 228.8,220.6 229.6,220.5 230.4,220.4 231.3,220.2 232.1,220.1 232.9,219.9 233.7,219.7 234.6,219.5 235.4,219.4 236.2,219.2 237.1,218.9 237.9,218.7 238.7,218.5 239.5,218.2 240.4,217.9 241.2,217.6 242.0,217.3 242.8,217.0 243.7,216.6 244.5,216.3 245.3,215.9 246.1,215.4 247.0,215.0 247.8,214.5 248.6,214.0 249.4,213.4 250.3,212.8 251.1,212.1 251.9,211.4 252.7,210.7 253.6,209.9 254.4,209.0 255.2,208.1 256.0,207.1 256.9,206.0 257.7,204.8 258.5,203.5 259.3,202.1 260.2,200.5 261.0,198.9 261.8,197.0 262.6,195.1 263.5,192.9 264.3,190.5 265.1,187.9 266.0,185.0 266.8,181.9 267.6,178.4 268.4,174.6 269.3,170.4 270.1,165.7 270.9,160.6 271.7,154.9 272.6,148.6 273.4,141.7 274.2,134.0 275.0,125.6 275.9,116.3 276.7,106.1 277.5,95.1 278.3,83.4 279.2,71.3 280.0,59.2 280.8,47.7 281.6,37.4 282.5,47.5 283.3,58.7 284.1,70.4 284.9,82.0 285.8,93.0 286.6,103.3 287.4,112.7 288.2,121.4 289.1,129.2 289.9,136.3 290.7,142.8 291.5,148.6 292.4,153.9 293.2,158.7 294.0,163.1 294.9,167.0 295.7,170.6 296.5,173.9 297.3,177.0 298.2,179.7 299.0,182.3 299.8,184.6 300.6,186.7 301.5,188.7 302.3,190.5 303.1,192.2 303.9,193.8 304.8,195.3 305.6,196.6 306.4,197.9 307.2,199.0 308.1,200.1 308.9,201.1 309.7,202.1 310.5,203.0 311.4,203.8 312.2,204.6 313.0,205.3 313.8,206.0 314.7,206.7 315.5,207.3 316.3,207.9 317.1,208.4 318.0,209.0 318.8,209.4 319.6,209.9 320.4,210.4 321.3,210.8 322.1,211.2 322.9,211.5 323.8,211.9 324.6,212.2 325.4,212.6 326.2,212.9 327.1,213.2 327.9,213.5 328.7,213.7 329.5,214.0 330.4,214.2 331.2,214.5 332.0,214.7 332.8,214.9 333.7,215.1 334.5,215.3 335.3,215.5 336.1,215.7 337.0,215.8 337.8,216.0 338.6,216.2 339.4,216.3 340.3,216.4 341.1,216.6 341.9,216.7 342.7,216.9 343.6,217.0 344.4,217.1 345.2,217.2 346.0,217.3 346.9,217.4 347.7,217.5 348.5,217.6 349.3,217.7 350.2,217.8 351.0,217.9 351.8,218.0 352.7,218.1 353.5,218.1 354.3,218.2 355.1,218.3 356.0,218.4 356.8,218.4 357.6,218.5 358.4,218.5 359.3,218.6 360.1,218.7 360.9,218.7 361.7,218.8 362.6,218.8 363.4,218.9 364.2,218.9 365.0,219.0 365.9,219.0 366.7,219.0 367.5,219.1 368.3,219.1 369.2,219.1 370.0,219.2 370.8,219.2 371.6,219.2 372.5,219.3 373.3,219.3 374.1,219.3 374.9,219.4 375.8,219.4 376.6,219.4 377.4,219.4 378.2,219.4 379.1,219.5 379.9,219.5 380.7,219.5 381.6,219.5 382.4,219.5 383.2,219.5 384.0,219.6 384.9,219.6 385.7,219.6 386.5,219.6 387.3,219.6 388.2,219.6 389.0,219.6 389.8,219.6 390.6,219.6 391.5,219.6 392.3,219.6 393.1,219.6 393.9,219.6 394.8,219.6 395.6,219.6 396.4,219.6 397.2,219.6 398.1,219.6 398.9,219.6 399.7,219.6 400.5,219.6 401.4,219.6 402.2,219.6 403.0,219.6 403.8,219.6 404.7,219.6 405.5,219.6 406.3,219.6 407.1,219.6 408.0,219.6 408.8,219.5 409.6,219.5 410.5,219.5 411.3,219.5 412.1,219.5 412.9,219.5 413.8,219.5 414.6,219.5 415.4,219.4 416.2,219.4 417.1,219.4 417.9,219.4 418.7,219.4 419.5,219.4 420.4,219.3 421.2,219.3 422.0,219.3 422.8,219.3 423.7,219.3 424.5,219.2 425.3,219.2 426.1,219.2 427.0,219.2 427.8,219.2 428.6,219.1 429.4,219.1 430.3,219.1 431.1,219.1 431.9,219.0 432.7,219.0 433.6,219.0 434.4,219.0 435.2,218.9 436.0,218.9 436.9,218.9 437.7,218.9 438.5,218.8 439.4,218.8 440.2,218.8 441.0,218.7 441.8,218.7 442.7,218.7 443.5,218.6 444.3,218.6 445.1,218.6 446.0,218.6 446.8,218.5 447.6,218.5 448.4,218.5 449.3,218.4 450.1,218.4 450.9,218.4 451.7,218.3 452.6,218.3 453.4,218.2 454.2,218.2 455.0,218.2 455.9,218.1 456.7,218.1 457.5,218.1 458.3,218.0 459.2,218.0 460.0,218.0 460.8,217.9 461.6,217.9 462.5,217.8 463.3,217.8 464.1,217.8 464.9,217.7 465.8,217.7 466.6,217.6 467.4,217.6 468.3,217.6 469.1,217.5 469.9,217.5 470.7,217.4 471.6,217.4 472.4,217.3 473.2,217.3 474.0,217.2 474.9,217.2 475.7,217.2 476.5,217.1 477.3,217.1 478.2,217.0 479.0,217.0 479.8,216.9 480.6,216.9 481.5,216.8 482.3,216.8 483.1,216.7 483.9,216.7 484.8,216.6 485.6,216.6 486.4,216.5 487.2,216.5 488.1,216.5 488.9,216.4 489.7,216.3 490.5,216.3 491.4,216.2 492.2,216.2 493.0,216.1 493.8,216.1 494.7,216.0 495.5,216.0 496.3,215.9 497.2,215.9 498.0,215.8 498.8,215.8 499.6,215.7 500.5,215.7 501.3,215.6 502.1,215.6 502.9,215.5 503.8,215.4 504.6,215.4 505.4,215.3 506.2,215.3 507.1,215.2 507.9,215.2 508.7,215.1 509.5,215.1 510.4,215.0 511.2,214.9 512.0,214.9 512.8,214.8 513.7,214.8 514.5,214.7 515.3,214.6 516.1,214.6 517.0,214.5 517.8,214.5 518.6,214.4 519.4,214.3 520.3,214.3 521.1,214.2 521.9,214.2 522.7,214.1 523.6,214.0 524.4,214.0 525.2,213.9 526.1,213.8 526.9,213.8 527.7,213.7 528.5,213.6 529.4,213.6 530.2,213.5 531.0,213.5 531.8,213.4 532.7,213.3 533.5,213.3 534.3,213.2 535.1,213.1 536.0,213.1 536.8,213.0 537.6,212.9 538.4,212.9 539.3,212.8 540.1,212.7 540.9,212.7 541.7,212.6 542.6,212.5 543.4,212.4 544.2,212.4 545.0,212.3 545.9,212.2 546.7,212.2 547.5,212.1 548.3,212.0 549.2,212.0 550.0,211.9 550.8,211.8 551.6,211.7 552.5,211.7 553.3,211.6 554.1,211.5 555.0,211.5 555.8,211.4 556.6,211.3 557.4,211.2 558.3,211.2 559.1,211.1 559.9,211.0 560.7,210.9 561.6,210.9 562.4,210.8 563.2,210.7 564.0,210.6 564.9,210.6 565.7,210.5 566.5,210.4 567.3,210.3 568.2,210.3 569.0,210.2 569.8,210.1 570.6,210.0 571.5,209.9 572.3,209.9 573.1,209.8 573.9,209.7 574.8,209.6 575.6,209.6 576.4,209.5 577.2,209.4 578.1,209.3 578.9,209.2 579.7,209.2 580.5,209.1 581.4,209.0 582.2,208.9 583.0,208.8 583.9,208.7 584.7,208.7 585.5,208.6 586.3,208.5 587.2,208.4 588.0,208.3 588.8,208.3 589.6,208.2 590.5,208.1 591.3,208.0 592.1,207.9 592.9,207.8 593.8,207.8 594.6,207.7 595.4,207.6 596.2,207.5 597.1,207.4 597.9,207.3 598.7,207.2 599.5,207.2 600.4,207.1 601.2,207.0 602.0,206.9 602.8,206.8 603.7,206.7 604.5,206.6 605.3,206.5 606.1,206.5 607.0,206.4 607.8,206.3 608.6,206.2 609.4,206.1 610.3,206.0 611.1,205.9 611.9,205.8 612.8,205.8 613.6,205.7 614.4,205.6 615.2,205.5 616.1,205.4 616.9,205.3 617.7,205.2 618.5,205.1 619.4,205.0 620.2,204.9 621.0,204.8 621.8,204.8 622.7,204.7 623.5,204.6 624.3,204.5 625.1,204.4 626.0,204.3 626.8,204.2 627.6,204.1 628.4,204.0 629.3,203.9 630.1,203.8 630.9,203.7 631.7,203.6 632.6,203.5 633.4,203.4 634.2,203.4 635.0,203.3 635.9,203.2 636.7,203.1 637.5,203.0 638.3,202.9 639.2,202.8 640.0,202.7" fill="none" stroke="#e03131" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline points="62.0,385.9 62.8,385.9 63.7,385.9 64.5,385.9 65.3,385.9 66.1,385.9 67.0,386.0 67.8,386.0 68.6,386.0 69.4,386.0 70.3,386.0 71.1,386.0 71.9,386.0 72.7,386.0 73.6,386.0 74.4,386.0 75.2,386.0 76.0,386.0 76.9,386.0 77.7,386.0 78.5,386.0 79.3,386.0 80.2,386.0 81.0,385.9 81.8,385.9 82.6,385.9 83.5,385.9 84.3,385.9 85.1,385.9 85.9,385.9 86.8,385.9 87.6,385.9 88.4,385.9 89.2,385.9 90.1,385.9 90.9,385.9 91.7,385.9 92.6,385.9 93.4,385.9 94.2,385.8 95.0,385.8 95.9,385.8 96.7,385.8 97.5,385.8 98.3,385.8 99.2,385.8 100.0,385.8 100.8,385.8 101.6,385.8 102.5,385.8 103.3,385.8 104.1,385.8 104.9,385.7 105.8,385.7 106.6,385.7 107.4,385.7 108.2,385.7 109.1,385.7 109.9,385.7 110.7,385.7 111.5,385.7 112.4,385.7 113.2,385.7 114.0,385.7 114.8,385.6 115.7,385.6 116.5,385.6 117.3,385.6 118.1,385.6 119.0,385.6 119.8,385.6 120.6,385.6 121.5,385.6 122.3,385.6 123.1,385.6 123.9,385.5 124.8,385.5 125.6,385.5 126.4,385.5 127.2,385.5 128.1,385.5 128.9,385.5 129.7,385.5 130.5,385.5 131.4,385.5 132.2,385.4 133.0,385.4 133.8,385.4 134.7,385.4 135.5,385.4 136.3,385.4 137.1,385.4 138.0,385.4 138.8,385.3 139.6,385.3 140.4,385.3 141.3,385.3 142.1,385.3 142.9,385.3 143.7,385.3 144.6,385.3 145.4,385.2 146.2,385.2 147.0,385.2 147.9,385.2 148.7,385.2 149.5,385.2 150.4,385.2 151.2,385.2 152.0,385.1 152.8,385.1 153.7,385.1 154.5,385.1 155.3,385.1 156.1,385.1 157.0,385.0 157.8,385.0 158.6,385.0 159.4,385.0 160.3,385.0 161.1,385.0 161.9,385.0 162.7,384.9 163.6,384.9 164.4,384.9 165.2,384.9 166.0,384.9 166.9,384.8 167.7,384.8 168.5,384.8 169.3,384.8 170.2,384.8 171.0,384.8 171.8,384.7 172.6,384.7 173.5,384.7 174.3,384.7 175.1,384.6 175.9,384.6 176.8,384.6 177.6,384.6 178.4,384.6 179.3,384.5 180.1,384.5 180.9,384.5 181.7,384.5 182.6,384.4 183.4,384.4 184.2,384.4 185.0,384.4 185.9,384.3 186.7,384.3 187.5,384.3 188.3,384.3 189.2,384.2 190.0,384.2 190.8,384.2 191.6,384.1 192.5,384.1 193.3,384.1 194.1,384.1 194.9,384.0 195.8,384.0 196.6,384.0 197.4,383.9 198.2,383.9 199.1,383.9 199.9,383.8 200.7,383.8 201.5,383.7 202.4,383.7 203.2,383.7 204.0,383.6 204.8,383.6 205.7,383.5 206.5,383.5 207.3,383.5 208.2,383.4 209.0,383.4 209.8,383.3 210.6,383.3 211.5,383.2 212.3,383.2 213.1,383.1 213.9,383.1 214.8,383.0 215.6,383.0 216.4,382.9 217.2,382.9 218.1,382.8 218.9,382.7 219.7,382.7 220.5,382.6 221.4,382.6 222.2,382.5 223.0,382.4 223.8,382.3 224.7,382.3 225.5,382.2 226.3,382.1 227.1,382.0 228.0,382.0 228.8,381.9 229.6,381.8 230.4,381.7 231.3,381.6 232.1,381.5 232.9,381.4 233.7,381.3 234.6,381.2 235.4,381.1 236.2,381.0 237.1,380.9 237.9,380.7 238.7,380.6 239.5,380.5 240.4,380.4 241.2,380.2 242.0,380.1 242.8,379.9 243.7,379.7 244.5,379.6 245.3,379.4 246.1,379.2 247.0,379.0 247.8,378.8 248.6,378.6 249.4,378.4 250.3,378.2 251.1,377.9 251.9,377.7 252.7,377.4 253.6,377.1 254.4,376.8 255.2,376.5 256.0,376.1 256.9,375.8 257.7,375.4 258.5,374.9 259.3,374.5 260.2,374.0 261.0,373.5 261.8,372.9 262.6,372.3 263.5,371.7 264.3,370.9 265.1,370.2 266.0,369.3 266.8,368.4 267.6,367.3 268.4,366.1 269.3,364.8 270.1,363.3 270.9,361.7 271.7,359.8 272.6,357.6 273.4,355.0 274.2,352.1 275.0,348.6 275.9,344.4 276.7,339.5 277.5,333.6 278.3,326.5 279.2,318.1 280.0,308.4 280.8,297.5 281.6,286.0 282.5,297.4 283.3,308.0 284.1,317.5 284.9,325.6 285.8,332.4 286.6,338.0 287.4,342.8 288.2,346.8 289.1,350.1 289.9,353.0 290.7,355.4 291.5,357.5 292.4,359.4 293.2,361.0 294.0,362.5 294.9,363.7 295.7,364.9 296.5,365.9 297.3,366.8 298.2,367.7 299.0,368.5 299.8,369.2 300.6,369.8 301.5,370.4 302.3,371.0 303.1,371.5 303.9,371.9 304.8,372.4 305.6,372.8 306.4,373.2 307.2,373.5 308.1,373.9 308.9,374.2 309.7,374.5 310.5,374.8 311.4,375.1 312.2,375.3 313.0,375.6 313.8,375.8 314.7,376.0 315.5,376.2 316.3,376.4 317.1,376.6 318.0,376.8 318.8,377.0 319.6,377.1 320.4,377.3 321.3,377.4 322.1,377.6 322.9,377.7 323.8,377.9 324.6,378.0 325.4,378.1 326.2,378.2 327.1,378.4 327.9,378.5 328.7,378.6 329.5,378.7 330.4,378.8 331.2,378.9 332.0,379.0 332.8,379.1 333.7,379.2 334.5,379.2 335.3,379.3 336.1,379.4 337.0,379.5 337.8,379.6 338.6,379.6 339.4,379.7 340.3,379.8 341.1,379.8 341.9,379.9 342.7,380.0 343.6,380.0 344.4,380.1 345.2,380.2 346.0,380.2 346.9,380.3 347.7,380.3 348.5,380.4 349.3,380.4 350.2,380.5 351.0,380.5 351.8,380.6 352.7,380.6 353.5,380.7 354.3,380.7 355.1,380.8 356.0,380.8 356.8,380.9 357.6,380.9 358.4,380.9 359.3,381.0 360.1,381.0 360.9,381.1 361.7,381.1 362.6,381.1 363.4,381.2 364.2,381.2 365.0,381.2 365.9,381.3 366.7,381.3 367.5,381.3 368.3,381.4 369.2,381.4 370.0,381.4 370.8,381.5 371.6,381.5 372.5,381.5 373.3,381.6 374.1,381.6 374.9,381.6 375.8,381.6 376.6,381.7 377.4,381.7 378.2,381.7 379.1,381.7 379.9,381.8 380.7,381.8 381.6,381.8 382.4,381.8 383.2,381.9 384.0,381.9 384.9,381.9 385.7,381.9 386.5,382.0 387.3,382.0 388.2,382.0 389.0,382.0 389.8,382.0 390.6,382.1 391.5,382.1 392.3,382.1 393.1,382.1 393.9,382.1 394.8,382.2 395.6,382.2 396.4,382.2 397.2,382.2 398.1,382.2 398.9,382.2 399.7,382.3 400.5,382.3 401.4,382.3 402.2,382.3 403.0,382.3 403.8,382.3 404.7,382.4 405.5,382.4 406.3,382.4 407.1,382.4 408.0,382.4 408.8,382.4 409.6,382.5 410.5,382.5 411.3,382.5 412.1,382.5 412.9,382.5 413.8,382.5 414.6,382.5 415.4,382.6 416.2,382.6 417.1,382.6 417.9,382.6 418.7,382.6 419.5,382.6 420.4,382.6 421.2,382.6 422.0,382.7 422.8,382.7 423.7,382.7 424.5,382.7 425.3,382.7 426.1,382.7 427.0,382.7 427.8,382.7 428.6,382.8 429.4,382.8 430.3,382.8 431.1,382.8 431.9,382.8 432.7,382.8 433.6,382.8 434.4,382.8 435.2,382.8 436.0,382.9 436.9,382.9 437.7,382.9 438.5,382.9 439.4,382.9 440.2,382.9 441.0,382.9 441.8,382.9 442.7,382.9 443.5,382.9 444.3,382.9 445.1,383.0 446.0,383.0 446.8,383.0 447.6,383.0 448.4,383.0 449.3,383.0 450.1,383.0 450.9,383.0 451.7,383.0 452.6,383.0 453.4,383.0 454.2,383.1 455.0,383.1 455.9,383.1 456.7,383.1 457.5,383.1 458.3,383.1 459.2,383.1 460.0,383.1 460.8,383.1 461.6,383.1 462.5,383.1 463.3,383.1 464.1,383.1 464.9,383.2 465.8,383.2 466.6,383.2 467.4,383.2 468.3,383.2 469.1,383.2 469.9,383.2 470.7,383.2 471.6,383.2 472.4,383.2 473.2,383.2 474.0,383.2 474.9,383.2 475.7,383.2 476.5,383.3 477.3,383.3 478.2,383.3 479.0,383.3 479.8,383.3 480.6,383.3 481.5,383.3 482.3,383.3 483.1,383.3 483.9,383.3 484.8,383.3 485.6,383.3 486.4,383.3 487.2,383.3 488.1,383.3 488.9,383.3 489.7,383.4 490.5,383.4 491.4,383.4 492.2,383.4 493.0,383.4 493.8,383.4 494.7,383.4 495.5,383.4 496.3,383.4 497.2,383.4 498.0,383.4 498.8,383.4 499.6,383.4 500.5,383.4 501.3,383.4 502.1,383.4 502.9,383.4 503.8,383.4 504.6,383.4 505.4,383.5 506.2,383.5 507.1,383.5 507.9,383.5 508.7,383.5 509.5,383.5 510.4,383.5 511.2,383.5 512.0,383.5 512.8,383.5 513.7,383.5 514.5,383.5 515.3,383.5 516.1,383.5 517.0,383.5 517.8,383.5 518.6,383.5 519.4,383.5 520.3,383.5 521.1,383.5 521.9,383.5 522.7,383.6 523.6,383.6 524.4,383.6 525.2,383.6 526.1,383.6 526.9,383.6 527.7,383.6 528.5,383.6 529.4,383.6 530.2,383.6 531.0,383.6 531.8,383.6 532.7,383.6 533.5,383.6 534.3,383.6 535.1,383.6 536.0,383.6 536.8,383.6 537.6,383.6 538.4,383.6 539.3,383.6 540.1,383.6 540.9,383.6 541.7,383.6 542.6,383.6 543.4,383.7 544.2,383.7 545.0,383.7 545.9,383.7 546.7,383.7 547.5,383.7 548.3,383.7 549.2,383.7 550.0,383.7 550.8,383.7 551.6,383.7 552.5,383.7 553.3,383.7 554.1,383.7 555.0,383.7 555.8,383.7 556.6,383.7 557.4,383.7 558.3,383.7 559.1,383.7 559.9,383.7 560.7,383.7 561.6,383.7 562.4,383.7 563.2,383.7 564.0,383.7 564.9,383.7 565.7,383.7 566.5,383.8 567.3,383.8 568.2,383.8 569.0,383.8 569.8,383.8 570.6,383.8 571.5,383.8 572.3,383.8 573.1,383.8 573.9,383.8 574.8,383.8 575.6,383.8 576.4,383.8 577.2,383.8 578.1,383.8 578.9,383.8 579.7,383.8 580.5,383.8 581.4,383.8 582.2,383.8 583.0,383.8 583.9,383.8 584.7,383.8 585.5,383.8 586.3,383.8 587.2,383.8 588.0,383.8 588.8,383.8 589.6,383.8 590.5,383.8 591.3,383.8 592.1,383.8 592.9,383.8 593.8,383.8 594.6,383.9 595.4,383.9 596.2,383.9 597.1,383.9 597.9,383.9 598.7,383.9 599.5,383.9 600.4,383.9 601.2,383.9 602.0,383.9 602.8,383.9 603.7,383.9 604.5,383.9 605.3,383.9 606.1,383.9 607.0,383.9 607.8,383.9 608.6,383.9 609.4,383.9 610.3,383.9 611.1,383.9 611.9,383.9 612.8,383.9 613.6,383.9 614.4,383.9 615.2,383.9 616.1,383.9 616.9,383.9 617.7,383.9 618.5,383.9 619.4,383.9 620.2,383.9 621.0,383.9 621.8,383.9 622.7,383.9 623.5,383.9 624.3,383.9 625.1,383.9 626.0,383.9 626.8,383.9 627.6,383.9 628.4,384.0 629.3,384.0 630.1,384.0 630.9,384.0 631.7,384.0 632.6,384.0 633.4,384.0 634.2,384.0 635.0,384.0 635.9,384.0 636.7,384.0 637.5,384.0 638.3,384.0 639.2,384.0 640.0,384.0" fill="none" stroke="#2f6df6" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="185.0" cy="222.8" r="3.6" fill="#e03131"/>
+<text x="185.0" y="211.8" text-anchor="middle" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Island ① 849 d, C3 76.8</text>
+<circle cx="395.6" cy="219.6" r="3.6" fill="#e03131"/>
+<text x="395.6" y="208.6" text-anchor="middle" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Island ② 1104 d, C3 81.4</text>
+<circle cx="281.6" cy="37.4" r="3.6" fill="#e03131"/>
+<text x="281.6" y="27.4" text-anchor="middle" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Transfer angle 179.5° / C3 2427</text>
+<line x1="281.6" y1="26" x2="281.6" y2="386" stroke="#b9bcc4" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="281.6" y="262.0" text-anchor="middle" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Transfer angle 180°</text>
+<line x1="307.6" y1="26" x2="307.6" y2="236" stroke="#6b6f76" stroke-width="1.2" stroke-dasharray="2 3"/>
+<text x="313.6" y="40.0" text-anchor="start" font-size="11" fill="#6b6f76" stroke="#fff" stroke-width="3.5" paint-order="stroke">Textbook flight time 997 d</text>
+</svg></div>
+
+   <p>
+      Departing on 22 January 2030, varying only the flight time.
+      Just before the transfer angle reaches 180 degrees (at 966 days) the transfer plane stands at <strong>89.97 degrees</strong>— very nearly on its side — and the launch energy leaps to <strong>C3 2427</strong> .
+   </p>
+
+   <figure>
+     <img src="img/hohmann-wall-top.png" alt="A near-180-degree transfer seen from above" />
+     <figcaption>Seen from above it merely looks like a straight line through the Sun.</figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/hohmann-wall-3d.png" alt="The same trajectory seen at an angle" />
+     <figcaption>
+        Seen at an angle, it dives 2.2 AU below the ecliptic to swing round to Jupiter.
+        You cannot reach the opposite point without a wide detour over or under the far side of the Sun.
+     </figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/hohmann-wall-stat.png" alt="The score at that point" />
+     <figcaption>Escape velocity 49.26 km/s. No rocket can launch it.</figcaption>
+   </figure>
+
+   <p>
+      In other words, <strong>a Hohmann transfer as such is visibly impossible in a three-dimensional solar system</strong>.
+      The textbook figure of C3 77.3 rested on the assumption that Earth and Jupiter
+      trace perfect circles in a single plane.
+   </p>
+
+   <h2>Which is why a porkchop plot's valley splits in two</h2>
+   <p>
+      A porkchop plot puts departure date across and arrival date up, and colours in the launch energy
+      each combination needs.
+      The wall we have just seen runs across that map as the <strong>“line where the transfer angle is exactly 180 degrees”</strong>, on a diagonal.
+   </p>
+
+   <figure>
+     <img src="img/hohmann-porkchop.png" alt="The Earth-to-Jupiter porkchop plot" />
+     <figcaption>Blue is cheap. There is one valley above-left and one below-right of the diagonal band through the middle.</figcaption>
+   </figure>
+
+   <p>
+      If 180 degrees is unusable, you must <strong>pass either short of it or beyond it</strong>.
+      Short of it (transfer angle under 180) and beyond it (over 180) are not joined,
+      so the cheap ground splits into two islands. Leave on the same day and there are two ways to go.
+   </p>
+
+   <table>
+     <tr><th></th><th>Flight time</th><th>Transfer angle</th><th>Tilt of the transfer plane</th><th>C3</th><th>On an H3-24</th></tr>
+     <tr>
+       <td>Island ① (short)</td>
+       <td class="num">849 days</td><td class="num">170.0°</td><td class="num">1.5°</td>
+       <td class="num">76.8</td><td class="num">303 kg</td>
+     </tr>
+     <tr>
+       <td>The wall</td>
+       <td class="num">966 days</td><td class="num">179.5°</td><td class="num">90.0°</td>
+       <td class="num">2427</td><td class="num">cannot launch</td>
+     </tr>
+     <tr>
+       <td>Island ② (beyond)</td>
+       <td class="num">1104 days</td><td class="num">192.0°</td><td class="num">3.4°</td>
+       <td class="num">81.4</td><td class="num">108 kg</td>
+     </tr>
+   </table>
+
+   <figure>
+     <img src="img/hohmann-short.png" alt="The island ① trajectory" />
+     <figcaption>Island ①, 849 days. You go to meet Jupiter a little short of catching it up.</figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/hohmann-long.png" alt="The island ② trajectory" />
+     <figcaption>Island ②, 1104 days. You go a little past half a turn before catching it.</figcaption>
+   </figure>
+
+   <p>
+      Which you choose is not settled by mass alone.
+      Island ① arrives sooner and carries more, but the speed of arrival at Jupiter (relative) is 6.30 km/s.
+      Island ② is 5.95 km/s, and if you are entering orbit that is the smaller burn.
+   </p>
+
+   <div class="note">
+     <strong>Real missions usually take island ①</strong>
+      A shorter flight means less wear on the instruments and less to pay for operating them.
+      Juno, in tutorial ④, likewise took the shorter solution — with an Earth swingby in between.
+   </div>
+
+   <h2>Folding the plane on the way (broken plane)</h2>
+   <p>
+      The wall is high because the price of moving to a tilted plane is <strong>paid in full at the moment of departure</strong>.
+      Bending the plane by θ takes a velocity change of 2v sin(θ/2). <strong>The faster you are going, the more it costs</strong>.
+   </p>
+
+   <table>
+     <tr><th>Where</th><th>Speed there</th><th>To bend one degree</th></tr>
+     <tr><td>Departure (near Earth)</td><td class="num">38.58 km/s</td><td class="num">673 m/s</td></tr>
+     <tr><td>Aphelion (near Jupiter)</td><td class="num">7.41 km/s</td><td class="num">129 m/s</td></tr>
+   </table>
+
+   <p>
+      The same one degree differs by a factor of <strong>5.2</strong> .
+      So stop paying it all at departure, and pay it along the way instead. That is what is called a
+     <strong>broken plane</strong> .
+      Instead of a single ellipse, one burn on the way joins two of them.
+   </p>
+
+   <ol class="steps">
+     <li>
+       <p>Keeping the dates at the wall (departing 2030/01/22, arriving 2032/09/14), set the launch to <strong>Manual</strong>.</p>
+       <p>A “Maneuver” appears behind it. That is the burn along the way.</p>
+     </li>
+     <li>
+       <p>
+          Set the launch's <strong>escape velocity to 8.4 km/s</strong>, with azimuth and elevation 0.
+          Within the ecliptic, that is very nearly the textbook Hohmann departure.
+       </p>
+     </li>
+     <li>
+       <p>Move the maneuver's date to find where the burn is smallest. Here, 2030/06/01.</p>
+     </li>
+   </ol>
+
+   <figure>
+     <img src="img/hohmann-broken.png" alt="The folded-plane trajectory" />
+     <figcaption>
+        The same viewpoint as the 180-degree figure. Leaving and arriving on the same days,
+        this time it barely leaves the ecliptic.
+     </figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/hohmann-broken-stat.png" alt="The score after folding the plane" />
+     <figcaption>C3 goes from 2427 to 70.56. Mass left 500 kg.</figcaption>
+   </figure>
+
+   <figure class="panel">
+     <img src="img/hohmann-broken-dsm.png" alt="The readouts for the burn sequence" />
+     <figcaption>
+        The burn is 467 m/s, at 1.889 AU from the Sun — far short of aphelion (4.77 AU).
+     </figcaption>
+   </figure>
+
+   <h3>Use Z stretch to see the fold</h3>
+   <p>
+      In the figure above you cannot tell where it folds. The fold is about a degree,
+      so at true scale it looks like a single line.
+      Edge-on is no better: the ecliptic and the trajectory both collapse into one line.
+   </p>
+
+   <figure>
+     <img src="img/hohmann-broken-zoff.png" alt="The folded-plane trajectory seen edge-on" />
+     <figcaption>Edge-on, with the ecliptic reduced to a horizontal line. The trajectory lies on top of it.</figcaption>
+   </figure>
+
+   <p>
+      Press <strong>Z stretch</strong> at the top right of the trajectory view and only the vertical direction
+      (height above the ecliptic) is stretched. From the same viewpoint, it looks like this.
+   </p>
+
+   <figure>
+     <img src="img/hohmann-broken-zon.png" alt="The folded-plane trajectory edge-on with Z stretch applied" />
+     <figcaption>
+        Heights multiplied by 35. Up to the burn it runs flat in the ecliptic,
+        and from there it tilts and descends to Jupiter's height.
+     </figcaption>
+   </figure>
+
+   <p>
+      The ticks and axis labels stretch by the same amount, so heights still read correctly while stretched.
+      The keyboard's <kbd>Z</kbd> toggles it too.
+   </p>
+
+   <table>
+     <tr><th>To Jupiter on the same dates</th><th>C3</th><th>Burn</th><th>Mass left</th></tr>
+     <tr><td>On one ellipse (middle of the wall)</td><td class="num">2427</td><td class="num">0</td><td class="num">cannot launch</td></tr>
+     <tr><td>Folding the plane</td><td class="num">70.6</td><td class="num">467 m/s</td><td class="num">500 kg</td></tr>
+     <tr><td>For reference: shifting the dates to island ①</td><td class="num">76.8</td><td class="num">0</td><td class="num">303 kg</td></tr>
+   </table>
+
+   <p>
+      What could not be launched at all becomes 500 kg.
+      It beats escaping to island ① by shifting the dates (303 kg) because
+      buying a 467 m/s burn brings the C3 down from 76.8 to 70.6.
+      Rocket capability falls steeply against C3, so that difference of 6 tells directly.
+   </p>
+
+   <div class="note warn">
+     <strong>It is not always “fold it far out”</strong>
+      Since slower is cheaper you would want to fold at aphelion — but move the date in practice and the burn <strong>grows the slower you go</strong>.
+      That is because the burn does not only fold the plane; it also corrects how far off your position
+      has drifted while flying straight.
+      The longer you leave it, the wider that drift, so acting early is cheaper.
+      Where the cheapest point falls is a matter of geometry. Move the date and read the numbers.
+   </div>
+
+   <table>
+     <tr><th>Date of the burn</th><th>Days after departure</th><th>Burn</th><th>Mass left</th></tr>
+     <tr><td>2030/06/01</td><td class="num">130 days</td><td class="num">467 m/s</td><td class="num">500 kg</td></tr>
+     <tr><td>2030/10/01</td><td class="num">252 days</td><td class="num">761 m/s</td><td class="num">455 kg</td></tr>
+     <tr><td>2031/02/01</td><td class="num">375 days</td><td class="num">1099 m/s</td><td class="num">409 kg</td></tr>
+     <tr><td>2031/06/01</td><td class="num">495 days</td><td class="num">1529 m/s</td><td class="num">356 kg</td></tr>
+   </table>
+
+   <div class="note">
+     <strong>You do not always fold</strong>
+      For a target tilted by only 1.3 degrees, like Jupiter, the usual answer is to shift the dates a few months
+      and land on an island.
+      Folding earns its keep when the launch date cannot move,
+      or when the target's orbit is steeply tilted (a comet, or an inclined asteroid).
+      The deep-space burn used in tutorial <a href="jupiter.html">④</a><a href="ryugu.html">⑤</a> is the same device: one burn along the way.
+   </div>
+
+   <h2>In short</h2>
+   <ul>
+     <li>A Hohmann transfer means moving at <strong>a transfer angle of 180 degrees</strong>. To Jupiter that is C3 77.3 over 997 days —
+        but only on the assumption that the two orbits are perfect circles in one plane.</li>
+     <li>The real Jupiter is tilted 1.3 degrees out of the ecliptic. As the transfer angle approaches 180,
+        the transfer plane stands up and the energy required rises like a wall.</li>
+     <li>So 180 itself is unusable, and you pass short of it or beyond it.
+        That is why a porkchop plot has two islands.</li>
+     <li>If you must go in the directly-opposite season, fold the plane with one burn along the way (a broken plane).</li>
+   </ul>
+
+   <div class="nav-bottom">
+     <a href="launchers.html">← What rockets can launch</a>
+     <a href="swingby.html">Swingbys, part 1 →</a>
+   </div>
+ </main>
+</body>
+
+</html>

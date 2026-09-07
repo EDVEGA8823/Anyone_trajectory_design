@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>使い方 — だれでも軌道設計</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- 配色 (明るい/暗い) を、スタイルより先に決めておく。
+       docs/theme.js を待つと、暗い配色の人に一瞬だけ白い画面が出てしまう。
+       ここと docs/theme.js、アプリ側は同じ鍵 (atd_theme) を読む -->
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css" />
+  <script src="theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">だれでも軌道設計</span>
+    <a href="index.html">使い方</a>
+    <span class="spacer"></span>
+    <a href="en/index.html" class="lang-link">English</a>
+    <a href="index.html" target="_blank" rel="noopener">タブで開く</a>
+  </header>
+
+  <main>
+    <h1>使い方</h1>
+    <p class="lead">
+      惑星探査機の軌道を、自分の手で組み立てるためのアプリです。
+      難しい数式はアプリの中に隠してあるので、日付と行き先を並べていくだけで軌道ができます。
+    </p>
+
+    <p>
+      まずは<a href="basics.html">画面の見方</a>を読んで、火星まで1本の軌道を引いてみてください。
+      そのあとは、実際に飛んだ探査機を題材にした5つのチュートリアルがあります。
+      <strong>どれも実際の打上げ日をそのまま入れて再現できる</strong>ので、
+      「その日でなければならなかった理由」が数字で見えます。
+      出来上がりだけ先に見たいときは、アプリの「…」→「例を読み込む」から、
+      ここで作る軌道をそのまま読み込めます。
+    </p>
+
+    <h2>チュートリアル</h2>
+    <div class="cards">
+      <a class="card" href="basics.html">
+        <div class="no">はじめに</div>
+        <h3>画面の見方</h3>
+        <p>シーケンス・時刻・成績バー。地球から火星へ1本引くところまで。</p>
+      </a>
+      <a class="card" href="mars.html">
+        <div class="no">チュートリアル ①</div>
+        <h3>火星に行って帰ってくる</h3>
+        <p>MMX風。ホーマン遷移・周回軌道投入・軌道脱出・大気圏突入をひと通り。</p>
+      </a>
+      <a class="card" href="mercury.html">
+        <div class="no">チュートリアル ②</div>
+        <h3>金星の重力で水星へ</h3>
+        <p>マリナー10号風。スイングバイと、水星に3回会うための共鳴軌道。</p>
+      </a>
+      <a class="card" href="pluto.html">
+        <div class="no">チュートリアル ③</div>
+        <h3>木星に押してもらって冥王星へ</h3>
+        <p>ニューホライズンズ風。木星スイングバイの威力とロケットの選択。</p>
+      </a>
+      <a class="card" href="jupiter.html">
+        <div class="no">チュートリアル ④</div>
+        <h3>地球をもう一度使って木星へ</h3>
+        <p>Juno風。ΔVEGAと手動モード、深宇宙での噴射。</p>
+      </a>
+      <a class="card" href="ryugu.html">
+        <div class="no">チュートリアル ⑤</div>
+        <h3>小惑星にランデブーする</h3>
+        <p>はやぶさ2風。天体の追加、共鳴による地球スイングバイ、ランデブー。</p>
+      </a>
+    </div>
+
+    <h2>資料</h2>
+    <div class="cards">
+      <a class="card" href="launchers.html">
+        <div class="no">資料</div>
+        <h3>ロケットの打上げ能力</h3>
+        <p>13機種の C3 と質量のグラフ。「打ち上げられる質量」がどこから来た数字なのか。</p>
+      </a>
+      <a class="card" href="hohmann.html">
+        <div class="no">資料</div>
+        <h3>ホーマン遷移と、3次元の壁</h3>
+        <p>いちばん安い遷移が現実には使えない理由。ポークチョップ図の島が2つある理由。</p>
+      </a>
+      <a class="card" href="swingby.html">
+        <div class="no">資料</div>
+        <h3>スイングバイの極意 その1</h3>
+        <p>燃やさずに速度が変わる仕組み。加速と減速。どの天体にどれだけの速さで近づくと効くか。</p>
+      </a>
+      <a class="card" href="swingby2.html">
+        <div class="no">資料</div>
+        <h3>スイングバイの極意 その2</h3>
+        <p>木星行きの軌道。ΔVEGA・VEGA・VEEGAの作り方と、それぞれの得手不得手。</p>
+      </a>
+    </div>
+
+    <h2>できること・できないこと</h2>
+    <table>
+      <tr>
+        <th>できる</th>
+        <th>できない</th>
+      </tr>
+      <tr>
+        <td>
+          惑星と小天体 (小惑星・彗星) への軌道<br />
+          スイングバイ (重力だけ / 噴射で補う)<br />
+          深宇宙での噴射、周回軌道への出入り、大気圏突入<br />
+          ロケットを選んで打上げ質量と残る質量を見積もる<br />
+          出発日と到着日の地図 (ポークチョップ図)<br />
+          いまの設計を近くで詰める自動調整
+        </td>
+        <td>
+          イオンエンジンのような連続噴射<br />
+          (1回の噴射に置き換えて考えます)<br />
+          月・惑星の衛星のまわりの軌道<br />
+          太陽輻射圧や他の惑星の引力といった細かい効果<br />
+          姿勢制御・通信・電力といった探査機の設計
+        </td>
+      </tr>
+    </table>
+
+    <div class="note">
+      <strong>数字の読み方をひとつだけ</strong>
+      画面の右下に出る「残る質量」が、いちばん大事な成績です。
+      選んだロケットで打ち上げられる質量から、噴射で使う燃料を引いたもので、
+      <strong>探査機そのものに使える重さ</strong>にあたります。これが大きいほど良い設計です。
+    </div>
+
+    <h2>このサイトについて</h2>
+    <p>
+      作った軌道は<strong>ブラウザの中だけ</strong>にあります。どこかのサーバーに預けているわけではないので、
+      共有リンクを配らないかぎり外へ出ることはありません。
+      配色と表示言語の設定も、端末の中に置くだけです。
+    </p>
+    <p>
+      一方で、どのページがどれくらい見られたかを知るために
+      <strong>Google アナリティクス (GA4)</strong> を入れています。
+      見たページのURL・参照元・おおよその地域・端末とブラウザの種類と、
+      訪問を区別するための識別子 (Cookie) が Google へ送られます。
+      <strong>組み立てた軌道の中身は含まれません。</strong>
+      詳しくは <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google のプライバシーポリシー</a>、
+      送りたくない場合は <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">オプトアウト アドオン</a>
+      やブラウザのトラッキング防止の設定をお使いください。
+    </p>
+    <p>
+      このアプリは MIT License です。使っているライブラリと出典は
+      <a href="https://github.com/EDVEGA8823/Anyone_trajectory_design" target="_blank" rel="noopener">リポジトリ</a>の
+      README にまとめてあります。
+    </p>
+
+    <div class="nav-bottom">
+      <span></span>
+      <a href="basics.html">画面の見方 →</a>
+    </div>
+  </main>
+</body>
+
+</html>

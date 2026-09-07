@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Swingbys, part 2: trajectories to Jupiter — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Pick the theme before the stylesheet loads, so dark-theme readers get no white flash. -->
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../swingby2.html" class="lang-link">日本語</a>
+    <a href="swingby2.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+   <h1>Swingbys, part 2: trajectories to Jupiter</h1>
+   <p class="lead">
+      ΔVEGA, VEGA and VEEGA. Three ways to reach Jupiter, built for real, following how each is put together.
+     <a href="swingby.html">Part 1</a> ended on a wall: “an Earth swingby needs V∞ of 8.79 km/s or more to throw you out”.
+      This is about getting over it.
+   </p>
+
+   <div class="note">
+     <strong>About the trajectories on this page</strong>
+      Every one was actually built in this app (the ones that reach Jupiter were tightened with auto-tune).
+      Figures and numbers alike come from the same designs, so they match what you see on screen exactly.
+      They are not, however, the best trajectories to be found. Move the dates a little and better ones turn up.
+   </div>
+
+   <h2>The baseline: going straight to Jupiter</h2>
+   <p>
+      First, something to compare against: a trajectory straight from Earth to Jupiter, with no swingby.
+      We find the launch window with a <a href="hohmann.html">porkchop plot</a>.
+   </p>
+
+   <figure>
+     <img src="img/sw2-porkchop.png" alt="The Earth-to-Jupiter porkchop plot" />
+     <figcaption>
+        The 2032 window. The cheap ground is split into two islands, just as in <a href="hohmann.html">the Hohmann page</a>.
+        The cheapest ◇ departs on 2032/3/31.
+     </figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/sw2-direct.png" alt="A direct trajectory to Jupiter" />
+     <figcaption>Leave on 2032/3/31, reach Jupiter on 2034/3/21 — two years.</figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/sw2-direct-stat.png" alt="The score going direct" />
+     <figcaption>Launch energy C3 83.32 km²/s². An H3-24 can launch 29 kg, and after the 2252 m/s to enter orbit at Jupiter, 14 kg is left.</figcaption>
+   </figure>
+
+   <p>
+      Two years is quick, but 14 kg will not carry instruments, let alone the structure of a spacecraft. A C3 of 83.32 is what does it: on <a href="launchers.html">the capability curves</a> we are at the far right-hand end. Everything that follows is about how far that C3 can be brought down.
+   </p>
+
+   <h2>ΔVEGA: a small burn at aphelion to grow V∞</h2>
+   <p>
+      As part 1 showed, for an Earth swingby to throw you out to Jupiter, the V∞ with which you come back to Earth must be <strong>8.79 km/s or more</strong>.
+      Launch straightforwardly and come back to Earth and it only reaches about 5 km/s.
+      Making up that difference with a small burn out in deep space is <strong>ΔVEGA</strong> (Delta-V Earth Gravity Assist).
+   </p>
+
+   <h3>Come back in exactly two years and nothing happens</h3>
+   <p>
+      Start with the case that does not work: an orbit that leaves Earth and returns to Earth two years later
+      (a <strong>two-year resonant orbit</strong>). A launch whose period is exactly two years — 730.5 days — has escape velocity <strong>5.03 km/s</strong> (C3 25.3). Its semi-major axis is 1.587 AU and its aphelion 2.19 AU.
+   </p>
+   <p>
+      Fly that and, 730.5 days later, you return to a point <strong>33,700 km</strong> from where Earth is (well inside Earth's gravitational reach). But your speed there is 35.16 km/s, Earth's orbital speed is 30.13 km/s, and <strong>the directions match too</strong>. So V∞ is <strong>5.03 km/s</strong> — exactly what it was at launch. A clean return, and nothing gained.
+   </p>
+
+   <h3>Open an angle and V∞ grows</h3>
+   <p>
+      So launch just a little harder: escape velocity 5.22 km/s (C3 27.21). A mere 0.19 km/s more, but the period becomes 757 days — 27 days longer than two years — and the aphelion stretches to 2.26 AU.
+      Left alone you would return to a place Earth is not, so
+     <strong>burn just 588 m/s at aphelion</strong> to line the timing up with Earth.
+   </p>
+   <p>
+      That burn points <strong>backwards</strong>(176.6° from the direction of travel; the speed falls from 15.59 to 15.00 km/s). Braking at aphelion lowers the perihelion, so the orbit goes from perihelion 0.988 AU and period 757 days to <strong>perihelion 0.886 AU and period 722 days</strong>. The aphelion stays at 2.26 AU. The spacecraft dips inside Earth's orbit and catches Earth on the way back out.
+   </p>
+   <p>
+      Because of that, on the way back you cross Earth's orbit <strong>at an angle</strong>.
+      An <strong>angle</strong> opens up between the velocity directions.
+   </p>
+
+   <figure class="chart-wrap chart-big">
+     <svg class="chart" viewBox="0 0 700 450" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="700" height="450" fill="#fff"/>
+<defs><marker id="a-2f6df6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2f6df6"/></marker><marker id="a-e03131" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e03131"/></marker><marker id="a-6b6f76" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6b6f76"/></marker></defs>
+<text x="180.0" y="34.0" text-anchor="middle" font-size="13" fill="#17181a" font-weight="700">Return in exactly two years and</text>
+<text x="180.0" y="54.0" text-anchor="middle" font-size="11" fill="#6b6f76">you come back to the same place, going the same way</text>
+<image href="img/sw2-dvega-1.png" x="40.0" y="66" width="280" height="234" preserveAspectRatio="xMidYMid meet"/>
+<text x="204.0" y="354.0" text-anchor="middle" font-size="11" fill="#6b6f76">Angle 0° (same direction)</text>
+<line x1="72.0" y1="380.0" x2="304.1" y2="380.0" stroke="#2f6df6" stroke-width="2.4" marker-end="url(#a-2f6df6)"/>
+<line x1="72.0" y1="380.0" x2="270.9" y2="380.0" stroke="#6b6f76" stroke-width="2.4" marker-end="url(#a-6b6f76)"/>
+<line x1="270.9" y1="380.0" x2="304.1" y2="380.0" stroke="#e03131" stroke-width="3" marker-end="url(#a-e03131)"/>
+<text x="80.0" y="400.0" text-anchor="start" font-size="11" fill="#6b6f76">Earth's orbit 30.13</text>
+<text x="80.0" y="368.0" text-anchor="start" font-size="11" fill="#2f6df6">Spacecraft 35.16</text>
+<text x="312.1" y="374.0" text-anchor="start" font-size="12.5" fill="#e03131" font-weight="700" stroke="#fff" stroke-width="3.5" paint-order="stroke">V∞ 5.03</text>
+<circle cx="72.0" cy="380.0" r="3" fill="#17181a"/>
+<text x="520.0" y="34.0" text-anchor="middle" font-size="13" fill="#17181a" font-weight="700">Burn 588 m/s at aphelion and</text>
+<text x="520.0" y="54.0" text-anchor="middle" font-size="11" fill="#6b6f76">the return point shifts, opening an angle between the directions</text>
+<image href="img/sw2-dvega-2.png" x="380.0" y="66" width="280" height="234" preserveAspectRatio="xMidYMid meet"/>
+<path d="M 534.0 380.0 A 122 122 0 0 0 530.3 350.3" fill="none" stroke="#6b6f76" stroke-width="1.2"/>
+<text x="544.0" y="369.1" text-anchor="start" font-size="11" fill="#6b6f76">Angle 14.1°</text>
+<line x1="412.0" y1="380.0" x2="634.4" y2="324.1" stroke="#2f6df6" stroke-width="2.4" marker-end="url(#a-2f6df6)"/>
+<line x1="412.0" y1="380.0" x2="608.2" y2="380.0" stroke="#6b6f76" stroke-width="2.4" marker-end="url(#a-6b6f76)"/>
+<line x1="608.2" y1="380.0" x2="634.4" y2="324.1" stroke="#e03131" stroke-width="3" marker-end="url(#a-e03131)"/>
+<text x="420.0" y="400.0" text-anchor="start" font-size="11" fill="#6b6f76">Earth's orbit 29.73</text>
+<text x="420.0" y="348.0" text-anchor="start" font-size="11" fill="#2f6df6">Spacecraft 34.75</text>
+<text x="642.4" y="318.1" text-anchor="start" font-size="12.5" fill="#e03131" font-weight="700" stroke="#fff" stroke-width="3.5" paint-order="stroke">V∞ 9.36</text>
+<circle cx="412.0" cy="380.0" r="3" fill="#17181a"/>
+<line x1="350" y1="70" x2="350" y2="410" stroke="#e3e4e8"/>
+<text x="350.0" y="434.0" text-anchor="middle" font-size="11.5" fill="#17181a">The speed barely moves, 35.16 → 34.75 km/s, yet V∞ goes 5.03 → 9.36 km/s</text>
+</svg>
+     <figcaption>
+        Left and right, the spacecraft's speed (blue) is much the same. Only the direction differs.
+        Even so, V∞ (red), the difference between the two, nearly doubles.
+     </figcaption>
+   </figure>
+
+   <p>
+      The spacecraft's speed actually falls slightly, 35.16 → 34.75 km/s. Yet with an angle of just 14.1°, V∞ goes from 5.03 to <strong>9.36 km/s</strong>, past the 8.79 km/s needed to be thrown out to Jupiter. A 588 m/s burn bought 4.33 km/s of V∞, a <strong>lever of 7.4</strong>.
+   </p>
+
+   <h3>Why burn at aphelion</h3>
+   <p>
+      The next graph measures where the burn is cheapest for the same “V∞ on return”.
+      The launch is as above; only the place of the burn changes.
+   </p>
+
+   <figure class="chart-wrap chart-big">
+     <svg class="chart" viewBox="0 0 700 430" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="700" height="430" fill="#fff"/>
+<defs><marker id="a-e03131" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e03131"/></marker></defs>
+<rect x="66" y="40" width="574" height="332" fill="#fff" stroke="#e3e4e8"/>
+<line x1="66" y1="372.0" x2="640" y2="372.0" stroke="#eff0f2"/>
+<text x="60.0" y="376.0" text-anchor="end" font-size="10.5" fill="#6b6f76">0</text>
+<line x1="66" y1="330.5" x2="640" y2="330.5" stroke="#eff0f2"/>
+<text x="60.0" y="334.5" text-anchor="end" font-size="10.5" fill="#6b6f76">250</text>
+<line x1="66" y1="289.0" x2="640" y2="289.0" stroke="#eff0f2"/>
+<text x="60.0" y="293.0" text-anchor="end" font-size="10.5" fill="#6b6f76">500</text>
+<line x1="66" y1="247.5" x2="640" y2="247.5" stroke="#eff0f2"/>
+<text x="60.0" y="251.5" text-anchor="end" font-size="10.5" fill="#6b6f76">750</text>
+<line x1="66" y1="206.0" x2="640" y2="206.0" stroke="#eff0f2"/>
+<text x="60.0" y="210.0" text-anchor="end" font-size="10.5" fill="#6b6f76">1000</text>
+<line x1="66" y1="164.5" x2="640" y2="164.5" stroke="#eff0f2"/>
+<text x="60.0" y="168.5" text-anchor="end" font-size="10.5" fill="#6b6f76">1250</text>
+<line x1="66" y1="123.0" x2="640" y2="123.0" stroke="#eff0f2"/>
+<text x="60.0" y="127.0" text-anchor="end" font-size="10.5" fill="#6b6f76">1500</text>
+<line x1="66" y1="81.5" x2="640" y2="81.5" stroke="#eff0f2"/>
+<text x="60.0" y="85.5" text-anchor="end" font-size="10.5" fill="#6b6f76">1750</text>
+<line x1="66" y1="40.0" x2="640" y2="40.0" stroke="#eff0f2"/>
+<text x="60.0" y="44.0" text-anchor="end" font-size="10.5" fill="#6b6f76">2000</text>
+<line x1="66.0" y1="40" x2="66.0" y2="372" stroke="#eff0f2"/>
+<text x="66.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">5</text>
+<line x1="148.0" y1="40" x2="148.0" y2="372" stroke="#eff0f2"/>
+<text x="148.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">6</text>
+<line x1="230.0" y1="40" x2="230.0" y2="372" stroke="#eff0f2"/>
+<text x="230.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">7</text>
+<line x1="312.0" y1="40" x2="312.0" y2="372" stroke="#eff0f2"/>
+<text x="312.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">8</text>
+<line x1="394.0" y1="40" x2="394.0" y2="372" stroke="#eff0f2"/>
+<text x="394.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">9</text>
+<line x1="476.0" y1="40" x2="476.0" y2="372" stroke="#eff0f2"/>
+<text x="476.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">10</text>
+<line x1="558.0" y1="40" x2="558.0" y2="372" stroke="#eff0f2"/>
+<text x="558.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">11</text>
+<line x1="640.0" y1="40" x2="640.0" y2="372" stroke="#eff0f2"/>
+<text x="640.0" y="388.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">12</text>
+<text x="60.0" y="30.0" text-anchor="start" font-size="11" fill="#6b6f76">Burn required (m/s)</text>
+<text x="640.0" y="426.0" text-anchor="end" font-size="11" fill="#6b6f76">V∞ on returning to Earth (km/s)</text>
+<text x="447.3" y="279.0" text-anchor="start" font-size="11" fill="#6b6f76">Where the burn is made (and the speed there)</text>
+<polyline points="90.6,74.5 98.8,88.5 107.0,96.6 115.2,104.1 123.4,111.4 131.6,118.4 139.8,124.7 148.0,131.3 156.2,138.3 164.4,144.4 172.6,150.7 180.8,157.4 189.0,163.0 197.2,169.8 205.4,175.6 213.6,181.6 221.8,188.9 230.0,195.0 238.2,201.4 246.4,207.7 254.6,214.0 262.8,219.1 271.0,225.4 279.2,231.7 287.4,238.0 295.6,242.9 303.8,248.8 312.0,253.5 320.2,259.1 328.4,263.3 336.6,268.1 344.8,271.6 353.0,275.4 361.2,277.9 369.4,279.7 377.6,281.0 385.8,281.7 394.0,281.7 402.2,281.0 410.4,279.7 418.6,277.7 426.8,274.9 435.0,270.4 443.2,265.9 451.4,260.9 459.6,255.5 467.8,249.3 476.0,242.9 484.2,235.9 492.4,228.6 500.6,220.9 508.8,212.8 517.0,206.7 525.2,198.2 533.4,189.4 541.6,180.3 549.8,171.0 558.0,163.8 566.2,154.2 574.4,144.2 582.6,134.1 590.8,126.5 599.0,116.0 607.2,108.1 615.4,97.3 623.6,86.3 631.8,77.8 640.0,66.6" fill="none" stroke="#e03131" stroke-width="2.2"/>
+<line x1="447.3" y1="352.1" x2="465.3" y2="352.1" stroke="#e03131" stroke-width="2.4"/>
+<text x="471.3" y="356.1" text-anchor="start" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Aphelion 2.25 AU  15.6 km/s</text>
+<polyline points="74.2,248.3 82.4,253.1 90.6,257.3 98.8,261.3 107.0,265.8 115.2,269.4 123.4,273.2 131.6,277.2 139.8,280.7 148.0,284.2 156.2,287.8 164.4,291.5 172.6,294.5 180.8,298.1 189.0,300.8 197.2,303.6 205.4,306.1 213.6,308.4 221.8,310.6 230.0,312.2 238.2,313.6 246.4,314.2 254.6,314.6 262.8,314.6 271.0,314.2 279.2,313.6 287.4,311.9 295.6,310.2 303.8,308.3 312.0,305.1 320.2,302.3 328.4,299.1 336.6,294.5 344.8,290.5 353.0,286.3 361.2,282.0 369.4,277.4 377.6,272.6 385.8,267.6 394.0,262.3 402.2,256.8 410.4,251.2 418.6,245.3 426.8,239.4 435.0,233.2 443.2,228.9 451.4,222.4 459.6,216.0 467.8,209.2 476.0,204.5 484.2,197.5 492.4,190.2 500.6,185.4 508.8,177.9 517.0,170.3 525.2,165.2 533.4,157.4 541.6,152.1 549.8,143.9 558.0,138.4 566.2,130.0 574.4,124.3 582.6,115.7 590.8,109.9 599.0,103.9 607.2,94.9 615.4,88.8 623.6,82.7 631.8,73.2 640.0,66.9" fill="none" stroke="#2f9e44" stroke-width="2.2"/>
+<line x1="447.3" y1="332.1" x2="465.3" y2="332.1" stroke="#2f9e44" stroke-width="2.4"/>
+<text x="471.3" y="336.1" text-anchor="start" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">2.08 AU  17.5 km/s</text>
+<polyline points="66.0,307.1 74.2,311.9 82.4,315.7 90.6,319.4 98.8,322.9 107.0,325.9 115.2,328.5 123.4,330.5 131.6,331.7 139.8,332.0 148.0,332.0 156.2,331.3 164.4,329.7 172.6,327.2 180.8,324.9 189.0,320.9 197.2,317.2 205.4,311.7 213.6,307.3 221.8,302.3 230.0,297.1 238.2,291.5 246.4,287.0 254.6,282.2 262.8,272.4 271.0,265.4 279.2,260.6 287.4,253.1 295.6,245.3 303.8,240.0 312.0,231.6 320.2,225.9 328.4,219.9 336.6,211.0 344.8,204.7 353.0,198.2 361.2,188.4 369.4,181.6 377.6,174.8 385.8,167.7 394.0,160.4 402.2,153.0 410.4,141.6 418.6,133.8 426.8,125.8 435.0,117.7 443.2,113.5 451.4,105.1 459.6,96.6 467.8,87.8 476.0,78.8 484.2,69.7 492.4,60.3 500.6,55.6 508.8,46.0" fill="none" stroke="#2f6df6" stroke-width="2.2"/>
+<line x1="447.3" y1="312.1" x2="465.3" y2="312.1" stroke="#2f6df6" stroke-width="2.4"/>
+<text x="471.3" y="316.1" text-anchor="start" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">1.52 AU  25.0 km/s</text>
+<circle cx="423.5" cy="274.4" r="5" fill="#fff" stroke="#17181a" stroke-width="2.6"/>
+<text x="411.5" y="278.4" text-anchor="end" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">This page's ΔVEGA, 588 m/s</text>
+<line x1="376.8" y1="40" x2="376.8" y2="372" stroke="#b9bcc4" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="384.8" y="56.0" text-anchor="start" font-size="11" fill="#6b6f76" stroke="#fff" stroke-width="3.5" paint-order="stroke">Right of this line is a V∞ that reaches Jupiter</text>
+</svg>
+     <figcaption>To produce the same V∞ of 9.3 km/s takes 568 m/s at aphelion (2.25 AU), 763 m/s at 2.08 AU, and 1435 m/s at 1.52 AU. The closer to the Sun you burn, the more it costs.</figcaption>
+   </figure>
+
+   <p>
+      Aphelion is where the spacecraft moves slowest
+      (15.6 km/s at 2.25 AU, against 25.0 km/s at 1.52 AU).
+      The slower something moves, the more the same burn turns it.
+      Turn the velocity and the shape of the orbit changes, moving the time and place of return a great deal.
+      That is what “burn at aphelion” amounts to.
+   </p>
+
+   <div class="note">
+     <strong>The opposite of burning at periapsis</strong>
+      Leaving an orbit, you burn at <strong>periapsis</strong> because burning where you are fast wins you energy (the Oberth effect).
+      What we are after here is not energy but <strong>direction</strong>, so it is the slow places that tell instead.
+   </div>
+
+   <h3>How to build it</h3>
+   <p>
+      The trick is to build not backwards from the arrival at Jupiter, but <strong>forwards from the date of the Earth swingby</strong>.
+      That date comes from a porkchop plot.
+   </p>
+
+   <ol>
+     <li>Take the porkchop plot for Earth → Jupiter <strong>two years after</strong> the year you want to launch, and pick a cheap date (above, 2032/3/31).</li>
+     <li>With those two sequences (launch and Jupiter) in place, press “+ Add a sequence” at <strong>the very top</strong> of the list.
+        A new launch goes in at the front, and the old launch becomes an empty sequence. Make it <strong>a swingby at Earth</strong>.</li>
+     <li>Move the new launch's date <strong>two years earlier</strong>.</li>
+     <li>Set the launch to <strong>manual mode</strong>. Two years on, Earth is back where you launched from,
+        so departure and arrival are the same point and Lambert's problem will not solve. Auto mode cannot build this.</li>
+     <li>Put the burn sequence that came with it <strong>a little over a year later</strong> , around aphelion.</li>
+     <li>Enter <strong>5.2 km/s</strong> for the launch's escape velocity, and 0 for azimuth and elevation.</li>
+     <li><strong>Auto-tune</strong>.</li>
+   </ol>
+
+   <div class="note">
+     <strong>Skip ⑥ and auto-tune will not work</strong>
+      Right after switching to manual, the field still holds whatever auto mode had.
+      Since Earth → Earth was not working, that value is a meaningless large number (around 45 km/s in this case).
+      Start auto-tune from there and it will never reach a sane design.
+   </div>
+
+   <figure class="seq">
+     <img src="img/sw2-dvega-list.png" alt="The sequence list with a launch added at the front" />
+     <figcaption>② A launch goes in at the front and the old launch becomes an empty sequence, here made into an Earth swingby.</figcaption>
+   </figure>
+
+   <div class="shots2">
+     <img src="img/sw2-dvega-auto.png" alt="Earth to Earth will not solve automatically" />
+     <img src="img/sw2-dvega-set.png" alt="Entering the escape velocity in manual mode" />
+     <div class="cap"><b>④ Still in auto mode</b> Earth → Earth will not solve, so the launch figures are nonsense</div>
+     <div class="cap"><b>⑥ Switch to manual and enter values</b> Escape velocity 5.2 km/s, azimuth and elevation 0</div>
+   </div>
+
+   <figure>
+     <img src="img/sw2-dvega-rough.png" alt="Before auto-tune" />
+     <figcaption>
+        After step ⑥. It already has the shape of “come back in two years, then fly to Jupiter”, but
+        Earth cannot bend it far enough and 2465 m/s has to be burned at periapsis (total ΔV 5280 m/s, mass left 592 kg). From here auto-tune nudges the launch speed and direction, the date of the burn and the date of the Earth encounter.
+     </figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/sw2-dvega.png" alt="The ΔVEGA after auto-tune" />
+     <figcaption>After auto-tune. Launch 2030/2/19 (C3 27.21), a 588 m/s burn on 2031/4/6, Earth swingby 2032/4/10, Jupiter 2034/7/21.</figcaption>
+   </figure>
+
+   <div class="shots2">
+     <img src="img/sw2-dvega-dsm.png" alt="The burn sequence" />
+     <img src="img/sw2-dvega-flyby.png" alt="The Earth swingby sequence" />
+     <div class="cap"><b>The burn</b> 588 m/s at 2.25 AU from the Sun.</div>
+     <div class="cap"><b>The Earth swingby</b> In at V∞ 9.363 km/s, bent through 47.8°. Periapsis altitude 300 km, periapsis ΔV 0.</div>
+   </div>
+
+   <figure>
+     <img src="img/sw2-dvega-stat.png" alt="The ΔVEGA score" />
+     <figcaption>The score. C3 27.21, launch mass 3174 kg, leaving <b>1339 kg</b>, over 4.4 years.</figcaption>
+   </figure>
+
+   <p>
+      Nothing at all is burned at Earth. One 588 m/s burn turns a direct run carrying 14 kg into <strong>1339 kg</strong> . It takes 4.4 years to reach Jupiter, but it carries more than 95 times as much.
+   </p>
+
+   <h3>Two-year resonance comes in a short and a long version</h3>
+   <p>
+      In the design above, launch to return took <strong>781 days</strong>— about two months longer than two years.
+      That is no accident. Vary the number of days to the return and look for
+      “the smallest launch C3 that produces V∞ 9.13 km/s with a burn of 600 m/s or less”, and this is what you get.
+   </p>
+
+   <figure class="chart-wrap chart-big">
+     <svg class="chart" viewBox="0 0 700 400" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="700" height="400" fill="#fff"/>
+<rect x="66" y="40" width="574" height="300" fill="#fff" stroke="#e3e4e8"/>
+<line x1="66" y1="340.0" x2="640" y2="340.0" stroke="#eff0f2"/>
+<text x="60.0" y="344.0" text-anchor="end" font-size="10.5" fill="#6b6f76">0</text>
+<line x1="66" y1="297.1" x2="640" y2="297.1" stroke="#eff0f2"/>
+<text x="60.0" y="301.1" text-anchor="end" font-size="10.5" fill="#6b6f76">10</text>
+<line x1="66" y1="254.3" x2="640" y2="254.3" stroke="#eff0f2"/>
+<text x="60.0" y="258.3" text-anchor="end" font-size="10.5" fill="#6b6f76">20</text>
+<line x1="66" y1="211.4" x2="640" y2="211.4" stroke="#eff0f2"/>
+<text x="60.0" y="215.4" text-anchor="end" font-size="10.5" fill="#6b6f76">30</text>
+<line x1="66" y1="168.6" x2="640" y2="168.6" stroke="#eff0f2"/>
+<text x="60.0" y="172.6" text-anchor="end" font-size="10.5" fill="#6b6f76">40</text>
+<line x1="66" y1="125.7" x2="640" y2="125.7" stroke="#eff0f2"/>
+<text x="60.0" y="129.7" text-anchor="end" font-size="10.5" fill="#6b6f76">50</text>
+<line x1="66" y1="82.9" x2="640" y2="82.9" stroke="#eff0f2"/>
+<text x="60.0" y="86.9" text-anchor="end" font-size="10.5" fill="#6b6f76">60</text>
+<line x1="66" y1="40.0" x2="640" y2="40.0" stroke="#eff0f2"/>
+<text x="60.0" y="44.0" text-anchor="end" font-size="10.5" fill="#6b6f76">70</text>
+<line x1="66.0" y1="40" x2="66.0" y2="340" stroke="#eff0f2"/>
+<text x="66.0" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">620</text>
+<line x1="161.7" y1="40" x2="161.7" y2="340" stroke="#eff0f2"/>
+<text x="161.7" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">660</text>
+<line x1="257.3" y1="40" x2="257.3" y2="340" stroke="#eff0f2"/>
+<text x="257.3" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">700</text>
+<line x1="353.0" y1="40" x2="353.0" y2="340" stroke="#eff0f2"/>
+<text x="353.0" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">740</text>
+<line x1="448.7" y1="40" x2="448.7" y2="340" stroke="#eff0f2"/>
+<text x="448.7" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">780</text>
+<line x1="544.3" y1="40" x2="544.3" y2="340" stroke="#eff0f2"/>
+<text x="544.3" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">820</text>
+<line x1="640.0" y1="40" x2="640.0" y2="340" stroke="#eff0f2"/>
+<text x="640.0" y="356.0" text-anchor="middle" font-size="10.5" fill="#6b6f76">860</text>
+<text x="60.0" y="30.0" text-anchor="start" font-size="11" fill="#6b6f76">Launch energy C3 required (km²/s²)</text>
+<text x="640.0" y="396.0" text-anchor="end" font-size="11" fill="#6b6f76">Days from launch back to Earth</text>
+<line x1="330.3" y1="40" x2="330.3" y2="340" stroke="#b9bcc4" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="330.3" y="30.0" text-anchor="middle" font-size="11" fill="#6b6f76">Exactly two years (730.5 d)</text>
+<polyline points="89.9,72.6 101.9,92.3 113.8,124.0 125.8,142.0 137.8,164.3 149.7,180.6 161.7,196.0 173.6,205.4 185.6,214.9" fill="none" stroke="#862e9c" stroke-width="2.4"/>
+<polyline points="209.5,224.3 221.5,224.3 233.4,219.6 245.4,210.6 257.3,196.0 269.3,175.4 281.2,142.0 293.2,118.0 305.2,99.1" fill="none" stroke="#862e9c" stroke-width="2.4"/>
+<polyline points="353.0,92.3 365.0,130.0 376.9,159.1 388.9,180.6 400.8,196.0 412.8,210.6 424.8,214.9 436.7,219.6 448.7,224.3 460.6,224.3 472.6,214.9 484.5,200.7 496.5,190.9 508.5,180.6 520.4,159.1 532.4,136.0 544.3,105.1 556.3,85.9" fill="none" stroke="#862e9c" stroke-width="2.4"/>
+<rect x="311.1" y="41" width="35.9" height="298" fill="#f3f0f8"/>
+<text x="329.1" y="80.0" text-anchor="middle" font-size="11" fill="#6b6f76">Around here,</text>
+<text x="329.1" y="96.0" text-anchor="middle" font-size="11" fill="#6b6f76">no solution</text>
+<circle cx="204.7" cy="225.7" r="5" fill="#fff" stroke="#17181a" stroke-width="2.6"/>
+<text x="204.7" y="211.7" text-anchor="middle" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Short: 678 d, C3 26.7</text>
+<circle cx="451.1" cy="223.4" r="5" fill="#fff" stroke="#17181a" stroke-width="2.6"/>
+<text x="451.1" y="209.4" text-anchor="middle" font-size="11" fill="#17181a" stroke="#fff" stroke-width="3.5" paint-order="stroke">Long: 781 d, C3 27.2</text>
+</svg>
+     <figcaption>There are two valleys. <strong>at exactly two years there is no solution</strong> is the point of this figure.</figcaption>
+   </figure>
+
+   <p>
+      Return in exactly two years and Earth is back where you launched, with the spacecraft coming in the same direction.
+      No angle can be opened, so V∞ does not grow.
+      What you can use are the two either side of it:<strong>the short one (678 days)</strong> and
+     <strong>the long one (781 days)</strong> .
+   </p>
+
+   <figure>
+     <img src="img/sw2-dvega-short.png" alt="A ΔVEGA using the short resonance" />
+     <figcaption>The short one. Launch 2030/5/17, Earth swingby 2032/3/25 — back in 678 days.</figcaption>
+   </figure>
+
+   <div class="table-wide">
+     <table>
+<tr><th></th><th>Launch</th><th>The burn</th><th>The Earth swingby</th><th>Jupiter</th><th>Days back to Earth</th><th>C3</th><th>Mass left</th><th>Time taken</th></tr>
+<tr><td>Short</td><td class="num">2030/5/17</td><td class="num">658 m/s</td><td class="num">2032/3/25</td><td class="num">2035/3/6</td><td class="num"><b>678 days</b></td><td class="num">26.68</td><td class="num">1324 kg</td><td class="num">4.8 years</td></tr>
+<tr><td>Long</td><td class="num">2030/2/19</td><td class="num">588 m/s</td><td class="num">2032/4/10</td><td class="num">2034/7/21</td><td class="num"><b>781 days</b></td><td class="num">27.21</td><td class="num">1339 kg</td><td class="num">4.4 years</td></tr>
+</table>
+   </div>
+
+   <p>
+      The scores are almost identical. What differs is the shape and the time to Jupiter.
+      Returning to Earth sooner, the short one has a longer leg out to Jupiter.
+   </p>
+
+   <h3>The good part: a window every year</h3>
+   <p>
+      ΔVEGA uses only Earth and Jupiter, so chances to launch come round at the same interval as the
+      Earth → Jupiter window: every thirteen months.
+      The table below tries the same recipe at each of them.
+   </p>
+
+   <div class="table-wide">
+     <table>
+<tr><th>Earth → Jupiter window</th><th>Launch</th><th>Days back to Earth</th><th>Launch C3</th><th>The burn</th><th>V∞ on return</th></tr>
+<tr><td>2030/1/21</td><td class="num">2028/3/7</td><td class="num">685 days</td><td class="num">26.0</td><td class="num">573 m/s</td><td class="num">9.06 km/s</td></tr>
+<tr><td>2031/2/25</td><td class="num">2029/4/21</td><td class="num">675 days</td><td class="num">27.0</td><td class="num">593 m/s</td><td class="num">9.25 km/s</td></tr>
+<tr><td>2032/3/31</td><td class="num">2030/5/26</td><td class="num">675 days</td><td class="num">27.0</td><td class="num">656 m/s</td><td class="num">9.61 km/s</td></tr>
+<tr><td>2033/5/30</td><td class="num">2031/7/25</td><td class="num">675 days</td><td class="num">27.0</td><td class="num">694 m/s</td><td class="num">9.50 km/s</td></tr>
+<tr><td>2034/7/5</td><td class="num">2032/8/24</td><td class="num">680 days</td><td class="num">27.0</td><td class="num">658 m/s</td><td class="num">9.57 km/s</td></tr>
+<tr><td>2035/8/10</td><td class="num">2033/6/11</td><td class="num">790 days</td><td class="num">29.2</td><td class="num">634 m/s</td><td class="num">9.50 km/s</td></tr>
+</table>
+   </div>
+
+   <p>
+      Every window builds at a C3 of 30 or less. VEGA and VEEGA, later on, are also tied to where Venus is,
+      so this is ΔVEGA's greatest strength.
+   </p>
+
+   <h2>VEGA: growing V∞ by calling at Venus</h2>
+   <p>
+      Instead of making V∞ with a burn, <strong>call at another body on the way</strong>— that is VEGA
+      (Venus-Earth Gravity Assist). Earth → Venus → Earth, and then Earth throws you out to Jupiter.
+      Its virtue is that the launch only needs enough energy to reach Venus, the easiest planet of them all.
+   </p>
+   <p>
+      Unlike ΔVEGA, this involves where Venus is as well as Earth and Jupiter, so trying to fix the arrival date at Jupiter all at once becomes hard very quickly.
+      So we begin with <strong>“Final orbit”</strong>, the sequence that names no destination and only shows what orbit you ended up on after the swingby.
+      First we build for <strong>whether the final orbit reaches Jupiter's orbit (5.2 AU)</strong>, and leave hitting Jupiter itself until later.
+   </p>
+
+   <h3>Step 1: build Earth → Venus → Earth</h3>
+   <ol>
+     <li>Place three sequences: make the second <strong>a swingby at Venus</strong> and the third <strong>a swingby at Earth</strong>.</li>
+     <li>Set the launch and Venus dates from an Earth → Venus porkchop plot.
+        The window comes round <strong>about every 1 year 7 months</strong>.</li>
+     <li>Enter the date of the return from Venus to Earth. <strong>Around 300 days</strong> brings you back without fuss.</li>
+     <li>Nudge the dates by a few days at a time to make the <strong>periapsis ΔV</strong> at Venus as small as possible.
+        The closer to zero, the more of the bend you are getting without fuel.</li>
+   </ol>
+
+   <figure>
+     <img src="img/sw2-eve-pc.png" alt="The Earth-to-Venus porkchop plot" />
+     <figcaption>Step 2. The Earth → Venus window. Unlike the run to Jupiter, this goes at a C3 in the teens.</figcaption>
+   </figure>
+
+   <p>
+      Here we used launch 2029/10/3, Venus 2030/4/8, Earth 2031/2/18. The launch escape velocity is only 3.59 km/s (C3 12.86), yet the V∞ at Venus is 5.426 km/s, and after 49.3° of bend at Venus the V∞ on returning to Earth is <strong>9.592 km/s</strong>. One pass by Venus has nearly doubled V∞, and passed the 8.79 km/s that part 1 said was needed to be thrown out to Jupiter.
+   </p>
+
+   <h3>Step 2: add a final orbit and see how far it reaches</h3>
+   <ol start="5">
+     <li>Set the Earth swingby to <strong>manual mode</strong>— the mode where you decide the outcome yourself.</li>
+     <li>Make the last sequence a <strong>Final orbit</strong>(the maneuver that came with manual mode disappears here).</li>
+     <li>Vary the Earth swingby's <strong>periapsis altitude</strong> and <strong>rotation angle</strong> to find where the final orbit's aphelion is largest.</li>
+   </ol>
+
+   <figure class="seq">
+     <img src="img/sw2-eve-list.png" alt="The sequence list with a final orbit added" />
+     <figcaption>The fourth is “Final orbit”. It has no destination body.</figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/sw2-eve1.png" alt="How far one Earth swingby reaches" />
+     <figcaption>The orbit reached with a single Earth swingby. The aphelion is 3.298 AU, short of Jupiter's orbit (the outer grey circle).</figcaption>
+   </figure>
+
+   <div class="shots2">
+     <img src="img/sw2-eve1-flyby.png" alt="The Earth swingby sequence" />
+     <img src="img/sw2-eve1-end.png" alt="The final-orbit sequence" />
+     <div class="cap"><b>The Earth swingby</b> V∞ 9.592 km/s, periapsis altitude 300 km (the floor), turn angle 46.3°. No burn.</div>
+     <div class="cap"><b>Final orbit</b> Perihelion 0.941 AU, aphelion <b>3.298 AU</b>, period 3.09 years.</div>
+   </div>
+
+   <h3>Why it does not reach</h3>
+   <p>
+      What is short is not V∞ but <strong>the turn angle</strong>. The direction of the V∞ coming into Earth is <strong>95.7°</strong> away from Earth's orbital direction. Turn it all the way onto that direction and the speed would suffice, but even passing at the lowest allowed altitude (300 km) you can only bend <strong>46.3°</strong> , leaving 49.4°. You are thrown out still pointing sideways, so the aphelion does not stretch.
+   </p>
+
+   <div class="note warn">
+     <strong>It is not a matter of choosing the dates badly</strong>
+      Sweeping every launch date from 2029 to mid-2032 turned up 157 Earth → Venus → Earth trajectories on which the Venus swingby works with no burn, and for every one of them we computed how far a single Earth swingby could stretch the aphelion. Reaching Jupiter's orbit: <strong>not one</strong>. The best stretched to an aphelion of 4.43 AU (launch 2030/1/16, return V∞ 13.26 km/s).
+   </div>
+
+   <h3>What it costs to make up the difference with a burn</h3>
+   <p>
+      You can make up the shortfall with a maneuver — a deep-space burn. On the orbit after the swingby (perihelion 0.941 AU, aphelion 3.30 AU), burning <strong>1656 m/s</strong> along the direction of travel at perihelion brings the aphelion to 5.2 AU. Burning at Earth's periapsis instead (a powered flyby) takes <strong>2544 m/s</strong>. Burning at periapsis costs more because raising V∞ lowers how far you can bend (46.3° → 38.1°). Set against ΔVEGA's 588 m/s, both are expensive. As we shall see, <strong>put a two-year resonance in and meet Earth once more, and the burn is not needed at all</strong>.
+   </p>
+
+   <h3>Making it arrive at Jupiter</h3>
+   <p>
+      So far we have only asked whether it reaches Jupiter's orbit.
+      To hit Jupiter itself, the day Jupiter arrives and the day you arrive must be made to agree.
+      That means moving dates and trying; the trajectory below is what came of it.
+      The Venus → Earth leg is set to <strong>one revolution</strong>, stretching the return V∞ to 12.9 km/s.
+   </p>
+
+   <figure>
+     <img src="img/sw2-vega.png" alt="The whole VEGA" />
+     <figcaption>Launch 2031/8/1, Venus 2032/1/15, Earth 2033/6/22, Jupiter 2035/10/15. The C3 is down to 18.16.</figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/sw2-vega-in.png" alt="The inner part of VEGA" />
+     <figcaption>The inner part enlarged. It falls inward as far as Venus, then returns to Earth.</figcaption>
+   </figure>
+
+   <figure class="seq">
+     <img src="img/sw2-vega-list.png" alt="The VEGA sequence list" />
+     <figcaption>Four sequences. Jupiter is the destination, so it ends on an orbit insertion rather than a final orbit.</figcaption>
+   </figure>
+
+   <p>
+      The launch escape velocity is only 4.26 km/s. The V∞ at Venus is 9.27 km/s, and after 35.7° of bend there, the V∞ on returning to Earth is <strong>12.93 km/s</strong>. What ΔVEGA grew to 9.36 km/s with a burn, this has done without fuel.
+   </p>
+
+   <div class="table-wide">
+     <table>
+<tr><th>Leg</th><th>Days</th><th>Revolutions</th><th>Aphelion on this leg</th><th>V∞ on arrival</th><th>Turn angle there</th></tr>
+<tr><td>Launch → Venus</td><td class="num">167 days</td><td class="num">direct</td><td class="num">1.02 AU</td><td class="num">9.27 km/s</td><td class="num">35.7°</td></tr>
+<tr><td>Venus → Earth</td><td class="num">524 days</td><td class="num">1 rev</td><td class="num">1.72 AU</td><td class="num">12.93 km/s</td><td class="num">31.1°</td></tr>
+<tr><td>Earth → Jupiter</td><td class="num">845 days</td><td class="num">direct</td><td class="num">4.99 AU</td><td class="num">6.28 km/s</td><td class="num">-</td></tr>
+</table>
+   </div>
+
+   <p>
+      Venus orbits fast (35.1 km/s) and, as part 1 showed, makes an excellent swingby partner.
+      The aphelion goes from 1.02 AU just after launch to 1.72 AU, and after Earth throws you out, to 4.99 AU.
+   </p>
+
+   <div class="shots2">
+     <img src="img/sw2-vega-venus.png" alt="The Venus swingby sequence" />
+     <img src="img/sw2-vega-flyby.png" alt="The Earth swingby sequence" />
+     <div class="cap"><b>The Venus swingby</b> V∞ 9.27 km/s, turn angle 35.7°, periapsis altitude 2,493 km. No burn.</div>
+     <div class="cap"><b>The Earth swingby</b> V∞ 12.93 km/s. Even 31.1° of bend is not enough, so 843 m/s is burned at periapsis.</div>
+   </div>
+
+   <figure>
+     <img src="img/sw2-vega-stat.png" alt="The VEGA score" />
+     <figcaption>The score. C3 18.16, launch mass 3913 kg, leaving <b>1517 kg</b>, over 4.2 years.</figcaption>
+   </figure>
+
+   <div class="note warn">
+     <strong>Here too it cannot bend far enough</strong>
+      In this arriving version too, the V∞ back at Earth has risen to 12.93 km/s, and now it <strong>cannot be bent far enough</strong>. As part 1 showed, the larger V∞ is, the less it bends. The ceiling at this V∞ is about 29.2°, which is 1.9° short of what is needed to point at Jupiter. The app makes up the shortfall with a burn at periapsis, which is why 843 m/s sits at Earth.
+   </div>
+
+   <h2>VEEGA: put a two-year resonance in and meet Earth again</h2>
+   <p>
+      If one bend is not enough, <strong>split it in two</strong>.
+      Bend a little at the first Earth to get onto a two-year resonant orbit, meet Earth again two years later, and bend the rest there.
+      That is <strong>VEEGA</strong> (Venus-Earth-Earth Gravity Assist).
+      It is also the sequence the Galileo spacecraft used to reach Jupiter.
+   </p>
+
+   <h3>Step 3: onto a two-year resonance, then a second swingby</h3>
+   <p>
+      Add one more Earth behind the Earth → Venus → Earth built in step 1.
+   </p>
+   <ol start="8">
+     <li>Put the Earth swingby you altered in step 5 <strong>back into auto mode</strong>. </li>
+     <li>Behind it add <strong>a second swingby at Earth</strong>, with its date <strong>800–850 days later</strong>.
+        Exactly one year or exactly two will not solve: departure and arrival become the same point.</li>
+     <li>Set that leg's <strong>revolutions to 1</strong>(go one extra time round the Sun before meeting Earth).</li>
+     <li>Set the second Earth swingby to <strong>manual mode</strong>, and make the last sequence <strong>Final orbit</strong>.</li>
+     <li>Again vary <strong>periapsis altitude</strong> and <strong>rotation angle</strong> to maximise the aphelion.</li>
+   </ol>
+
+   <figure class="seq">
+     <img src="img/sw2-eve2-list.png" alt="The sequence list with a second Earth added" />
+     <figcaption>Earth twice. The fourth is in manual mode and the fifth is a final orbit.</figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/sw2-eve2.png" alt="How far two Earth swingbys reach" />
+     <figcaption>Two Earth swingbys with a two-year resonance between them, at the same viewpoint. The aphelion of 5.934 AU has passed Jupiter's orbit (the outer grey circle). No burn is used.</figcaption>
+   </figure>
+
+   <div class="shots2">
+     <img src="img/sw2-eve2-flyby.png" alt="The second Earth swingby" />
+     <img src="img/sw2-eve2-end.png" alt="The final-orbit sequence" />
+     <div class="cap"><b>The second Earth swingby</b> V∞ 9.634 km/s, periapsis altitude 300 km (the floor), turn angle 46.1°. No burn.</div>
+     <div class="cap"><b>Final orbit</b> Perihelion 1.004 AU, aphelion <b>5.934 AU</b>, period 6.46 years.</div>
+   </div>
+
+   <p>
+      31.1° at the first Earth to get onto the resonance, 46.1° at the second: 77.2° in all. What could only be bent 46.3° in one go bends 77.2° in two. V∞ hardly moves, 9.592 → 9.634 km/s (a leg returning to the same body does not raise V∞). What grew is <strong>the total angle you can bend</strong>, and that alone takes the aphelion from 3.30 to 5.934 AU.
+   </p>
+
+   <h3>Making it arrive at Jupiter</h3>
+   <p>
+      All that is left is to line it up with the day Jupiter arrives — or so one would like to say, but this too is trial and error.
+      Moving dates and adding a Jupiter sequence, we looked for where the periapsis ΔV goes to zero.
+      This is what turned up.
+   </p>
+
+   <figure>
+     <img src="img/sw2-veega.png" alt="The whole VEEGA" />
+     <figcaption>Launch 2029/10/3, Venus 2030/4/8, Earth 2031/2/18, Earth again 2033/5/26, Jupiter 2036/1/14. C3 12.85.</figcaption>
+   </figure>
+
+   <figure>
+     <img src="img/sw2-veega-in.png" alt="The inner part of VEEGA" />
+     <figcaption>The inner part only. It falls in as far as Venus, returns to Earth, swings wide round the Sun, and meets Earth once more.</figcaption>
+   </figure>
+
+   <figure class="seq">
+     <img src="img/sw2-veega-list.png" alt="The VEEGA sequence list" />
+     <figcaption>Five sequences, with Earth appearing twice. This one stays entirely in auto mode, with no deep-space burn.</figcaption>
+   </figure>
+
+   <div class="table-wide">
+     <table>
+<tr><th>Leg</th><th>Days</th><th>Revolutions</th><th>Aphelion on this leg</th><th>V∞ on arrival</th><th>Turn angle there</th></tr>
+<tr><td>Launch → Venus</td><td class="num">187 days</td><td class="num">direct</td><td class="num">1.01 AU</td><td class="num">5.45 km/s</td><td class="num">49.3°</td></tr>
+<tr><td>Venus → Earth</td><td class="num">316 days</td><td class="num">direct</td><td class="num">1.36 AU</td><td class="num">9.60 km/s</td><td class="num">31.0°</td></tr>
+<tr><td>Earth → Earth</td><td class="num">828 days</td><td class="num">1 rev</td><td class="num">2.34 AU</td><td class="num">9.64 km/s</td><td class="num">42.8°</td></tr>
+<tr><td>Earth → Jupiter</td><td class="num">963 days</td><td class="num">direct</td><td class="num">5.00 AU</td><td class="num">5.96 km/s</td><td class="num">-</td></tr>
+</table>
+   </div>
+
+   <p>
+      31.0° at the first Earth and 42.8° at the second: 73.8° in all. Set against VEGA, which fell 1.9° short trying to do it in one, splitting it leaves room to spare. V∞ is 9.60 km/s, smaller than VEGA's, which is exactly why each bend can be larger. The aphelion climbs in steps: 1.01 → 1.36 → 2.34 → 5.00 AU.
+   </p>
+
+   <p>
+      The Earth → Earth leg in the middle takes 828 days. Its orbit has a semi-major axis of 1.62 AU and a period of 754 days — very nearly the same shape as the two-year resonance used for ΔVEGA (period 757 days). The difference is that instead of squaring the dates with a burn, it sets <strong>the leg's revolutions to 1</strong> and goes one extra time round the Sun before meeting Earth. Earth meanwhile goes round 2.27 times, and they meet after 828 days. No burn is needed.
+   </p>
+
+   <div class="note">
+     <strong>The burn left at Venus</strong>
+      There is a residual burn of 44 m/s at Venus. Not for want of bend (49.3° is more than enough), but because the incoming V∞ of 5.448 km/s and the outgoing 5.517 km/s disagree slightly. Tighten the dates a little further and it goes away.
+   </div>
+
+   <div class="shots2">
+     <img src="img/sw2-veega-earth1.png" alt="The first Earth swingby" />
+     <img src="img/sw2-veega-earth2.png" alt="The second Earth swingby" />
+     <div class="cap"><b>The first Earth</b> V∞ 9.60 km/s, turn angle 31.0°, periapsis altitude 5,465 km.</div>
+     <div class="cap"><b>The second Earth</b> V∞ 9.64 km/s, turn angle 42.8°, periapsis altitude 1,089 km. From here, Jupiter.</div>
+   </div>
+
+   <figure>
+     <img src="img/sw2-veega-stat.png" alt="The VEEGA score" />
+     <figcaption>The score. C3 12.85, launch mass 4390 kg, leaving <b>2223 kg</b>, over 6.3 years.</figcaption>
+   </figure>
+
+   <h3>Getting a feel for hitting Jupiter</h3>
+   <p>
+      To be honest, we could not find a recipe that <strong>always produces one</strong> right through to arriving at Jupiter. There are five dates, and all of them must mesh.
+      The arriving versions on this page came from fixing conditions and sweeping exhaustively.
+      Even so, we did learn how to feel our way toward one, so here it is.
+   </p>
+
+   <ol>
+     <li><strong>Watch the V∞ on return.</strong>
+        Selecting a sequence shows “Next V∞ at …”. At 9–10 km/s, the second Earth can throw you out to Jupiter.</li>
+     <li><strong>Setting Venus → Earth to one revolution stretches V∞ nicely.</strong>
+        It reached 12.9 km/s for the VEGA on this page. Stretch it too far, though, and it cannot be bent.</li>
+     <li><strong>Earth → Earth: 800–850 days with one revolution.</strong> That is the two-year resonance.</li>
+     <li>Finally add the Jupiter sequence and look for <strong>Auto-tune</strong>.
+        If periapsis ΔV is left over at Earth or Venus, nudge the dates a few days at a time.</li>
+   </ol>
+
+   <div class="note">
+     <strong>The chances are few</strong>
+      Sweeping every launch date from January 2029 to June 2032 (requiring a launch C3 of 30 or less, and every swingby to work without a burn to make up the bend), all five dates meshed <strong>in one window only: autumn 2029, from late September to November</strong>. That stands in contrast to ΔVEGA, which can be built every thirteen months.
+   </div>
+
+   <h2>The four side by side</h2>
+
+   <div class="table-wide">
+     <table>
+<tr><th>Trajectory</th><th>Launch C3</th><th>Launchable mass</th><th>Burn on the way</th><th>Burn to enter orbit at Jupiter</th><th>Mass left</th><th>Time taken</th></tr>
+<tr><td>Direct to Jupiter</td><td class="num">83.32</td><td class="num">29 kg</td><td class="num">-</td><td class="num">2252 m/s</td><td class="num"><b>14 kg</b></td><td class="num">2.0 years</td></tr>
+<tr><td>ΔVEGA (long resonance)</td><td class="num">27.21</td><td class="num">3174 kg</td><td class="num">588 m/s<br /><small>burn at aphelion</small></td><td class="num">2121 m/s</td><td class="num"><b>1339 kg</b></td><td class="num">4.4 years</td></tr>
+<tr><td>VEGA</td><td class="num">18.16</td><td class="num">3913 kg</td><td class="num">843 m/s<br /><small>periapsis ΔV at Earth</small></td><td class="num">2130 m/s</td><td class="num"><b>1517 kg</b></td><td class="num">4.2 years</td></tr>
+<tr><td>VEEGA</td><td class="num">12.85</td><td class="num">4390 kg</td><td class="num">44 m/s<br /><small>periapsis ΔV at Venus</small></td><td class="num">2091 m/s</td><td class="num"><b>2223 kg</b></td><td class="num">6.3 years</td></tr>
+</table>
+   </div>
+
+   <p>
+      The further down, the easier the launch, the more you can carry, and the longer it takes. Between the direct run's 14 kg and VEEGA's 2223 kg lies a factor of more than 158. Each swingby added brings the C3 down another step.
+   </p>
+
+   <h2>In short</h2>
+   <ul>
+     <li>For Earth to throw you out to Jupiter takes V∞ of 8.79 km/s or more. Flying straightforwardly does not get there.</li>
+     <li><strong>ΔVEGA</strong>: build an orbit that returns to Earth in two years and burn about 600 m/s at aphelion to open an angle.
+        The speed barely changes, yet V∞ nearly doubles. The window comes round every thirteen months.</li>
+     <li>A two-year resonance <strong>cannot be used at exactly two years</strong>. There is a short one (678 days) and a long one (781 days).</li>
+     <li><strong>VEGA</strong>: calling at Venus alone nearly doubles V∞.
+        But the direction coming into Earth is far off the orbital direction, and one bend cannot fix it.
+        The final orbit's aphelion stops at 3.298 AU, short of Jupiter's orbit.</li>
+     <li><strong>VEEGA</strong>: split the bend in two across a resonance and the aphelion reaches 5.934 AU with no burn at all,
+        past Jupiter's orbit. The lightest launch of them all, and the longest.</li>
+   </ul>
+
+   <div class="note">
+     <strong>Related pages</strong>
+     <a href="swingby.html">Swingbys, part 1</a> — how they work, and how much each body is worth.<br />
+     <a href="hohmann.html">Hohmann transfers and the third dimension</a> — why a porkchop plot has two islands.<br />
+     <a href="launchers.html">What rockets can launch</a> — how C3 relates to launchable mass.<br />
+     <a href="jupiter.html">Tutorial ④</a> — build a Juno-like ΔVEGA with your own hands.
+   </div>
+
+   <div class="nav-bottom">
+     <a href="swingby.html">← Swingbys, part 1</a>
+     <a href="index.html">Guide contents →</a>
+   </div>
+ </main>
+</body>
+
+</html>

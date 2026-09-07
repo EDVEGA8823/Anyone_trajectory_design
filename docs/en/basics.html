@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reading the screen — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../basics.html" class="lang-link">日本語</a>
+    <a href="basics.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+    <h1>Reading the screen</h1>
+    <p class="lead">Let us draw a single trajectory from Earth to Mars.</p>
+
+    <div class="aim">
+      <h3>What you will learn here</h3>
+      <ul>
+        <li>A mission is built by lining up “sequences”</li>
+        <li>Fixing the dates fixes the trajectory</li>
+        <li>The score is read off the bar at the bottom left</li>
+      </ul>
+    </div>
+
+    <h2>Three areas</h2>
+    <figure>
+      <img src="img/basics-empty.png" alt="The screen just after starting" />
+      <figcaption>Just after starting. The solar-system view on the left, the mission sequence in the middle,
+        the editor on the right.</figcaption>
+    </figure>
+
+    <p>
+      The <strong>solar-system view</strong> is where you see what is where.
+      Drag to rotate, use the wheel to zoom.
+      With nothing selected, the time shown here is only a preview.
+      Press <kbd>←</kbd> <kbd>→</kbd> and the date moves, spinning the planets round.
+      However much you move it in this state, no mission date changes.
+    </p>
+    <figure>
+      <img src="img/basics-preview.png" alt="The screen with nothing selected" />
+      <figcaption>
+        With nothing selected, only “Time” is left in the editor.
+        The label at its top right reads <strong>“Time in view”</strong>, telling you this is not any sequence's date.
+      </figcaption>
+    </figure>
+
+    <p>
+      The <strong>mission sequence</strong> is the list of what the spacecraft is going to do.
+      You line up <em>sequences</em> — “Launch”, “Swingby”, “Orbit insertion” and so on — from the top down.
+    </p>
+    <figure class="seq">
+      <img src="img/basics-list.png" alt="The mission sequence list" />
+      <figcaption>They run from the top down. “+ Add a sequence” between them inserts one wherever you like.</figcaption>
+    </figure>
+
+    <p>
+      The <strong>editor</strong> shows the settings and readouts for whichever sequence you picked in the list.
+      Its contents change completely with the kind of sequence selected.
+    </p>
+
+    <h2>Drawing a leg to Mars</h2>
+
+    <ol class="steps">
+      <li>
+        <p>
+          Press “+ Add a sequence” twice. The first one is always a <strong>Launch</strong>.
+          Then click the second card to select it.
+        </p>
+        <figure>
+          <img src="img/basics-two.png" alt="The second sequence selected" />
+          <figcaption>
+            The second one still has type “---”, with Earth filled in as a placeholder body.
+            We change both next.
+          </figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>
+          In the editor, change <strong>Body</strong> to “Mars”.
+          Then, under <strong>Sequence</strong>, pick “Orbit insertion” from the “Change” list.
+        </p>
+        <p>
+          Which types are on offer depends on the body. For a planet: swingby, orbit insertion, atmospheric entry.
+          For an asteroid: flyby, rendezvous. The gravity is a different size, so what you can do differs too.
+        </p>
+      </li>
+
+      <li>
+        <p>
+          Now the dates. Selecting a card puts that sequence's date into <strong>Time</strong> in the editor,
+          so set the launch to 2026/10/30 and the arrival at Mars to 2027/09/15.
+        </p>
+        <p>
+          You can type into the date box, use the <kbd>-10</kbd> <kbd>-1</kbd> <kbd>+1</kbd> <kbd>+10</kbd> buttons,
+          press <kbd>←</kbd> <kbd>→</kbd>, or grab a planet in the solar-system view and drag it. Any of them works.
+        </p>
+        <figure>
+          <img src="img/basics-mars.png" alt="The trajectory from Earth to Mars" />
+          <figcaption>The blue line is the spacecraft's path. The moment the dates are fixed, the trajectory
+            joining them is worked out.</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <div class="note">
+      <strong>Why the dates alone fix the trajectory</strong>
+      Where you leave from (Earth on that day), where you arrive (Mars on that day), and how long it takes.
+      Fix those three and the trajectory joining them is (nearly always) a single curve.
+      Solving that is called <strong>Lambert's problem</strong>, and it is the heart of this app.
+      Turned around: all you have to decide is when you leave and when you arrive.
+    </div>
+
+    <h2>Reading the score</h2>
+    <figure>
+      <img src="img/basics-statbar.png" alt="The mission summary bar" />
+      <figcaption>The bar under the solar-system view. Whether a design is any good shows up here.</figcaption>
+    </figure>
+
+    <table>
+      <tr>
+        <th>Readout</th>
+        <th>What it is</th>
+        <th>When it is large</th>
+      </tr>
+      <tr>
+        <td>Escape velocity</td>
+        <td>The speed left over after breaking free of Earth's gravity</td>
+        <td>You get further, sooner, but less mass goes up</td>
+      </tr>
+      <tr>
+        <td>Total ΔV</td>
+        <td>The total speed change the spacecraft makes with its own fuel</td>
+        <td>It eats fuel, so less mass is left</td>
+      </tr>
+      <tr>
+        <td>Launch mass → Mass left</td>
+        <td>What the chosen rocket can launch, and what remains once the fuel is spent</td>
+        <td>The larger the mass left, the better the design</td>
+      </tr>
+    </table>
+
+    <p>
+      They are colour-coded: blue-green is easy, yellow or orange is hard, red is very hard.
+      Hover over one and you can read where the boundaries between those colours sit.
+    </p>
+
+    <h2>Tightening it with auto-tune</h2>
+    <p>
+      Setting dates by hand only needs to get you in the right neighbourhood.
+      Press <strong>Auto-tune</strong> in the mission-sequence heading and it nudges the current design
+      <strong>toward the largest mass left</strong>.
+    </p>
+
+    <figure>
+      <img src="img/basics-tune-btn.png" alt="The auto-tune button" />
+      <figcaption>To the right of the mission-sequence heading. While it runs, the button shows how much better
+        it has got so far (here, “Tuning +0.4%”).</figcaption>
+    </figure>
+
+    <p>Let us press it on the Mars leg we just drew.</p>
+
+    <figure>
+      <img src="img/basics-tune-before.png" alt="The score before tuning" />
+      <figcaption>Before. Mass left 3701 kg.</figcaption>
+    </figure>
+    <figure>
+      <img src="img/basics-tune-after.png" alt="The score after tuning" />
+      <figcaption>After. Mass left 3717 kg.</figcaption>
+    </figure>
+    <figure class="seq">
+      <img src="img/basics-tune-list.png" alt="The sequence list after tuning" />
+      <figcaption>The dates have moved (the launch time shifted a little too, so it now reads 2026/10/31).</figcaption>
+    </figure>
+
+    <p>
+      The arrival at Mars moved from 2027/9/15 to <strong>2027/9/7</strong>. That alone dropped the launch energy
+      from 9.30 to 9.22 km²/s², so the launchable mass rose from 4728 to 4736 kg, and the insertion burn fell
+      from 769 to 760 m/s, leaving <strong>3701 → 3717 kg</strong>.
+      That is a gain of 16 kg — which also says the dates picked by hand were already rather good.
+    </p>
+
+    <h3>What it moves</h3>
+    <p>Only the things that are design variables right now.</p>
+    <ul>
+      <li>The <strong>launch date</strong> — up to 30 days either way</li>
+      <li>The <strong>flight time of each leg</strong> — between 1/1.2 and 1.2 times what it is now</li>
+      <li>The <strong>speed and direction of a launch or orbit departure</strong>, where it is in manual mode</li>
+      <li>The <strong>periapsis altitude and rotation angle of a swingby</strong>, where it is in manual mode</li>
+      <li>The <strong>size and direction of a deep-space burn</strong></li>
+    </ul>
+    <p>
+      <strong>It does not move the altitudes of an orbit.</strong> Those say “I want to observe from that altitude”;
+      they are not values to be raised and lowered freely just to save fuel.
+      The order of bodies and sequence types does not change either.
+    </p>
+
+    <div class="note">
+      <strong>It tightens; it does not search afresh</strong>
+      It only looks <strong>right around the current design</strong>. Range further and it would hand back
+      a trajectory bearing no resemblance to the one you built, which would not be “tuning”.
+      The skeleton — which body you use and how — is yours to decide.
+      Turned around, that means <strong>you can place things roughly and then press it</strong>.
+      In tutorial <a href="jupiter.html">④</a>, a design placed roughly by hand is tightened this way to
+      something close to the real spacecraft.
+    </div>
+
+    <p>
+      You may get “It could not be improved further”. That means there is nothing better in the neighbourhood
+      of the current design.
+      If you do not like the result, <kbd>Ctrl</kbd>+<kbd>Z</kbd> takes it back.
+    </p>
+
+    <h2>Readouts in the editor</h2>
+    <figure class="panel">
+      <img src="img/basics-launch-panel.png" alt="The editor for a launch" />
+      <figcaption>The launch sequence selected. The 3D view shows the close-in picture, centred on Earth.</figcaption>
+    </figure>
+
+    <p>
+      The numbers line up in the narrow column on the right. Only the ones that
+      <strong>matter for deciding the design</strong> are shown; anything you would use just to check your work
+      is folded away under “More detail”. Click it to open.
+    </p>
+    <p>
+      “V∞ at Mars” is how fast you arrive at Mars at the end of this leg, as seen from Mars.
+      Whether the trajectory you are about to build is any good usually comes down to that number.
+    </p>
+
+    <h2>Shortcuts worth knowing</h2>
+    <table>
+      <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Select a sequence</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Move the time by a day (<kbd>Shift</kbd> for ten)</td></tr>
+      <tr><td><kbd>A</kbd> / <kbd>Delete</kbd></td><td>Add / delete a sequence</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
+      <tr><td><kbd>?</kbd></td><td>The list of keyboard shortcuts</td></tr>
+    </table>
+
+    <h2>Saving and sharing</h2>
+    <p>Saving and sharing what you have made are gathered on the right of the top bar.</p>
+    <figure>
+      <img src="img/basics-topbar.png" alt="The right of the top bar" />
+      <figcaption>
+        The orange dot on “Save” means there are changes you have not saved.
+        The same dot appears next to the mission name.
+      </figcaption>
+    </figure>
+    <p>The “⋯” at the far right opens the rest.</p>
+    <figure>
+      <img src="img/basics-menu.png" alt="The menu behind “⋯”" />
+      <figcaption>It hangs down from the top bar.</figcaption>
+    </figure>
+
+    <p>
+      <strong>Load an example</strong> holds the trajectories built in these tutorials and reference pages.
+      Use it to see the finished article before you start,
+      or to check your answer when you get stuck partway.
+    </p>
+
+    <h3>Saving to a file</h3>
+    <p>
+      <strong>Save</strong> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) drops a single JSON file.
+      Its name comes from the mission name (“To Mars” gives To Mars.json).
+      <strong>Open</strong> (<kbd>Ctrl</kbd>+<kbd>O</kbd>) brings it back.
+    </p>
+    <p>
+      It is readable in a text editor, and you are welcome to edit the dates by hand.
+    </p>
+    <div class="note">
+      <strong>A watch against forgetting to save</strong>
+      Press “Open” or “New” while the orange dot is showing and it stops to ask first.
+      The same happens when you open a share link. You will not overwrite anything by accident.
+    </div>
+
+    <h3>Handing it over as a link</h3>
+    <p>
+      Choose <strong>Copy share link</strong> from “⋯” and a URL goes to your clipboard.
+      Whoever opens it sees your design exactly as it stands.
+      Any small bodies you added travel with it, so a design built after adding Ryugu
+      makes Ryugu appear on their screen too.
+    </p>
+
+    <div class="note">
+      <strong>The design lives after the “#”</strong>
+      This app has nowhere to keep anything; it is just static files.
+      So the design itself is packed into the URL. Nothing is being kept on a server somewhere.
+      That means changing your design after handing out a link does not change what the link holds.
+      It also means you cannot go round deleting links you have handed out.
+      What follows “#” is the part a browser never sends to a server: the trajectory you built will not turn up
+      in an access log, and it does not leak along when you follow a link to another site.
+      As for length, the most involved design comes to about 600 characters — no danger of it wrapping
+      wherever you paste it.
+    </div>
+
+    <h3>Turning it into a picture</h3>
+    <p>
+      <strong>Save as image</strong>, from “⋯”. It does not photograph the screen; it lays out just what belongs
+      in the picture and draws it afresh.
+    </p>
+    <figure>
+      <img src="img/basics-export.png" alt="A picture made with “Save as image”" />
+      <figcaption>Mission name, trajectory, sequences and score all on one sheet.</figcaption>
+    </figure>
+    <p>
+      No buttons or dropdowns creep in. The layout does not change with the width or height of your screen,
+      so saving on a phone gives the same shape. The solar-system view is redrawn larger and at a higher
+      resolution than you see on screen.
+    </p>
+
+    <h3>Posting on X</h3>
+    <p>
+      <strong>Share on X</strong> opens the post window with the text and the share link already filled in.
+    </p>
+    <p>
+      On a computer it copies the image to the clipboard before opening, so
+      <kbd>Ctrl</kbd>+<kbd>V</kbd> in the post box attaches the picture too.
+      Opening X's post window by URL gives no way to hand it an image, hence the two steps.
+      On a phone the system share sheet opens instead, so picking X there brings the text, link and image together.
+    </p>
+
+    <div class="nav-bottom">
+      <a href="index.html">← Contents</a>
+      <a href="mars.html">① There and back from Mars →</a>
+    </div>
+  </main>
+</body>
+
+</html>

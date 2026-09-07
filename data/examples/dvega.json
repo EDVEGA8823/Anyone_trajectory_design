@@ -1,0 +1,35 @@
+{
+ "format": "anyone-trajectory-design",
+ "version": 1,
+ "name": "ΔVEGA で木星へ",
+ "launcher": "h3_24",
+ "launch": {
+  "vinf": 5.216757748575221,
+  "alpha": 0.002666163964138182,
+  "delta": 0.0009245810142022304
+ },
+ "nodes": [
+  {
+   "type": "Launch",
+   "date": 2462551.6471712072,
+   "planet": 2,
+   "manual": true
+  },
+  {
+   "type": "Maneuver",
+   "date": 2462963.156146387
+  },
+  {
+   "type": "Swingby",
+   "date": 2463332.774172932,
+   "planet": 2,
+   "rp": 6678.137192685312,
+   "beta": -1.965409527268199
+  },
+  {
+   "type": "Orbit",
+   "date": 2464164.9783308245,
+   "planet": 4
+  }
+ ]
+}
