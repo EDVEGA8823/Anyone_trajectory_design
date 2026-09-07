@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>② To Mercury on Venus' gravity — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../mercury.html" class="lang-link">日本語</a>
+    <a href="mercury.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+    <h1>② To Mercury on Venus' gravity</h1>
+    <p class="lead">
+      Mariner 10, launched in 1973, was the first spacecraft to <strong>use a swingby</strong>.
+      We will reproduce its trajectory with the real launch date, exactly as flown.
+    </p>
+
+    <div class="aim">
+      <h3>What you will learn here</h3>
+      <ul>
+        <li>What happens if you do not use a swingby</li>
+        <li>What a swingby actually does (turn angle and periapsis altitude)</li>
+        <li>Why the inner planets are the hard ones to reach</li>
+        <li>Deciding the orbit after a swingby yourself (manual mode)</li>
+        <li>The resonance that meets Mercury three times</li>
+      </ul>
+    </div>
+
+    <h2>First, go without Venus</h2>
+    <p>
+      What a swingby is worth shows best when you put it beside the case without one.
+      So let us first draw a trajectory <strong>straight from Earth to Mercury</strong>.
+      As with Mariner 10, we will only <strong>pass by</strong> Mercury
+      (make the second sequence a swingby at Mercury and it is treated as a pass).
+    </p>
+    <p>
+      Move the dates around and look for the easiest spot.
+      The bottom is around leaving on 3 December 1973 and arriving 100 days later.
+    </p>
+
+    <figure>
+      <img src="../img/mercury-direct.png" alt="A direct trajectory to Mercury" />
+      <figcaption>Falling straight from Earth to Mercury.</figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="../img/mercury-direct-launch.png" alt="The launch readouts going direct" />
+      <figcaption>Escape velocity 7.181 km/s, arriving at Mercury at 19.165 km/s.</figcaption>
+    </figure>
+
+    <figure>
+      <img src="../img/mercury-direct-stat.png" alt="The score going direct" />
+      <figcaption>Launch energy 51.57 km²/s². An H3 can only put up 1556 kg.</figcaption>
+    </figure>
+
+    <p>
+      You can get there. But it costs you twice over.
+    </p>
+    <ul>
+      <li>
+        <strong>A launch energy of 51.57 km²/s²</strong> —
+        over five times the trip to Mars (9.30), dropping the launchable mass to 1556 kg.
+      </li>
+      <li>
+        <strong>You pass Mercury at 19.2 km/s.</strong>
+        You get an instant to observe. And at that speed there is no prospect of staying near Mercury at all.
+      </li>
+    </ul>
+
+    <p>Venus' gravity fixes both.</p>
+
+    <h2>Building it with Venus in between</h2>
+
+    <ol class="steps">
+      <li>
+        <p>Start again with four sequences, and set the top three like this.</p>
+        <table>
+          <tr><th>No.</th><th>Type</th><th>Body</th><th>Date</th></tr>
+          <tr><td>1</td><td>Launch</td><td>Earth</td><td>1973/11/03</td></tr>
+          <tr><td>2</td><td>Swingby</td><td>Venus</td><td>1974/02/05</td></tr>
+          <tr><td>3</td><td>Swingby</td><td>Mercury</td><td>1974/03/29</td></tr>
+          <tr><td>4</td><td>(we make this a final orbit later)</td><td>—</td><td>1974/06/01</td></tr>
+        </table>
+        <p>Every one of those is Mariner 10's real date.</p>
+        <figure>
+          <img src="../img/mercury-all.png" alt="Mariner 10's trajectory" />
+          <figcaption>Earth → Venus → Mercury, falling inward and inward again.</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <h2>Reading the swingby</h2>
+    <figure class="panel">
+      <img src="../img/mercury-venus.png" alt="The editor for the Venus swingby" />
+      <figcaption>The swingby at Venus. In at 8.339 km/s, bent through 34 degrees, out at 8.029 km/s.</figcaption>
+    </figure>
+
+    <p>
+      Select the second sequence and you see what is happening close to Venus. The figure looks at Venus head-on,
+      and the blue plane is where the spacecraft is aiming (the B-plane).
+    </p>
+
+    <table>
+      <tr><td>Incoming V∞</td><td class="num">8.339 km/s</td><td>How fast you come in, as seen from Venus</td></tr>
+      <tr><td>Outgoing V∞</td><td class="num">8.029 km/s</td><td>How fast you leave</td></tr>
+      <tr><td>Turn angle</td><td class="num">34.0°</td><td>How far gravity bent the direction of travel</td></tr>
+      <tr><td>Periapsis altitude</td><td class="num">5681 km</td><td>The lowest altitude reached</td></tr>
+      <tr><td>Periapsis ΔV</td><td class="num">229.5 m/s</td><td>The burn making up what gravity alone could not bend</td></tr>
+    </table>
+
+    <p>
+      This is the point of a swingby. <strong>As seen from Venus, the speed barely changed</strong>
+      (8.339 → 8.029, the difference being the 229 m/s burned at periapsis). What changed is the
+      <strong>direction</strong>.
+      But Venus itself is moving around the Sun at 35 km/s, so as seen from the Sun, merely changing direction
+      has changed the velocity a great deal. Without spending fuel.
+    </p>
+    <p>
+      How that works, and which bodies used which way actually help, are collected in
+      <a href="swingby.html">Swingbys, part 1</a>.
+    </p>
+
+    <p>
+      Lower the periapsis altitude and the turn angle grows. Want a deeper bend? Pass closer.
+      There is a floor, though — the atmosphere and radiation belts — and it stops there.
+      If the readout “Bend gravity cannot supply” appears, that is the sign gravity alone is not enough,
+      and the periapsis ΔV is the burn covering the shortfall.
+    </p>
+
+    <h3>Where you arrive next is settled before you get there</h3>
+    <p>
+      At the bottom of the readouts is “Next V∞ at Mercury 10.576 km/s”.
+      How fast you arrive at Mercury <strong>is already decided by how you fly before you get there</strong>.
+      So it matters to watch that number while you are still building the leg toward it,
+      not only once you open the swingby sequence.
+      That is why it appears on launch, burn and leg sequences alike.
+    </p>
+
+    <div class="note">
+      <strong>The inner planets are the hard ones</strong>
+      Arriving at Mercury at 10.6 km/s is very fast indeed.
+      The closer to the Sun, the faster the orbital motion, so falling inward speeds a spacecraft up —
+      and stopping there (entering orbit) becomes extremely expensive.
+      That is why Mariner 10 only flew past, and why the spacecraft that do orbit Mercury
+      (MESSENGER, BepiColombo) shave their speed off over repeated swingbys before going in.
+    </div>
+
+    <h2>What to do after Mercury</h2>
+    <p>
+      Now the real work. Select the third sequence (the swingby at Mercury) and switch it to <strong>Manual</strong>.
+    </p>
+
+    <figure class="panel">
+      <img src="../img/mercury-manual.png" alt="The Mercury swingby switched to manual" />
+      <figcaption>In manual you set the periapsis altitude and the rotation angle β yourself.</figcaption>
+    </figure>
+
+    <p>
+      Auto mode works backwards from “make sure it arrives at the next destination”, so it needs a destination.
+      Here, with nothing chosen beyond Mercury, it is more natural to
+      <strong>decide how to pass through yourself</strong>.
+      Switching to manual attaches a burn sequence (a maneuver) behind it, but that disappears in the next step.
+    </p>
+
+    <ol class="steps">
+      <li>
+        <p>Select the bottom sequence and set its type to <strong>Final orbit</strong>. The maneuver that came along disappears.</p>
+        <figure class="seq">
+          <img src="../img/mercury-end-types.png" alt="The sequences with a final orbit" />
+          <figcaption>“Final orbit” is a sequence that ends without a destination. The orbit you reached is itself the result.</figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>
+          Go back to the Mercury sequence and set <strong>periapsis altitude 350 km</strong> and
+          <strong>rotation angle β 10 degrees</strong>.
+        </p>
+        <figure class="panel">
+          <img src="../img/mercury-tuned.png" alt="The Mercury swingby set for resonance" />
+          <figcaption>Periapsis altitude 350 km, β 10 degrees. It passes through with no burn (periapsis ΔV 0).</figcaption>
+        </figure>
+      </li>
+
+      <li>
+        <p>Select the final-orbit sequence and look at the heliocentric orbit you ended up on.</p>
+        <figure class="panel">
+          <img src="../img/mercury-end.png" alt="The heliocentric orbit reached" />
+          <figcaption>Perihelion 0.456 AU, aphelion 0.773 AU, period 0.48 years.</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <h2>That number, 0.48 years</h2>
+    <p>
+      Mercury's period is 88 days = 0.241 years. The orbit we ended up on takes
+      <strong>0.48 years = 176 days</strong> — exactly <strong>two of Mercury's</strong>.
+    </p>
+
+    <p>
+      What that means: when the spacecraft comes round once, Mercury has gone round twice and is
+      <strong>back in the same place</strong>. So you meet Mercury again. Without spending a drop of fuel.
+    </p>
+
+    <p>
+      Mariner 10 did exactly this. First encounter March 1974, second September, third March 1975.
+      One spacecraft, three close approaches to Mercury, photographing 45% of the surface.
+      The Italian mathematician Giuseppe Colombo found this resonance,
+      and his name lives on in today's BepiColombo mission.
+    </p>
+
+    <div class="note">
+      <strong>Try it</strong>
+      Move the periapsis altitude and rotation angle β and watch how the period changes.
+      Landing exactly on 0.48 years is not easy.
+      Change the angle by a single degree and it shifts by days. In the real operation, too, this was delicate work.
+    </div>
+
+    <h2>What Venus bought us</h2>
+    <p>The same “fly past Mercury” mission, with the stop at Venus as the only difference.</p>
+    <table>
+      <tr><th></th><th>Direct to Mercury</th><th>Via Venus</th></tr>
+      <tr><td>Launch</td><td class="num">1973/12/03</td><td class="num">1973/11/03</td></tr>
+      <tr><td>Launch energy C3</td><td class="num">51.57 km²/s²</td><td class="num">18.79 km²/s²</td></tr>
+      <tr><td>Mass an H3 can launch</td><td class="num">1556 kg</td><td class="num">3859 kg</td></tr>
+      <tr><td>Speed arriving at Mercury</td><td class="num">19.2 km/s</td><td class="num">10.6 km/s</td></tr>
+      <tr><td>ΔV the spacecraft burns</td><td class="num">0 m/s</td><td class="num">230 m/s</td></tr>
+      <tr><td>Time taken</td><td class="num">3.3 months</td><td class="num">4.8 months</td></tr>
+    </table>
+
+    <p>
+      One pass by Venus <strong>multiplied the launchable mass by 2.5</strong> and
+      <strong>nearly halved the speed of arrival at Mercury</strong>.
+      All it cost was the step of calling at Venus, and a month and a half.
+    </p>
+
+    <p>
+      The arrival speed is what tells later.
+      A trajectory that comes in at 19.2 km/s leaves no room even to think about staying at Mercury.
+      Entering orbit at 10.6 km/s is still a heavy purchase (try changing the last sequence to
+      “Orbit insertion” and see), but it is a speed from which a next move is visible.
+      Indeed, the spacecraft that orbit Mercury go on to shave their speed further over many more swingbys.
+    </p>
+
+    <h2>The finished article</h2>
+    <figure>
+      <img src="../img/mercury-final.png" alt="The completed Mariner 10 trajectory" />
+    </figure>
+
+    <table>
+      <tr><th>Item</th><th>This design</th><th>The real Mariner 10</th></tr>
+      <tr><td>Launch</td><td class="num">1973/11/03</td><td class="num">1973/11/03</td></tr>
+      <tr><td>Launch energy C3</td><td class="num">18.79 km²/s²</td><td class="num">about 17</td></tr>
+      <tr><td>Venus swingby</td><td class="num">1974/02/05</td><td class="num">1974/02/05</td></tr>
+      <tr><td>Periapsis altitude at Venus</td><td class="num">5681 km</td><td class="num">5768 km</td></tr>
+      <tr><td>Speed arriving at Mercury</td><td class="num">10.576 km/s</td><td class="num">about 11 km/s</td></tr>
+      <tr><td>Mercury swingby</td><td class="num">1974/03/29</td><td class="num">1974/03/29</td></tr>
+      <tr><td>Period afterwards</td><td class="num">176 days</td><td class="num">176 days</td></tr>
+    </table>
+
+    <div class="nav-bottom">
+      <a href="mars.html">← ① There and back from Mars</a>
+      <a href="pluto.html">③ To Pluto with a push from Jupiter →</a>
+    </div>
+  </main>
+</body>
+
+</html>

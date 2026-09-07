@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>③ To Pluto with a push from Jupiter — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../pluto.html" class="lang-link">日本語</a>
+    <a href="pluto.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+    <h1>③ To Pluto with a push from Jupiter</h1>
+    <p class="lead">
+      New Horizons, launched in 2006, took nine and a half years to reach Pluto.
+      The key was Jupiter, which it passed thirteen months after launch.
+      This is the simplest tutorial — just three sequences in a row — but it shows plainly
+      <strong>how large Jupiter's gravity is</strong>.
+    </p>
+
+    <div class="aim">
+      <h3>What you will learn here</h3>
+      <ul>
+        <li>What a Jupiter swingby is worth (a different scale from Venus or Earth)</li>
+        <li>Choosing a launch vehicle (→ <a href="launchers.html">the capability curves</a>)</li>
+        <li>How narrow a launch window can be</li>
+      </ul>
+    </div>
+
+    <h2>First, go without Jupiter</h2>
+    <p>
+      Make two sequences: Earth first, then a <strong>swingby at Pluto</strong> (just a pass).
+      Use New Horizons' own dates: leaving 2006/01/19, arriving 2015/07/14.
+    </p>
+    <p>
+      Set <strong>Launch vehicle</strong> in the summary bar to “Atlas V 551 + kick stage”.
+      That is what New Horizons actually flew on — an Atlas V with a solid Star 48B upper stage on top.
+      Left on the H3-24, it does not come close to this C3.
+    </p>
+    <p>
+      Which vehicle reaches how far is laid out in <a href="launchers.html">What rockets can launch</a>,
+      with curves for thirteen of them.
+    </p>
+
+    <figure>
+      <img src="../img/pluto-direct.png" alt="A direct trajectory to Pluto" />
+      <figcaption>Heading straight from Earth to Pluto.</figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="../img/pluto-direct-launch.png" alt="The launch readouts going direct" />
+      <figcaption>Escape velocity 16.280 km/s, arriving at Pluto at 13.485 km/s.</figcaption>
+    </figure>
+
+    <figure>
+      <img src="../img/pluto-direct-stat.png" alt="The score going direct" />
+      <figcaption>Launch energy 265.03 km²/s². You can launch 70 kg.</figcaption>
+    </figure>
+
+    <p>
+      <strong>70 kg.</strong> That is not a spacecraft.
+      And this is not simply because Pluto is far away: <strong>the faster you try to arrive, the more it costs</strong>.
+      Arriving in the same nine and a half years takes this much energy.
+    </p>
+
+    <h2>Putting Jupiter in between</h2>
+
+    <ol class="steps">
+      <li>
+        <p>Start again with three sequences. All of these are New Horizons' real dates.</p>
+        <table>
+          <tr><th>No.</th><th>Type</th><th>Body</th><th>Date</th></tr>
+          <tr><td>1</td><td>Launch</td><td>Earth</td><td>2006/01/19</td></tr>
+          <tr><td>2</td><td>Swingby</td><td>Jupiter</td><td>2007/02/28</td></tr>
+          <tr><td>3</td><td>Swingby</td><td>Pluto</td><td>2015/07/14</td></tr>
+        </table>
+        <figure class="seq">
+          <img src="../img/pluto-types.png" alt="The three sequences" />
+        </figure>
+      </li>
+    </ol>
+
+    <figure>
+      <img src="../img/pluto-all.png" alt="New Horizons' trajectory" />
+      <figcaption>
+        Earth → Jupiter → Pluto. The bunched-up inner rings are Earth out to Jupiter;
+        Pluto is six times further again. The direction of travel changes at Jupiter.
+      </figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="../img/pluto-launch.png" alt="The launch readouts using Jupiter" />
+      <figcaption>Escape velocity 12.602 km/s, down from 16.280 going direct.</figcaption>
+    </figure>
+
+    <figure>
+      <img src="../img/pluto-stat.png" alt="The score using Jupiter" />
+      <figcaption>Launch energy 158.80 km²/s², launchable mass 471 kg.</figcaption>
+    </figure>
+
+    <p>
+      <strong>70 kg became 471 kg</strong> — about 6.7 times.
+      The real New Horizons weighed 478 kg. The number comes out very nearly as flown.
+    </p>
+
+    <h2>It bends you from 2.26 million km away</h2>
+    <figure class="panel">
+      <img src="../img/pluto-jupiter.png" alt="The Jupiter swingby readouts" />
+      <figcaption>Periapsis altitude 2260591 km. Even so it bends by 15.8 degrees.</figcaption>
+    </figure>
+
+    <p>
+      Look at the <strong>periapsis altitude: 2260591 km</strong>. <strong>2.26 million kilometres.</strong>
+      That is six times the Earth–Moon distance (380 thousand km).
+    </p>
+
+    <p>
+      Venus in tutorial ② was 5681 km; the Earth we use in ⑤ is 16 thousand km.
+      Passing at 2.26 million km — nowhere near grazing it — it still bends the path by
+      <strong>15.8 degrees</strong>. That is the scale of Jupiter's gravity.
+      And the other way round: come closer and it bends more. How far it can bend is covered in
+      <a href="swingby.html">Swingbys, part 1</a>.
+    </p>
+
+    <table>
+      <tr><th>Body</th><th>Periapsis altitude</th><th>Turn angle</th><th>Tutorial</th></tr>
+      <tr><td>Venus</td><td class="num">5,681 km</td><td class="num">34.0°</td><td>②</td></tr>
+      <tr><td>Earth</td><td class="num">16,000 km</td><td class="num">63.3°</td><td>⑤</td></tr>
+      <tr><td>Jupiter</td><td class="num">2,260,591 km</td><td class="num">15.8°</td><td>③ (this page)</td></tr>
+    </table>
+
+    <p>
+      By turn angle alone Jupiter looks the weakest, but that misreads it.
+      Jupiter <strong>adds a great deal of speed outright</strong>.
+      You approach at 18.511 km/s and leave at 18.471 km/s — as seen from Jupiter, the speed is unchanged.
+      But Jupiter itself moves round the Sun at 13 km/s, so as seen from the Sun the velocity leaps here.
+      That is why you arrive at Pluto at a ferocious 13.787 km/s.
+    </p>
+
+    <p>
+      The periapsis ΔV is <strong>35.2 m/s</strong> — very nearly free.
+      Simply passing 2.26 million km away multiplies the spacecraft's mass by 6.7.
+    </p>
+
+    <div class="note">
+      <strong>Too fast to stop</strong>
+      13.787 km/s is the speed as seen from Pluto.
+      At that speed staying at Pluto is out of the question, so New Horizons observed on the way past.
+      From approach to departure, the whole thing was a few hours.
+      The observation plan had been worked out to the second, years before launch.
+    </div>
+
+    <h2>The window is narrow</h2>
+    <p>
+      Move the launch date twenty days later, to 2006/02/08.
+      Then select the Jupiter sequence again.
+    </p>
+
+    <figure class="panel">
+      <img src="../img/pluto-offwindow.png" alt="With the launch shifted twenty days" />
+      <figcaption>The periapsis ΔV goes from 35 m/s to 349 m/s, and the launch energy from 158.8 to 195.5.</figcaption>
+    </figure>
+
+    <p>
+      Twenty days, and the fuel demand is ten times higher.
+      Shift it further and Earth, Jupiter and Pluto fall out of their near-alignment,
+      until calling at Jupiter “on the way” is no longer possible at all.
+    </p>
+
+    <table>
+      <tr><th>Shift the launch</th><th>Launch energy</th><th>Periapsis ΔV</th></tr>
+      <tr><td class="num">−40 days</td><td class="num">267.1</td><td class="num">906 m/s</td></tr>
+      <tr><td class="num">−20 days</td><td class="num">189.9</td><td class="num">380 m/s</td></tr>
+      <tr><td class="num">as flown</td><td class="num">158.8</td><td class="num">35 m/s</td></tr>
+      <tr><td class="num">+20 days</td><td class="num">195.5</td><td class="num">349 m/s</td></tr>
+      <tr><td class="num">+40 days</td><td class="num">330.2</td><td class="num">634 m/s</td></tr>
+    </table>
+
+    <p>
+      New Horizons' real launch window was about three weeks across January and February 2006.
+      After two scrubs — high winds, then a power cut on the ground — it flew on the third attempt.
+      Missing that window would have delayed arrival by years, for want of Jupiter.
+    </p>
+
+    <h2>The finished article</h2>
+    <figure>
+      <img src="../img/pluto-final.png" alt="The completed New Horizons trajectory" />
+    </figure>
+
+    <table>
+      <tr><th>Item</th><th>This design</th><th>The real New Horizons</th></tr>
+      <tr><td>Launch</td><td class="num">2006/01/19</td><td class="num">2006/01/19</td></tr>
+      <tr><td>Launch energy C3</td><td class="num">158.80 km²/s²</td><td class="num">157.8 km²/s²</td></tr>
+      <tr><td>Launchable mass</td><td class="num">471 kg</td><td class="num">478 kg</td></tr>
+      <tr><td>Jupiter swingby</td><td class="num">2007/02/28</td><td class="num">2007/02/28</td></tr>
+      <tr><td>Distance from Jupiter</td><td class="num">2.26 million km</td><td class="num">2.30 million km</td></tr>
+      <tr><td>Arrival at Pluto</td><td class="num">2015/07/14</td><td class="num">2015/07/14</td></tr>
+      <tr><td>Relative speed at Pluto</td><td class="num">13.787 km/s</td><td class="num">13.8 km/s</td></tr>
+    </table>
+
+    <p>
+      Three dates and a choice of rocket, and the real spacecraft's numbers fell straight out.
+      It is a good example of what trajectory design comes down to:
+      deciding when you go and what you pass on the way.
+    </p>
+
+    <div class="note">
+      <strong>More on what rockets can do</strong>
+      Why raising C3 costs you so much mass, and which vehicle reaches how far, are collected in
+      <a href="launchers.html">What rockets can launch</a>,
+      with C3-versus-mass curves for thirteen vehicles.
+    </div>
+
+    <div class="nav-bottom">
+      <a href="mercury.html">← ② To Mercury on Venus' gravity</a>
+      <a href="jupiter.html">④ To Jupiter by using Earth twice →</a>
+    </div>
+  </main>
+</body>
+
+</html>

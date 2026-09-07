@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>④ To Jupiter by using Earth twice — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../jupiter.html" class="lang-link">日本語</a>
+    <a href="jupiter.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+    <h1>④ To Jupiter by using Earth twice</h1>
+    <p class="lead">
+      Jupiter is far. Try to go straight there and, on any rocket, the spacecraft comes out far too light.
+      NASA's Juno answered by <strong>heading outward, coming back to Earth two years later,
+      and borrowing its gravity</strong>.
+      The trick is called ΔVEGA (Delta-V Earth Gravity Assist).
+    </p>
+
+    <div class="aim">
+      <h3>What you will learn here</h3>
+      <ul>
+        <li>How many kilograms you can carry going straight to Jupiter</li>
+        <li>Why a leg from Earth back to Earth cannot be solved automatically</li>
+        <li>Manual mode, and the burn sequence that comes with it</li>
+        <li>What happens when you burn at aphelion</li>
+        <li>Where auto-tune earns its keep</li>
+      </ul>
+    </div>
+
+    <h2>First, go straight to Jupiter</h2>
+    <p>
+      Why take such a detour? Let us first see <strong>what happens if you go straight</strong>.
+      Make Jupiter a <strong>pass</strong> (a swingby at Jupiter for the second sequence)
+      and hunt for the cheapest dates.
+      The bottom is around leaving on 16 July 2011 and arriving 920 days (two and a half years) later.
+    </p>
+
+    <figure>
+      <img src="../img/jupiter-direct.png" alt="A direct trajectory to Jupiter" />
+      <figcaption>Heading straight from Earth to Jupiter.</figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="../img/jupiter-direct-launch.png" alt="The launch readouts going direct" />
+      <figcaption>Escape velocity 8.983 km/s, arriving at Jupiter at 5.614 km/s.</figcaption>
+    </figure>
+
+    <figure>
+      <img src="../img/jupiter-direct-stat.png" alt="The score going direct" />
+      <figcaption>Launch energy 80.69 km²/s². You can launch 137 kg.</figcaption>
+    </figure>
+
+    <p>
+      It is not that you cannot get there. It is that you get there with <strong>137 kg</strong>.
+      Juno's spacecraft weighs 3625 kg, so this is nowhere near enough.
+    </p>
+    <p>
+      A C3 of 80.69 is nearly nine times the trip to Mars (9.30).
+      The further you go, the more energy you must be given at departure,
+      and the less mass the rocket can lift for it.
+    </p>
+    <p>
+      That 80.69 nearly matches the C3 of a <strong>Hohmann transfer</strong> to Jupiter —
+      the cheapest route in principle — at 77.3.
+      In other words, even the cheapest direct trajectory costs this.
+      The details are in <a href="hohmann.html">Hohmann transfers and the third dimension</a>.
+    </p>
+
+    <div class="note">
+      <strong>What other spacecraft did</strong>
+      Voyager reached Jupiter on a large rocket (Titan IIIE), but never had to burn into orbit.
+      Galileo used Venus and Earth twice (VEEGA). Cassini used Venus twice, Earth and Jupiter — four in all.
+      New Horizons went by brute force: one of the largest rockets of its day throwing a small spacecraft
+      (478 kg) out at C3 158.
+      Juno's answer was to come back to Earth once more.
+    </div>
+
+    <h2>Going back to meet Earth again</h2>
+
+    <ol class="steps">
+      <li>
+        <p>Start again with three sequences. All of these are Juno's real dates.</p>
+        <table>
+          <tr><th>No.</th><th>Type</th><th>Body</th><th>Date</th></tr>
+          <tr><td>1</td><td>Launch</td><td>Earth</td><td>2011/08/05</td></tr>
+          <tr><td>2</td><td>Swingby</td><td>Earth</td><td>2013/10/09</td></tr>
+          <tr><td>3</td><td>Orbit insertion</td><td>Jupiter</td><td>2016/07/05</td></tr>
+        </table>
+        <figure>
+          <img src="../img/jupiter-auto.png" alt="Auto mode failing to solve" />
+          <figcaption>No trajectory is drawn. There should be nothing resembling a line in the solar-system view.</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <p>
+      It does not work. Select the launch sequence and the escape velocity is an outrageous number.
+    </p>
+
+    <figure class="panel">
+      <img src="../img/jupiter-auto-panel.png" alt="The launch readouts in auto mode" />
+      <figcaption>Auto mode solves for “the trajectory joining departure to arrival”, but on this leg the solution is meaningless.</figcaption>
+    </figure>
+
+    <p>
+      The reason is plain. This leg goes <strong>from Earth to Earth</strong>, and two years apart at that.
+      In two years Earth goes round almost exactly twice and comes back to where it started,
+      so the problem becomes “departure and arrival at nearly the same place”.
+      The only trajectories that fit are absurd ones that shoot straight out and come straight back.
+    </p>
+
+    <div class="note warn">
+      <strong>This is not a fault in the app</strong>
+      A leg that returns to the same body cannot work unless something happens along the way.
+      That something is a deep-space burn — and that is what ΔVEGA is.
+    </div>
+
+    <h2>Switching to manual mode</h2>
+
+    <ol class="steps">
+      <li>
+        <p>Select the launch sequence and press <strong>Manual</strong>.</p>
+        <figure class="seq">
+          <img src="../img/jupiter-manual.png" alt="The sequences in manual mode" />
+          <figcaption>A “Maneuver” sequence appears on its own. That is the deep-space burn.</figcaption>
+        </figure>
+        <p>
+          In manual mode <strong>you</strong> decide the direction and speed of departure.
+          In exchange, there is no longer any guarantee of reaching the next destination,
+          so the burn sequence behind it takes on the job of getting you there.
+        </p>
+      </li>
+
+      <li>
+        <p>
+          Set the burn sequence's date to around <strong>2012/08/31</strong> — about a year after launch.
+        </p>
+      </li>
+
+      <li>
+        <p>
+          Go back to the launch sequence and enter <strong>escape velocity 5.6 km/s</strong>,
+          azimuth α = 0, elevation δ = 0.
+        </p>
+        <figure class="panel">
+          <img src="../img/jupiter-set.png" alt="The launch settings in manual mode" />
+          <figcaption>α = 0 means “straight along Earth's direction of travel”.</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <figure>
+      <img src="../img/jupiter-rough.png" alt="The trajectory as placed by hand" />
+      <figcaption>It has taken shape: out and around, back to Earth, on to Jupiter. Still rough, though.</figcaption>
+    </figure>
+
+    <h2>Tightening it with auto-tune</h2>
+    <p>
+      You could go on tightening by hand, but there are too many knobs
+      (escape velocity, two angles, four dates).
+      Press <strong>Auto-tune</strong> in the mission-sequence heading.
+    </p>
+
+    <p>
+      It starts from the current design and searches <strong>only nearby</strong>.
+      It will not fetch some different trajectory, so the skeleton you decided
+      (back to Earth, then Jupiter) stays put. It takes a few seconds.
+    </p>
+
+    <figure>
+      <img src="../img/jupiter-tuned.png" alt="After auto-tune" />
+      <figcaption>Tidied up. The mass left should have grown a great deal.</figcaption>
+    </figure>
+
+    <h2>Reading what happened</h2>
+    <figure class="panel">
+      <img src="../img/jupiter-dsm.png" alt="The readouts for the burn sequence" />
+      <figcaption>The burn sequence. ΔV 668.5 m/s, 2.254 AU from the Sun.</figcaption>
+    </figure>
+
+    <p>
+      Notice the <strong>list of perihelion, aphelion and nodes</strong> in the time box.
+      It shows aphelion 2.25 AU on 2012/8/27, and the burn's date (2012/9/4) is just after it.
+      So this burn is made <strong>at the furthest point from the Sun</strong>.
+    </p>
+
+    <p>
+      That is the essence of ΔVEGA. Aphelion is where the spacecraft moves slowest,
+      and slowing down a little there opens up the angle against Earth's orbit,
+      which raises the relative speed a great deal.
+      The launch V∞ was 5.3 km/s; a small burn of about 670 m/s brings the V∞ on return to Earth up to 9.9 km/s.
+      To produce that speed at launch instead, heading straight for Jupiter, would take a C3 of around
+      98 km²/s² — on an ordinary rocket, almost no spacecraft at all.
+    </p>
+
+    <figure class="panel">
+      <img src="../img/jupiter-flyby.png" alt="The Earth swingby readouts" />
+      <figcaption>The Earth swingby. Periapsis ΔV is 0: it bends 44 degrees without spending a drop of fuel.</figcaption>
+    </figure>
+
+    <p>
+      Then, passing close to Earth, the velocity as seen from the Sun leaps.
+      <strong>The periapsis ΔV is 0</strong> — gravity alone was enough, so there is no burn.
+      From here you reach Jupiter.
+    </p>
+
+    <h2>What Earth bought us</h2>
+    <table>
+      <tr><th></th><th>Straight to Jupiter</th><th>Using Earth again</th></tr>
+      <tr><td>Launch energy C3</td><td class="num">80.69 km²/s²</td><td class="num">28.8 km²/s²</td></tr>
+      <tr><td>Mass an H3 can launch</td><td class="num">137 kg</td><td class="num">3052 kg</td></tr>
+      <tr><td>Speed arriving at Jupiter</td><td class="num">5.61 km/s</td><td class="num">5.59 km/s</td></tr>
+      <tr><td>Time taken</td><td class="num">2.5 years</td><td class="num">4.6 years</td></tr>
+    </table>
+
+    <p>
+      The arrival speed is all but identical, yet the <strong>launchable mass is 22 times larger</strong>.
+      The price is a burn of about 670 m/s and roughly two extra years.
+      Juno's 3625 kg spacecraft only exists because of that detour.
+    </p>
+
+    <h2>The finished article</h2>
+    <figure>
+      <img src="../img/jupiter-final.png" alt="The completed Juno trajectory" />
+    </figure>
+
+    <table>
+      <tr><th>Item</th><th>This design</th><th>The real Juno</th></tr>
+      <tr><td>Launch</td><td class="num">2011/08/10</td><td class="num">2011/08/05</td></tr>
+      <tr><td>Launch energy C3</td><td class="num">28.8 km²/s²</td><td class="num">31.1 km²/s²</td></tr>
+      <tr><td>Deep-space burn</td><td class="num">669 m/s (September 2012)</td><td class="num">about 730 m/s (Aug–Sep 2012, in two parts)</td></tr>
+      <tr><td>Earth swingby</td><td class="num">2013/10/02</td><td class="num">2013/10/09</td></tr>
+      <tr><td>V∞ at the swingby</td><td class="num">9.9 km/s</td><td class="num">about 9.3 km/s</td></tr>
+      <tr><td>Arrival at Jupiter</td><td class="num">2016/04</td><td class="num">2016/07/05</td></tr>
+      <tr><td>Launch mass (H3-24)</td><td class="num">3052 kg</td><td class="num">3625 kg (Atlas V)</td></tr>
+    </table>
+
+    <p>
+      Place it roughly by hand, let auto-tune tighten it, and you land this close to the real design.
+      The dates differ by a few days because auto-tune is looking for
+      “the design with the largest mass left”. It knows nothing of the other things the real mission carried:
+      constraints on the launch date, communications, operating the instruments.
+    </p>
+
+    <div class="note real">
+      <strong>How this differs from the real Juno</strong>
+      The real deep-space burn was split in two, on 30 August and 14 September 2012.
+      You could do the same by placing two burn sequences,
+      but the total ΔV barely changes, so we have kept it as one.
+    </div>
+
+    <div class="note">
+      <strong>Going further</strong>
+      Why burning at aphelion raises V∞; why an orbit that returns in two years comes in a “short” and a “long”
+      version; what happens if you put Venus in between.
+      <a href="swingby2.html">Swingbys, part 2: trajectories to Jupiter</a> works through
+      ΔVEGA, VEGA and VEEGA, building each one.
+    </div>
+
+    <div class="nav-bottom">
+      <a href="pluto.html">← ③ To Pluto with a push from Jupiter</a>
+      <a href="ryugu.html">⑤ Rendezvous with an asteroid →</a>
+    </div>
+  </main>
+</body>
+
+</html>

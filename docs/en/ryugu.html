@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>⑤ Rendezvous with an asteroid — Anyone trajectory design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    (function () {
+      var p = "auto";
+      try { p = localStorage.getItem("atd_theme") || "auto"; } catch (e) {}
+      if (p !== "light" && p !== "dark") {
+        p = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = p;
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../theme.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <span class="brand">Anyone trajectory design</span>
+    <a href="index.html">Guide</a>
+    <span class="spacer"></span>
+    <a href="../ryugu.html" class="lang-link">日本語</a>
+    <a href="ryugu.html" target="_blank" rel="noopener">Open in a tab</a>
+  </header>
+
+  <main>
+    <h1>⑤ Rendezvous with an asteroid</h1>
+    <p class="lead">
+      To Ryugu, the asteroid Hayabusa2 went to. We reproduce it with the real launch, Earth-swingby
+      and arrival dates. Rather than flying past, we <strong>match velocity and travel alongside</strong>,
+      which works quite differently from going to a planet.
+    </p>
+
+    <div class="aim">
+      <h3>What you will learn here</h3>
+      <ul>
+        <li>Adding a body that is not in the list</li>
+        <li>An orbit that returns to Earth in one year (ΔVEGA / EDVEGA)</li>
+        <li>Choosing how many times to circle the Sun before arriving (revolutions on a leg)</li>
+        <li>The difference between a flyby and a rendezvous</li>
+      </ul>
+    </div>
+
+    <h2>Calling up Ryugu</h2>
+    <p>
+      Press <strong>“Add a body”</strong> in the top bar.
+      You can search a catalogue of asteroids, comets and interstellar objects
+      (data from the IAU Minor Planet Center).
+    </p>
+    <p>
+      Type <code>Ryugu</code> or <code>162173</code> into the search box, pick
+      <strong>(162173) Ryugu</strong> from the results, and press “Add”.
+      From then on Ryugu appears in the body lists.
+    </p>
+
+    <div class="note">
+      <strong>Any body you like</strong>
+      “Common bodies” gathers the asteroids and comets that spacecraft have visited:
+      Itokawa, Bennu, Eros, comet Churyumov–Gerasimenko…
+      The closer a body's orbit size (a) and tilt (i) are to Earth's, the easier it is to reach,
+      and that is part of why Ryugu was chosen.
+    </div>
+
+    <h2>Building it</h2>
+
+    <ol class="steps">
+      <li>
+        <p>Make three sequences. All of these are Hayabusa2's real dates.</p>
+        <table>
+          <tr><th>No.</th><th>Type</th><th>Body</th><th>Date</th></tr>
+          <tr><td>1</td><td>Launch</td><td>Earth</td><td>2014/12/03</td></tr>
+          <tr><td>2</td><td>Swingby</td><td>Earth</td><td>2015/12/03</td></tr>
+          <tr><td>3</td><td>Rendezvous</td><td>(162173) Ryugu</td><td>2018/06/27</td></tr>
+        </table>
+        <figure class="seq">
+          <img src="../img/ryugu-types.png" alt="The sequences including Ryugu" />
+          <figcaption>
+            For a small body the types on offer are <strong>Flyby</strong> and <strong>Rendezvous</strong>.
+            Swingby and orbit insertion do not appear: the gravity is far too small either to bend a path
+            or to capture you.
+          </figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <figure>
+      <img src="../img/ryugu-auto.png" alt="Just after entering the dates" />
+      <figcaption>Lines are drawn, but the total ΔV is 72186 m/s. This is not a sane trajectory.</figcaption>
+    </figure>
+
+    <p>
+      The arrangement returns to Earth exactly <strong>one year</strong> after launch.
+      Juno in tutorial ④ took two years; Hayabusa2 came back in one.
+    </p>
+
+    <h2>What returning in a year means</h2>
+    <figure class="panel">
+      <img src="../img/ryugu-auto-panel.png" alt="Auto mode failing to solve" />
+      <figcaption>Escape velocity 0.015 km/s. It amounts to never leaving Earth at all.</figcaption>
+    </figure>
+
+    <p>
+      The same wall as in tutorial ④. Departure and arrival are the same place,
+      so auto mode answers “do not move from the spot”.
+    </p>
+    <p>
+      We use the same trick. Set the launch sequence to <strong>Manual</strong>, which attaches a burn sequence
+      behind it, and set that burn's date three months later (2015/03/05).
+    </p>
+
+    <ol class="steps">
+      <li>
+        <p>
+          Go back to the launch sequence and enter <strong>escape velocity 4.0 km/s</strong>,
+          <strong>azimuth α = 94 degrees</strong>, elevation δ = 0.
+        </p>
+        <figure class="panel">
+          <img src="../img/ryugu-set.png" alt="The launch settings for a one-year return" />
+          <figcaption>α 94 degrees: leaving almost sideways to Earth's direction of travel.</figcaption>
+        </figure>
+      </li>
+    </ol>
+
+    <div class="note">
+      <strong>Why sideways</strong>
+      To come back to the same place as Earth a year later, the spacecraft's period must be exactly one year.
+      Period depends only on the size of the orbit (that is, on the magnitude of the speed),
+      so you must <strong>leave at the same speed as Earth and change only the direction</strong>.
+      That is what “almost sideways” means.
+      At α = 0 (straight ahead) you go too fast and do not come back within a year.
+      Only the shape of the orbit differs from Earth's; the period is the same.
+      That is why you meet again in the same place a year later.
+    </div>
+
+    <h2>Going direct does not reach</h2>
+    <p>
+      That gets us as far as the Earth swingby. What about Ryugu beyond it?
+      Select the third sequence (the rendezvous).
+    </p>
+
+    <figure class="panel">
+      <img src="../img/ryugu-direct-leg.png" alt="The rendezvous still going direct" />
+      <figcaption>Arrival ΔV 41867 m/s. That is off by orders of magnitude.</figcaption>
+    </figure>
+
+    <p>
+      <strong>41867 m/s.</strong> The total ΔV passes 84 km/s and the mass left is zero. Utterly hopeless.
+    </p>
+    <p>
+      The reason is the <strong>937 days — two years and seven months</strong> between leaving Earth and
+      reaching Ryugu.
+      A leg defaults to “head straight there without circling the Sun”,
+      and a trajectory that takes two years and seven months to go straight there has to be an absurd one,
+      shooting far out of the solar system and coming back.
+    </p>
+
+    <h2>Circling the Sun twice before arriving</h2>
+    <p>
+      The real Hayabusa2 went <strong>twice round the Sun</strong> during those two years and seven months.
+      Open <strong>“Revolutions on this leg”</strong> at the bottom of the editor and choose <strong>2 rev</strong>.
+    </p>
+
+    <figure class="panel">
+      <img src="../img/ryugu-revs.png" alt="Setting the leg to two revolutions" />
+      <figcaption>
+        Joining the same two points in the same number of days gives a completely different trajectory
+        depending on how many times you go round the Sun on the way.
+      </figcaption>
+    </figure>
+
+    <figure class="panel">
+      <img src="../img/ryugu-rendezvous.png" alt="The rendezvous after switching to two revolutions" />
+      <figcaption>Arrival ΔV 780 m/s. From 41867 to 780 — less than a fiftieth.</figcaption>
+    </figure>
+
+    <p>
+      <strong>41867 → 780 m/s</strong>, without moving a single date.
+      All that changed is how many times you go round the Sun on the way.
+    </p>
+
+    <div class="note">
+      <strong>How the number of revolutions is decided</strong>
+      Each number of revolutions has a minimum flight time it needs to exist at all.
+      On too short a leg, the multi-revolution solutions do not exist and the buttons cannot be pressed
+      (hover and it tells you how many days it would need).
+      Conversely, a long leg left on “direct” gives you an outrage like the one above.
+      <strong>When you see a long leg, suspect the revolution count first.</strong>
+    </div>
+
+    <h2>Reading the burn and the swingby</h2>
+    <figure class="panel">
+      <img src="../img/ryugu-dsm.png" alt="The burn sequence" />
+      <figcaption>The deep-space burn is 41 m/s — very small indeed.</figcaption>
+    </figure>
+
+    <p>
+      The burn sequence reads <strong>41 m/s</strong>. It is only fine-tuning how fast you come back to Earth.
+      Making the return speed with a burn is exactly what ΔVEGA is,
+      and Hayabusa2 did it with ion engines (EDVEGA).
+    </p>
+
+    <figure class="panel">
+      <img src="../img/ryugu-flyby.png" alt="The Earth swingby sequence" />
+      <figcaption>The Earth swingby. Periapsis ΔV 7.5 m/s: 63 degrees of bend, essentially from gravity alone.</figcaption>
+    </figure>
+
+    <p>
+      It passes Earth at an altitude of 16000 km, is bent through 63 degrees, and heads for Ryugu's orbit.
+      The periapsis ΔV is 7.5 m/s — almost entirely <strong>gravity</strong>.
+    </p>
+
+    <h2>Rendezvous and flyby</h2>
+    <p>
+      Last comes the rendezvous. The <strong>arrival ΔV of 780 m/s</strong> is the burn needed to match Ryugu's
+      velocity and travel alongside it. Try changing it to a <strong>Flyby</strong>.
+      The ΔV drops to zero. If you are only passing, you need do nothing.
+    </p>
+
+    <p>
+      With small bodies this is what tells. Where a planet's gravity would help you — would capture you —
+      an asteroid makes you pay for all of it out of your own fuel.
+      Ryugu's gravity is so weak that the very idea of an orbit barely holds.
+      That is why Hayabusa2 spoke of “holding a home position” rather than orbiting.
+    </p>
+
+    <h2>The finished article</h2>
+    <figure>
+      <img src="../img/ryugu-final.png" alt="The completed trajectory to Ryugu" />
+    </figure>
+
+    <table>
+      <tr><th>Item</th><th>This design</th><th>The real Hayabusa2</th></tr>
+      <tr><td>Launch</td><td class="num">2014/12/03</td><td class="num">2014/12/03</td></tr>
+      <tr><td>Launch energy C3</td><td class="num">16.0 km²/s²</td><td class="num">22.4 km²/s²</td></tr>
+      <tr><td>Earth swingby</td><td class="num">2015/12/03</td><td class="num">2015/12/03</td></tr>
+      <tr><td>Swingby altitude</td><td class="num">about 16000 km</td><td class="num">3090 km</td></tr>
+      <tr><td>Arrival at Ryugu</td><td class="num">2018/06/27</td><td class="num">2018/06/27</td></tr>
+      <tr><td>Deep-space burn</td><td class="num">41 m/s (once)</td><td class="num">continuous, on ion engines</td></tr>
+      <tr><td>Total ΔV</td><td class="num">828 m/s</td><td class="num">—</td></tr>
+    </table>
+
+    <div class="note real">
+      <strong>How this differs from the real Hayabusa2</strong>
+      The real spacecraft accelerated little by little on ion engines. Continuous thrust is outside what this
+      app handles, so we substitute a single burn. That makes our launch escape velocity smaller than the real
+      one (C3 16 against 22.4), and the swingby altitude differs too.
+      The skeleton — return to Earth in a year, borrow its gravity, circle the Sun twice and catch Ryugu —
+      is the same.
+    </div>
+
+    <h2>What comes next</h2>
+    <p>
+      From here Hayabusa2 carried its samples home to Earth.
+      Try adding the return you built in tutorial ①.
+      Put a <strong>Departure</strong> after the Ryugu sequence,
+      and an <strong>Atmospheric entry</strong> at Earth to finish.
+      The real capsule came down in Australia on 5 December 2020, at 11.6 km/s.
+    </p>
+
+    <div class="nav-bottom">
+      <a href="jupiter.html">← ④ To Jupiter by using Earth twice</a>
+      <a href="index.html">Contents →</a>
+    </div>
+  </main>
+</body>
+
+</html>
