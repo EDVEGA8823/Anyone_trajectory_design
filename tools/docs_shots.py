@@ -1,12 +1,16 @@
 """docs/ に載せる図を、実際にアプリを操作して撮る。
 
-  python tools/docs_shots.py <url> <シナリオ名> [--shots]
+  python tools/docs_shots.py <url> <シナリオ名> [--shots] [--en]
 
 url はローカルに立てた静的サーバのもの (例: http://127.0.0.1:8421/index.html)。
 画面を実際に操作して撮るので、載る図は必ず本物の計算結果になる。
 
 --shots を付けると docs/img/ に PNG を書き出す。付けなければ数字だけ出す
 (日付合わせの段階では、まず数字が妥当かを見たい)。
+
+--en を付けると、アプリを英語表示にして docs/en/img/ に書き出す。
+台本 (docs_scenarios.py) は要素を id と番号で選んでいて、画面の文字には
+頼っていないので、同じ台本がそのまま両方の言語で走る。
 
 手順の多いシナリオでは、後ろのほうの撮影が目に見えて遅くなる。1つのブラウザを
 開いたまま太陽系ビューを何度も作り直すためで、終わりのほうでは1手順に数分かかり、
@@ -21,6 +25,7 @@ EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)  # tools/ の1つ上
 IMG = os.path.join(REPO, "docs", "img")
+IMG_EN = os.path.join(REPO, "docs", "en", "img")
 
 
 class Tab:
@@ -93,6 +98,8 @@ def main():
     url = sys.argv[1]
     name = sys.argv[2]
     shots = "--shots" in sys.argv
+    en = "--en" in sys.argv
+    out_dir = IMG_EN if en else IMG
     steps = SCENARIOS[name]()
 
     port = 9357
@@ -104,11 +111,17 @@ def main():
         tab.call("Emulation.setDeviceMetricsOverride", width=1500, height=950,
                  deviceScaleFactor=1, mobile=False)
         tab.call("Page.navigate", url=url)
+        if en:
+            # アプリは起動時に localStorage を読む。書いてから読み込み直す
+            time.sleep(2.0)
+            tab.ev('localStorage.setItem("atd_lang", "en"); '
+                   'localStorage.setItem("atd_theme", "light")')
+            tab.call("Page.reload")
         time.sleep(4.5)
         tab.ev(open(os.path.join(HERE, "docs_helper.js"), encoding="utf-8").read())
 
         def capture(shot, sel):
-            os.makedirs(IMG, exist_ok=True)
+            os.makedirs(out_dir, exist_ok=True)
             args = {"format": "png"}
             if sel:
                 r = tab.ev("(() => { const e = document.querySelector(%s);"
@@ -117,7 +130,7 @@ def main():
                 args["clip"] = {"x": max(r["x"] - 8, 0), "y": max(r["y"] - 8, 0),
                                 "width": r["width"] + 16, "height": r["height"] + 16, "scale": 1}
             img = tab.call("Page.captureScreenshot", **args)
-            with open(os.path.join(IMG, shot + ".png"), "wb") as f:
+            with open(os.path.join(out_dir, shot + ".png"), "wb") as f:
                 f.write(base64.b64decode(img["data"]))
 
         log = []

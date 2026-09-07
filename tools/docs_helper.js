@@ -8,6 +8,11 @@
   const B = await import("./js/core/bodies.js");
   const SB = await import("./js/core/small_bodies.js");
   const P = await import("./js/view/plot.js");
+  const I = await import("./js/ui/i18n.js");
+
+  // 台本は日本語の見出しで欄やボタンを指す。英語表示のときは、
+  // アプリと同じ対訳表を通していまの言語の言い方に直してから探す
+  window.__ATD_T = (s) => I.t(s);
 
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const State = S.State;
@@ -48,7 +53,9 @@
 
     async body(name) {
       const sel = document.getElementById("propaty");
-      const opt = [...sel.options].find((o) => o.textContent.includes(name));
+      // 選択欄の value は日本語のまま (中身の識別に使っている)。
+      // 出ている文字ではなく value で探すので、英語表示でもそのまま通る
+      const opt = [...sel.options].find((o) => o.value.includes(name) || o.textContent.includes(name));
       if (!opt) throw new Error("天体が無い: " + name);
       sel.value = opt.value;
       sel.dispatchEvent(new Event("change", { bubbles: true }));
@@ -57,8 +64,8 @@
 
     async type(name) {
       const sel = document.getElementById("sequence_propaty");
-      const opt = [...sel.options].find((o) => o.textContent === name);
-      if (!opt) throw new Error("種別が無い: " + name + " / 選べるのは " + [...sel.options].map((o) => o.textContent).join(","));
+      const opt = [...sel.options].find((o) => o.value === name);
+      if (!opt) throw new Error("種別が無い: " + name + " / 選べるのは " + [...sel.options].map((o) => o.value).join(","));
       sel.value = opt.value;
       sel.dispatchEvent(new Event("change", { bubbles: true }));
       await wait(800);
@@ -90,7 +97,8 @@
 
     async mode(auto) {
       const row = [...document.querySelectorAll(".mode-btn")].filter((b) => b.offsetParent !== null);
-      const btn = row.find((b) => b.textContent === (auto ? "自動" : "手動"));
+      const want = window.__ATD_T ? window.__ATD_T(auto ? "自動" : "手動") : (auto ? "自動" : "手動");
+      const btn = row.find((b) => b.textContent === want);
       if (!btn) throw new Error("自動/手動のボタンが見当たらない");
       btn.click();
       await wait(900);
@@ -99,7 +107,8 @@
     // 手動モードの入力欄 (脱出速度 V∞ / 方位角 α / 仰角 δ など)
     async field(label_part, value) {
       const fields = [...document.querySelectorAll(".param-field")];
-      const f = fields.find((x) => x.querySelector("label") && x.querySelector("label").textContent.includes(label_part));
+      const want = window.__ATD_T ? window.__ATD_T(label_part) : label_part;
+      const f = fields.find((x) => x.querySelector("label") && x.querySelector("label").textContent.includes(want));
       if (!f) throw new Error("欄が無い: " + label_part + " / " + fields.map((x) => x.querySelector("label").textContent).join(","));
       const input = f.querySelector("input");
       input.value = String(value);
@@ -158,7 +167,8 @@
     // 図の色で塗る量を切り替える
     async pcMetric(label_part) {
       const sel = document.querySelector(".pc-window select");
-      const opt = [...sel.options].find((o) => o.textContent.includes(label_part));
+      const want = window.__ATD_T ? window.__ATD_T(label_part) : label_part;
+      const opt = [...sel.options].find((o) => o.textContent.includes(want));
       sel.value = opt.value;
       sel.dispatchEvent(new Event("change", { bubbles: true }));
       await wait(1500);
