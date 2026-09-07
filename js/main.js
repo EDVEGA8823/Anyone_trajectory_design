@@ -932,7 +932,10 @@ export function import_small_body(body) {
   return num;
 }
 
-const HELP_URL = "docs/index.html";
+/** 使い方の入口。英語表示のときは英語のページへ */
+function helpUrl() {
+  return currentLang() === "en" ? "docs/en/index.html" : "docs/index.html";
+}
 // 開いた窓を覚えておく。2回目からは開き直さずに前へ出すため
 let help_window = null;
 
@@ -960,7 +963,7 @@ export function openHelpWindow() {
   const left = Math.max(0, (window.screen.availLeft || 0) + sw - w);
   const top = window.screen.availTop || 0;
   help_window = window.open(
-    HELP_URL,
+    helpUrl(),
     "atd_help",
     "popup=yes,width=" + w + ",height=" + h + ",left=" + left + ",top=" + top
   );
@@ -974,7 +977,7 @@ export function openHelpWindow() {
 
 /** 使い方を新しいタブで開く (窓が邪魔なとき用) */
 export function openHelpTab() {
-  window.open(HELP_URL, "_blank", "noopener");
+  window.open(helpUrl(), "_blank", "noopener");
 }
 
 /**
