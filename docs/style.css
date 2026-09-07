@@ -507,3 +507,14 @@ h3.group {
   border-color: rgba(255, 255, 255, 0.4);
   color: var(--topbar-text);
 }
+
+/* 日本語 ⇄ 英語の切り替え。上のバーの右寄せの並びに入る */
+.topbar .lang-link {
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.topbar .lang-link:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}

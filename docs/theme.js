@@ -18,12 +18,24 @@
 
   var KEY = "atd_theme"; // "auto" | "light" | "dark"
   var ORDER = ["auto", "light", "dark"];
-  var LABEL = { auto: "配色 自動", light: "配色 明るい", dark: "配色 暗い" };
-  var HINT = {
-    auto: "いまは端末の設定に合わせています。押すと「明るい」になります",
-    light: "いまは明るい配色です。押すと「暗い」になります",
-    dark: "いまは暗い配色です。押すと端末の設定に合わせます",
-  };
+
+  // 日本語のページ (docs/) と英語のページ (docs/en/) の両方から読まれる。
+  // どちらで出すかは <html lang> を見て決める
+  var EN = (document.documentElement.lang || "ja").slice(0, 2) === "en";
+  var LABEL = EN
+    ? { auto: "Theme: auto", light: "Theme: light", dark: "Theme: dark" }
+    : { auto: "配色 自動", light: "配色 明るい", dark: "配色 暗い" };
+  var HINT = EN
+    ? {
+        auto: "Following your device right now. Click for “light”.",
+        light: "Light theme right now. Click for “dark”.",
+        dark: "Dark theme right now. Click to follow your device.",
+      }
+    : {
+        auto: "いまは端末の設定に合わせています。押すと「明るい」になります",
+        light: "いまは明るい配色です。押すと「暗い」になります",
+        dark: "いまは暗い配色です。押すと端末の設定に合わせます",
+      };
 
   var button = null;
 
@@ -70,8 +82,8 @@
       var i = ORDER.indexOf(read());
       set(ORDER[(i + 1) % ORDER.length]);
     };
-    // 「タブで開く」の左に置く。並びの最後は、そのページ自身への入口のまま
-    var last = bar.querySelector('a[target="_blank"]');
+    // 右寄せの並びの先頭に置く (言語の切り替えと「タブで開く」の左)
+    var last = bar.querySelector(".lang-link") || bar.querySelector('a[target="_blank"]');
     if (last) bar.insertBefore(button, last);
     else bar.appendChild(button);
     apply(read());
