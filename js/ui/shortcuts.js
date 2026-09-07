@@ -192,12 +192,12 @@ export function setShortcutHandlers(h) {
 // 文字を打っている最中は、Ctrl付きのものだけ通す。
 // 数値欄で←→を取り上げると桁を直せなくなるし、名前の欄でAを取り上げると
 // 「A」が打てなくなる。
-function isTyping(t) {
-  if (!t) return false;
-  if (t.isContentEditable) return true;
-  const tag = t.tagName;
+function isTyping(node) {
+  if (!node) return false;
+  if (node.isContentEditable) return true;
+  const tag = node.tagName;
   if (tag === "TEXTAREA" || tag === "SELECT") return true;
-  return tag === "INPUT" && !/^(checkbox|radio|button|submit|reset|file)$/.test(t.type);
+  return tag === "INPUT" && !/^(checkbox|radio|button|submit|reset|file)$/.test(node.type);
 }
 
 function matches(e, c) {

@@ -13,6 +13,7 @@ import {
   normalizeBody,
 } from '../core/bodies.js';
 import { notify } from './topbar.js';
+import { t, onLangChange } from './i18n.js';
 
 // 天体を追加する画面。
 //
@@ -56,10 +57,10 @@ function build() {
   const win = el("div", "bp-window");
 
   const head = el("div", "bp-head");
-  head.appendChild(el("div", "bp-title", "天体を追加"));
+  head.appendChild(el("div", "bp-title", t("天体を追加")));
   const close = el("button", "bp-close", "×");
   close.type = "button";
-  close.title = "閉じる";
+  close.title = t("閉じる");
   close.onclick = closeBodyPicker;
   head.appendChild(close);
   win.appendChild(head);
@@ -67,7 +68,7 @@ function build() {
   const bar = el("div", "bp-search");
   search_el = document.createElement("input");
   search_el.type = "search";
-  search_el.placeholder = "名前・番号・仮符号で検索 (例: Ryugu / 162173 / 1999 JU3)";
+  search_el.placeholder = t("名前・番号・仮符号で検索 (例: Ryugu / 162173 / 1999 JU3)");
   search_el.autocomplete = "off";
   search_el.oninput = () => {
     if (search_timer) clearTimeout(search_timer);
@@ -84,8 +85,8 @@ function build() {
   win.appendChild(body);
 
   const foot = el("div", "bp-foot");
-  detail_el = el("div", "bp-detail", "天体を選んでください");
-  add_btn = el("button", "bp-add", "追加");
+  detail_el = el("div", "bp-detail", t("天体を選んでください"));
+  add_btn = el("button", "bp-add", t("追加"));
   add_btn.type = "button";
   add_btn.disabled = true;
   add_btn.onclick = () => add_selected();
@@ -192,9 +193,9 @@ function render_tree() {
   // --- 取り込んだ天体。ここからしか消せないので、1件でもあれば見せる ---
   const mine = list_imported ? list_imported() : [];
   if (mine.length > 0) {
-    tree_el.appendChild(section_head(SECTION_MINE, "取り込んだ天体", render_tree));
+    tree_el.appendChild(section_head(SECTION_MINE, t("取り込んだ天体"), render_tree));
     if (expanded.has(SECTION_MINE)) {
-      const item = tree_node("一覧 (消せます)", 0, () => show_imported(), mine.length);
+      const item = tree_node(t("一覧 (消せます)"), 0, () => show_imported(), mine.length);
       item.dataset.key = SECTION_MINE + ":list";
       if (item.dataset.key === active_key) item.classList.add("active");
       tree_el.appendChild(item);
@@ -202,7 +203,7 @@ function render_tree() {
   }
 
   // --- よく使う天体 ---
-  tree_el.appendChild(section_head(SECTION_POPULAR, "よく使う天体", render_tree));
+  tree_el.appendChild(section_head(SECTION_POPULAR, t("よく使う天体"), render_tree));
 
   const walk = (nodes, depth, parent_path) => {
     for (const n of nodes) {
@@ -210,7 +211,7 @@ function render_tree() {
       const has_children = !!(n.children && n.children.length);
       const open = expanded.has(path);
       const item = tree_node(
-        n.label,
+        t(n.label),
         depth,
         () => {
           // 押したら中身を出し、子を持つものはその場で開閉もする
@@ -230,19 +231,21 @@ function render_tree() {
 
   if (expanded.has(SECTION_POPULAR)) {
     const tree = popularTree();
-    if (tree.length === 0) tree_el.appendChild(el("div", "bp-tree-empty", "読み込み中…"));
+    if (tree.length === 0) tree_el.appendChild(el("div", "bp-tree-empty", t("読み込み中…")));
     else walk(tree, 0, "");
   }
 
   // --- すべての天体。枝を開いたときに取りに行く ---
-  tree_el.appendChild(section_head(SECTION_ALL, "すべての天体", render_tree));
+  tree_el.appendChild(section_head(SECTION_ALL, t("すべての天体"), render_tree));
   if (expanded.has(SECTION_ALL)) {
     for (const s of bodySets()) {
       if (s.id === "popular") continue;
       const key = "set:" + s.id;
-      const item = tree_node(s.label, 0, () => show_set(s, key), s.count);
+      const item = tree_node(t(s.label), 0, () => show_set(s, key), s.count);
       item.dataset.key = key;
-      item.title = s.note + "\n" + s.count.toLocaleString() + " 件 (" + Math.round(s.bytes / 1e5) / 10 + " MB)";
+      item.title =
+        t(s.note) + "\n" + t("{n} 件 ({mb} MB)",
+          { n: s.count.toLocaleString(), mb: Math.round(s.bytes / 1e5) / 10 });
       if (key === active_key) item.classList.add("active");
       tree_el.appendChild(item);
     }
@@ -251,10 +254,10 @@ function render_tree() {
   // --- 軌道要素を自分で入力。掲載されていない天体や自前のデータを使うための
   // 上級者向けの入口なので、他の分類と分けて控えめに置く ---
   tree_el.appendChild(el("div", "bp-tree-sep"));
-  const manual = tree_node("軌道要素を入力して追加", 0, () => show_manual_form(), undefined, false);
+  const manual = tree_node(t("軌道要素を入力して追加"), 0, () => show_manual_form(), undefined, false);
   manual.classList.add("bp-manual-link");
   manual.dataset.key = SECTION_MANUAL;
-  manual.title = "掲載されていない天体を、自分で用意した軌道要素から追加する";
+  manual.title = t("掲載されていない天体を、自分で用意した軌道要素から追加する");
   if (SECTION_MANUAL === active_key) manual.classList.add("active");
   tree_el.appendChild(manual);
 }
@@ -277,7 +280,7 @@ function show_tree_node(node, key) {
   current = { type: "tree", node, key };
   render_tree(); // 開閉が変わっているので作り直す
   mark_active(key);
-  render_list(bodiesByIds(collect_ids(node)), node.label);
+  render_list(bodiesByIds(collect_ids(node)), t(node.label));
 }
 
 function show_imported() {
@@ -286,21 +289,22 @@ function show_imported() {
   render_tree();
   mark_active(SECTION_MINE + ":list");
   const mine = list_imported ? list_imported() : [];
-  render_list(mine.map((r) => r.body), "取り込んだ天体");
+  render_list(mine.map((r) => r.body), t("取り込んだ天体"));
 }
 
 async function show_set(entry, key) {
   mark_active(key);
   search_el.value = "";
   current = { type: "set", entry };
-  set_status("「" + entry.label + "」を読み込み中… (" + Math.round(entry.bytes / 1e5) / 10 + " MB)");
+  set_status(t("「{name}」を読み込み中… ({mb} MB)",
+    { name: t(entry.label), mb: Math.round(entry.bytes / 1e5) / 10 }));
   list_el.innerHTML = "";
-  list_el.appendChild(el("div", "bp-loading", "読み込み中…"));
+  list_el.appendChild(el("div", "bp-loading", t("読み込み中…")));
   try {
     await loadBodySet(entry.id);
   } catch (e) {
     list_el.innerHTML = "";
-    list_el.appendChild(el("div", "bp-empty", "読み込めませんでした: " + e.message));
+    list_el.appendChild(el("div", "bp-empty", t("読み込めませんでした: {why}", { why: e.message })));
     set_status("");
     return;
   }
@@ -337,15 +341,15 @@ function render_list(bodies, title) {
 
   if (!bodies || bodies.length === 0) {
     list_el.appendChild(
-      el("div", "bp-empty", current && current.type === "mine" ? "取り込んだ天体はまだありません" : "該当する天体がありません")
+      el("div", "bp-empty", t(current && current.type === "mine" ? "取り込んだ天体はまだありません" : "該当する天体がありません"))
     );
     return;
   }
 
   const head = el("div", "bp-list-head");
-  head.appendChild(el("span", null, title + " " + bodies.length.toLocaleString() + " 件"));
+  head.appendChild(el("span", null, t("{title} {n} 件", { title, n: bodies.length.toLocaleString() })));
   if (bodies.length > MAX_ROWS) {
-    head.appendChild(el("span", "bp-list-more", "先頭 " + MAX_ROWS + " 件を表示。検索で絞り込めます"));
+    head.appendChild(el("span", "bp-list-more", t("先頭 {n} 件を表示。検索で絞り込めます", { n: MAX_ROWS })));
   }
   list_el.appendChild(head);
 
@@ -368,8 +372,8 @@ function make_row(b, imported) {
   name_line.appendChild(el("span", "bp-row-name", bodyLabel(b)));
   if (!b.closed) {
     // 二度と戻らない軌道。設計としては「一度きりの機会」なので目印を出す
-    const open_kind = Math.abs(b.e - 1) < 1e-6 ? "放物線" : "双曲線";
-    row.title = open_kind + "軌道。太陽系を離れるので、次の機会は無い";
+    const open_kind = t(Math.abs(b.e - 1) < 1e-6 ? "放物線" : "双曲線");
+    row.title = t("{kind}軌道。太陽系を離れるので、次の機会は無い", { kind: open_kind });
     name_line.appendChild(el("span", "bp-badge", open_kind));
   }
   main.appendChild(name_line);
@@ -380,22 +384,24 @@ function make_row(b, imported) {
   const nums = el("div", "bp-row-nums");
   // 記号だけでは何の数字か分からないので、行にまとめて説明を付ける
   nums.title = b.closed
-    ? "a: 軌道の大きさ / e: 軌道のつぶれ具合 (0で真円) / i: 軌道の傾き"
-    : "q: 太陽にいちばん近づく距離 / e: 軌道のつぶれ具合 / i: 軌道の傾き";
+    ? t("a: 軌道の大きさ / e: 軌道のつぶれ具合 (0で真円) / i: 軌道の傾き")
+    : t("q: 太陽にいちばん近づく距離 / e: 軌道のつぶれ具合 / i: 軌道の傾き");
   const period = period_years(b);
   // 開いた軌道 (放物線・双曲線) には軌道長半径も周期も無いので、近点距離を出す
   nums.appendChild(el("span", null, b.closed ? "a " + fmt(b.a, 3) + " AU" : "q " + fmt(b.q, 3) + " AU"));
   nums.appendChild(el("span", null, "e " + fmt(b.e, 3)));
   nums.appendChild(el("span", null, "i " + fmt(b.i, 1) + "°"));
-  nums.appendChild(el("span", null, period ? "周期 " + fmt(period, 1) + "年" : "周期 —"));
+  nums.appendChild(
+    el("span", null, period ? t("周期 {n}年", { n: fmt(period, 1) }) : t("周期 —"))
+  );
   row.appendChild(nums);
 
   if (imported) {
     row.classList.add("imported");
-    row.appendChild(el("span", "bp-badge bp-badge--in", "取り込み済み"));
-    const del = el("button", "bp-del", "外す");
+    row.appendChild(el("span", "bp-badge bp-badge--in", t("取り込み済み")));
+    const del = el("button", "bp-del", t("外す"));
     del.type = "button";
-    del.title = "「" + imported.label + "」を天体の一覧から外す";
+    del.title = t("「{name}」を天体の一覧から外す", { name: imported.label });
     del.onclick = (e) => {
       e.stopPropagation(); // 行の選択には反応させない
       remove_imported(imported);
@@ -440,17 +446,16 @@ function render_manual_form() {
     el(
       "div",
       "bp-manual-hint",
-      "掲載されていない天体を、軌道要素から直接追加します。" +
-        "元期・近日点通過はユリウス日(JD)で入力してください。"
+      t("掲載されていない天体を、軌道要素から直接追加します。元期・近日点通過はユリウス日(JD)で入力してください。")
     )
   );
 
   let kind = "asteroid";
   const kindCol = el("div", "column");
-  kindCol.appendChild(el("label", null, "分類"));
+  kindCol.appendChild(el("label", null, t("分類")));
   const kindBtns = el("div", "row bp-manual-kind");
-  const asteroidBtn = el("button", "mode-btn active", "小惑星");
-  const cometBtn = el("button", "mode-btn", "彗星・恒星間天体");
+  const asteroidBtn = el("button", "mode-btn active", t("小惑星"));
+  const cometBtn = el("button", "mode-btn", t("彗星・恒星間天体"));
   asteroidBtn.type = "button";
   cometBtn.type = "button";
   kindBtns.appendChild(asteroidBtn);
@@ -458,47 +463,47 @@ function render_manual_form() {
   kindCol.appendChild(kindBtns);
   wrap.appendChild(kindCol);
 
-  const desig = manual_field("符号・仮符号", { type: "text", placeholder: "例: 2020 XL5" });
-  const name = manual_field("名前 (任意)", { type: "text", placeholder: "例: Ryugu" });
+  const desig = manual_field(t("符号・仮符号"), { type: "text", placeholder: t("例: 2020 XL5") });
+  const name = manual_field(t("名前 (任意)"), { type: "text", placeholder: t("例: Ryugu") });
   const nameRow = el("div", "row");
   nameRow.appendChild(desig.col);
   nameRow.appendChild(name.col);
   wrap.appendChild(nameRow);
 
-  const eF = manual_field("離心率 e", { step: 0.0001 });
-  const iF = manual_field("軌道傾斜角 i [deg]", { step: 0.01 });
+  const eF = manual_field(t("離心率 e"), { step: 0.0001 });
+  const iF = manual_field(t("軌道傾斜角 i [deg]"), { step: 0.01 });
   const row1 = el("div", "row");
   row1.appendChild(eF.col);
   row1.appendChild(iF.col);
   wrap.appendChild(row1);
 
-  const nodeF = manual_field("昇交点黄経 Ω [deg]", { step: 0.01 });
-  const periF = manual_field("近日点引数 ω [deg]", { step: 0.01 });
+  const nodeF = manual_field(t("昇交点黄経 Ω [deg]"), { step: 0.01 });
+  const periF = manual_field(t("近日点引数 ω [deg]"), { step: 0.01 });
   const row2 = el("div", "row");
   row2.appendChild(nodeF.col);
   row2.appendChild(periF.col);
   wrap.appendChild(row2);
 
   // 分類で必要な項目が変わる。小惑星は a・M・元期、彗星・恒星間天体は q・近日点通過
-  const aF = manual_field("軌道長半径 a [AU]", { step: 0.0001 });
-  const mF = manual_field("平均近点角 M [deg]", { step: 0.01 });
-  const epochF = manual_field("元期 [JD]", { step: 0.0001 });
+  const aF = manual_field(t("軌道長半径 a [AU]"), { step: 0.0001 });
+  const mF = manual_field(t("平均近点角 M [deg]"), { step: 0.01 });
+  const epochF = manual_field(t("元期 [JD]"), { step: 0.0001 });
   const asteroidRow = el("div", "row");
   asteroidRow.appendChild(aF.col);
   asteroidRow.appendChild(mF.col);
   asteroidRow.appendChild(epochF.col);
   wrap.appendChild(asteroidRow);
 
-  const qF = manual_field("近日点距離 q [AU]", { step: 0.0001 });
-  const tpF = manual_field("近日点通過 [JD]", { step: 0.0001 });
+  const qF = manual_field(t("近日点距離 q [AU]"), { step: 0.0001 });
+  const tpF = manual_field(t("近日点通過 [JD]"), { step: 0.0001 });
   const cometRow = el("div", "row");
   cometRow.appendChild(qF.col);
   cometRow.appendChild(tpF.col);
   cometRow.style.display = "none";
   wrap.appendChild(cometRow);
 
-  const hF = manual_field("絶対等級 H (任意)", { step: 0.1 });
-  const numF = manual_field("番号 (任意)", { step: 1 });
+  const hF = manual_field(t("絶対等級 H (任意)"), { step: 0.1 });
+  const numF = manual_field(t("番号 (任意)"), { step: 1 });
   const row3 = el("div", "row");
   row3.appendChild(hF.col);
   row3.appendChild(numF.col);
@@ -518,7 +523,7 @@ function render_manual_form() {
   wrap.appendChild(error);
 
   const actions = el("div", "row bp-manual-actions");
-  const submit = el("button", "bp-add", "この内容で追加");
+  const submit = el("button", "bp-add", t("この内容で追加"));
   submit.type = "button";
   submit.onclick = () => {
     const num = (input) => {
@@ -526,7 +531,7 @@ function render_manual_form() {
       return isFinite(v) ? v : undefined;
     };
     if (!desig.input.value.trim() && num(numF.input) == undefined) {
-      error.textContent = "符号・仮符号か番号のどちらかは入力してください";
+      error.textContent = t("符号・仮符号か番号のどちらかは入力してください");
       return;
     }
     const raw = {
@@ -550,12 +555,12 @@ function render_manual_form() {
     }
     const body = normalizeBody(raw);
     if (!body) {
-      error.textContent = "軌道要素が読み取れません。数値が入っていない欄がないか確認してください";
+      error.textContent = t("軌道要素が読み取れません。数値が入っていない欄がないか確認してください");
       return;
     }
     error.textContent = "";
     if (on_add) on_add(body);
-    else notify("「" + bodyLabel(body) + "」を選びました");
+    else notify(t("「{name}」を選びました", { name: bodyLabel(body) }));
     closeBodyPicker();
   };
   actions.appendChild(submit);
@@ -582,7 +587,7 @@ function select_body(b, row) {
 
   add_btn.disabled = !selected;
   if (!b) {
-    detail_el.textContent = "天体を選んでください";
+    detail_el.textContent = t("天体を選んでください");
     return;
   }
   const period = period_years(b);
@@ -591,18 +596,18 @@ function select_body(b, row) {
     b.closed ? "a " + fmt(b.a, 4) + " AU" : null,
     "e " + fmt(b.e, 4),
     "i " + fmt(b.i, 2) + "°",
-    "近日点 " + fmt(b.q, 3) + " AU",
-    period ? "周期 " + fmt(period, 2) + " 年" : "太陽系を離れる軌道",
+    t("近日点 {au} AU", { au: fmt(b.q, 3) }),
+    period ? t("周期 {n} 年", { n: fmt(period, 2) }) : t("太陽系を離れる軌道"),
     b.H != null ? "H " + fmt(b.H, 1) : null,
   ].filter(Boolean);
-  detail_el.textContent = bits.join(" ・ ");
+  detail_el.textContent = bits.join(t(" ・ "));
 }
 
 function add_selected() {
   if (!selected) return;
   const b = selected;
   if (on_add) on_add(b);
-  else notify("「" + bodyLabel(b) + "」を選びました (軌道への取り込みは次の段階)");
+  else notify(t("「{name}」を選びました (軌道への取り込みは次の段階)", { name: bodyLabel(b) }));
   closeBodyPicker();
 }
 
@@ -621,30 +626,38 @@ async function run_search() {
     set_status("");
     if (current && current.type === "search") {
       list_el.innerHTML = "";
-      list_el.appendChild(el("div", "bp-empty", "左から分類を選ぶか、上の欄で検索してください"));
+      list_el.appendChild(el("div", "bp-empty", t("左から分類を選ぶか、上の欄で検索してください")));
     }
     return;
   }
 
   current = { type: "search", q };
   mark_active(null);
-  render_list(searchBodies(q, MAX_ROWS), "「" + q + "」の検索結果");
+  render_list(searchBodies(q, MAX_ROWS), t("「{q}」の検索結果", { q }));
 
   // まだ読んでいないまとまりがあれば、読み込んでから探し直す
   if (!allBodySetsLoaded()) {
-    set_status("ほかの天体も読み込んで検索中…");
+    set_status(t("ほかの天体も読み込んで検索中…"));
     await loadAllBodySets((entry, i, n) => {
-      set_status("読み込み中 " + entry.label + " (" + (i + 1) + "/" + n + ")");
+      set_status(t("読み込み中 {name} ({i}/{n})", { name: t(entry.label), i: i + 1, n }));
     });
     if (!current || current.type !== "search" || current.q !== q) return; // 打ち直された
     set_status("");
-    render_list(searchBodies(q, MAX_ROWS), "「" + q + "」の検索結果");
+    render_list(searchBodies(q, MAX_ROWS), t("「{q}」の検索結果", { q }));
   }
 }
 
 /* ==================================================================
    外向きの API
    ================================================================== */
+
+// 言語が変わったら、覚えている画面を捨てる (次に開くときに組み直す)
+onLangChange(() => {
+  if (root) {
+    root.remove();
+    root = null;
+  }
+});
 
 export function openBodyPicker() {
   if (!root) {
@@ -656,7 +669,7 @@ export function openBodyPicker() {
   set_status("");
   render_tree();
   list_el.innerHTML = "";
-  list_el.appendChild(el("div", "bp-empty", "左から分類を選ぶか、上の欄で検索してください"));
+  list_el.appendChild(el("div", "bp-empty", t("左から分類を選ぶか、上の欄で検索してください")));
   select_body(null);
   search_el.focus();
 
@@ -672,7 +685,7 @@ export function openBodyPicker() {
       if (first) show_tree_node(first, first.label);
     })
     .catch((e) => {
-      set_status("天体のデータを読み込めませんでした: " + e.message);
+      set_status(t("天体のデータを読み込めませんでした: {why}", { why: e.message }));
     });
 }
 

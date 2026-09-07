@@ -41,10 +41,16 @@ function bare(s) {
 
 /**
  * 訳を引く。
+ *
+ * 中身が決まっていないところ (何も選んでいないときの種別など) から
+ * undefined が渡ることがある。訳の引き当てで画面を止めたくないので、
+ * 文字でないものはそのまま返す。
+ *
  * @param {string} s 日本語の原文 (但し書きを付けるときは "原文##但し書き")
  * @param {object} [params] {名前} を埋める値
  */
 export function t(s, params) {
+  if (typeof s !== "string") return s == undefined ? "" : String(s);
   const table = TABLES[lang];
   let out = table && table[s] !== undefined ? table[s] : bare(s);
   if (params) {

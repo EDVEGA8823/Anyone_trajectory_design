@@ -367,17 +367,17 @@ export function setMissionName(name) {
  * 上部バー以外からも使える汎用の口にしてある。
  */
 export function notify(text) {
-  let t = document.getElementById("toast");
-  if (!t) {
-    t = el("div", "toast");
-    t.id = "toast";
-    document.body.appendChild(t);
+  let box = document.getElementById("toast");
+  if (!box) {
+    box = el("div", "toast");
+    box.id = "toast";
+    document.body.appendChild(box);
   }
-  t.textContent = text;
-  t.classList.add("show");
+  box.textContent = text;
+  box.classList.add("show");
   if (toast_timer) clearTimeout(toast_timer);
   toast_timer = setTimeout(() => {
-    t.classList.remove("show");
+    box.classList.remove("show");
     toast_timer = 0;
   }, 2400);
 }

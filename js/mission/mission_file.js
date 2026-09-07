@@ -7,6 +7,7 @@ import { isSmallBody, smallBody, smallBodyNumber, smallBodiesForSave } from '../
 import { normalizeBody } from '../core/bodies.js';
 import { confirmDialog } from '../ui/dialog.js';
 import { resetHistory, refreshHistoryState } from './history.js';
+import { t } from '../ui/i18n.js';
 
 // ミッションの保存と読込。
 //
@@ -101,7 +102,7 @@ export function saveMissionFile() {
   const data = missionData();
   if (!data) return;
   if (data.nodes.length === 0) {
-    notify("保存するシーケンスがありません");
+    notify(t("保存するシーケンスがありません"));
     return;
   }
 
@@ -117,7 +118,7 @@ export function saveMissionFile() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 
   markMissionSaved();
-  notify("「" + a.download + "」を保存しました");
+  notify(t("「{name}」を保存しました", { name: a.download }));
 }
 
 /**
@@ -128,19 +129,19 @@ export function saveMissionFile() {
 export async function confirmDiscard(action) {
   if (!missionHasUnsavedChanges()) return true;
   return confirmDialog({
-    title: "保存していない変更があります",
+    title: t("保存していない変更があります"),
     message:
-      "いまのミッション「" + (missionName() || DEFAULT_NAME) + "」はまだ保存されていません。\n" +
-      "このまま" + action + "と、ここまでの設計は失われます。",
-    ok: "保存せずに" + action,
-    cancel: "やめる",
+      t("いまのミッション「{name}」はまだ保存されていません。\nこのまま{action}と、ここまでの設計は失われます。",
+        { name: missionName() || t(DEFAULT_NAME), action }),
+    ok: t("保存せずに{action}", { action }),
+    cancel: t("やめる"),
     danger: true,
   });
 }
 
 /** ファイル選択のダイアログを出して読み込む */
 export async function openMissionFile() {
-  if (!(await confirmDiscard("読み込む"))) return;
+  if (!(await confirmDiscard(t("読み込む")))) return;
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "application/json,.json";
@@ -159,12 +160,12 @@ export function readMissionFile(file) {
     try {
       data = JSON.parse(String(reader.result));
     } catch (e) {
-      notify("読み込めませんでした (JSONとして解釈できません)");
+      notify(t("読み込めませんでした (JSONとして解釈できません)"));
       return;
     }
     loadMissionData(data, file.name);
   };
-  reader.onerror = () => notify("ファイルを読めませんでした");
+  reader.onerror = () => notify(t("ファイルを読めませんでした"));
   reader.readAsText(file);
 }
 
@@ -174,24 +175,24 @@ export function readMissionFile(file) {
  */
 export function loadMissionData(data, filename) {
   if (data && data.format && data.format !== FORMAT) {
-    notify("このアプリの保存ファイルではないようです");
+    notify(t("このアプリの保存ファイルではないようです"));
     return false;
   }
   if (data && data.version > VERSION) {
     // 新しい版で増えた項目は読み飛ばされるだけなので、断ったうえで読む
-    notify("新しい版のファイルです。読めない項目があるかもしれません");
+    notify(t("新しい版のファイルです。読めない項目があるかもしれません"));
   }
 
   // 空のミッションは「戻れる先」としては正しいが、ファイルとしては中身が
   // 無いということなので、読み込みのときだけここで断る
   if (!data || !Array.isArray(data.nodes) || data.nodes.length === 0 || !applyMissionData(data)) {
-    notify("読み込めませんでした (シーケンスが入っていません)");
+    notify(t("読み込めませんでした (シーケンスが入っていません)"));
     return false;
   }
 
   markMissionSaved(); // 読み込んだ直後は、ファイルと画面の中身が同じ
   resetHistory(); // 別のミッションになったので、ここより前へは戻さない
-  notify("「" + (filename ?? data.name ?? "ミッション") + "」を読み込みました");
+  notify(t("「{name}」を読み込みました", { name: filename ?? data.name ?? t("ミッション") }));
   return true;
 }
 
@@ -278,7 +279,7 @@ export function initMissionFileDrop() {
     document.body.classList.remove("file-drop");
     if (!file) return;
     stop(e);
-    if (!(await confirmDiscard("読み込む"))) return;
+    if (!(await confirmDiscard(t("読み込む")))) return;
     readMissionFile(file);
   });
 }

@@ -1,3 +1,4 @@
+import { t } from '../ui/i18n.js';
 // 小天体 (小惑星・彗星) のデータを読むところ。
 //
 // データの作られ方と形式は data/bodies/README.md を参照。要点だけ書くと、
@@ -47,7 +48,7 @@ export function bodySubLabel(b) {
   const parts = [];
   if (b.num && b.desig) parts.push(b.desig);
   if (b.type) parts.push(b.type);
-  return parts.join(" ・ ");
+  return parts.join(t(" ・ "));
 }
 
 // 配列で来ている1件を、扱いやすいオブジェクトに直す
@@ -87,7 +88,7 @@ export function normalizeBody(raw) {
 
 async function fetch_json(file) {
   const res = await fetch(BASE + file, { cache: "default" });
-  if (!res.ok) throw new Error(file + " が読めません (" + res.status + ")");
+  if (!res.ok) throw new Error(t("{path} が読めません ({status})", { path: file, status: res.status }));
   return res.json();
 }
 
@@ -109,7 +110,7 @@ export function loadBodySet(set_id) {
   const p = loadBodyIndex()
     .then((idx) => {
       const entry = idx.sets.find((s) => s.id === set_id);
-      if (!entry) throw new Error("知らないまとまり: " + set_id);
+      if (!entry) throw new Error(t("知らないまとまり: {name}", { name: set_id }));
       return fetch_json(entry.file);
     })
     .then((data) => {

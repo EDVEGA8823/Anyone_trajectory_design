@@ -7,6 +7,8 @@
    "group": "チュートリアル",
    "name": "① 火星に行って帰ってくる",
    "desc": "MMX風。火星の周回軌道に入り、フォボスの高さで観測して、地球に戻る。",
+   "name_en": "① There and back from Mars",
+   "desc_en": "MMX-like. Enter Mars orbit, observe at Phobos' altitude, and return to Earth.",
    "doc": "docs/mars.html",
    "file": "mars.json"
   },
@@ -15,6 +17,8 @@
    "group": "チュートリアル",
    "name": "② 金星の重力で水星へ",
    "desc": "マリナー10号風。金星で減速し、水星に3回会うための共鳴軌道に乗る。",
+   "name_en": "② To Mercury on Venus' gravity",
+   "desc_en": "Mariner 10-like. Slow down at Venus and settle into a resonance that meets Mercury three times.",
    "doc": "docs/mercury.html",
    "file": "mercury.json"
   },
@@ -23,6 +27,8 @@
    "group": "チュートリアル",
    "name": "③ 木星に押してもらって冥王星へ",
    "desc": "ニューホライズンズ風。木星スイングバイの威力と、ロケットの選択。",
+   "name_en": "③ To Pluto with a push from Jupiter",
+   "desc_en": "New Horizons-like. What a Jupiter swingby is worth, and choosing a rocket.",
    "doc": "docs/pluto.html",
    "file": "pluto.json"
   },
@@ -31,6 +37,8 @@
    "group": "チュートリアル",
    "name": "④ 地球をもう一度使って木星へ",
    "desc": "Juno風。遠日点での噴射で V∞ を育てる ΔVEGA。",
+   "name_en": "④ To Jupiter by using Earth twice",
+   "desc_en": "Juno-like. A ΔVEGA that grows V∞ with a burn at aphelion.",
    "doc": "docs/jupiter.html",
    "file": "jupiter.json"
   },
@@ -39,6 +47,8 @@
    "group": "チュートリアル",
    "name": "⑤ 小惑星にランデブーする",
    "desc": "はやぶさ2風。1年で地球に戻る軌道からリュウグウへ。",
+   "name_en": "⑤ Rendezvous with an asteroid",
+   "desc_en": "Hayabusa2-like. From an orbit that returns to Earth in a year, on to Ryugu.",
    "doc": "docs/ryugu.html",
    "file": "ryugu.json"
   },
@@ -47,6 +57,8 @@
    "group": "資料",
    "name": "面を折って木星へ",
    "desc": "ホーマン遷移が3次元で使えない理由と、その回避 (ブロークンプレーン)。",
+   "name_en": "To Jupiter by folding the plane",
+   "desc_en": "Why a Hohmann transfer does not work in three dimensions, and the way around it (broken plane).",
    "doc": "docs/hohmann.html",
    "file": "hohmann.json"
   },
@@ -55,6 +67,8 @@
    "group": "資料",
    "name": "ΔVEGA で木星へ",
    "desc": "2年で地球に戻る軌道を組み、遠日点で 588 m/s 噴いて V∞ を育てる。",
+   "name_en": "To Jupiter with ΔVEGA",
+   "desc_en": "Build an orbit that returns to Earth in two years, then burn 588 m/s at aphelion to grow V∞.",
    "doc": "docs/swingby2.html",
    "file": "dvega.json"
   },
@@ -63,6 +77,8 @@
    "group": "資料",
    "name": "VEGA で木星へ",
    "desc": "金星に寄って V∞ を上げ、地球で木星へ放り出してもらう。",
+   "name_en": "To Jupiter with VEGA",
+   "desc_en": "Swing by Venus to raise V∞, then let Earth throw you out to Jupiter.",
    "doc": "docs/swingby2.html",
    "file": "vega.json"
   },
@@ -71,6 +87,8 @@
    "group": "資料",
    "name": "VEEGA で木星へ",
    "desc": "地球を2回使って曲げを分ける。いちばん軽く打ち上げられる。",
+   "name_en": "To Jupiter with VEEGA",
+   "desc_en": "Use Earth twice to split the bend. The lightest launch of them all.",
    "doc": "docs/swingby2.html",
    "file": "veega.json"
   }

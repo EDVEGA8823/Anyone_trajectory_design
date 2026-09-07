@@ -298,3 +298,54 @@
     border-bottom-left-radius: 0;
   }
 }
+
+/* ==================================================================
+   英語表示のときの閾値
+   ==================================================================
+   英語のラベルは日本語より横に長い ("残る質量" 4文字に対して "Mass left")。
+   同じウィンドウ幅でも一段ぶん早く詰まるので、落とし始める幅を上にずらす。
+   落とす順そのものは上と同じ (補足 → 打上げエネルギー → 見出し → 余白)。
+   言語は js/ui/i18n.js が <html lang> に書くので、そこで出し分ける。 */
+@media (max-width: 1700px) {
+  :root[lang="en"] .stat-bar .value_box .title .sub {
+    display: none;
+  }
+}
+@media (max-width: 1570px) {
+  :root[lang="en"] .stat-cell--sub {
+    display: none;
+  }
+}
+@media (max-width: 1380px) {
+  :root[lang="en"] .stat-bar-title {
+    display: none;
+  }
+}
+@media (max-width: 1130px) {
+  :root[lang="en"] .row.stat-bar {
+    gap: 8px;
+    padding: 6px 8px;
+  }
+  :root[lang="en"] .row.stat-group {
+    gap: 4px;
+  }
+  :root[lang="en"] .launcher-group select {
+    width: 92px;
+  }
+}
+@media (max-width: 1070px) {
+  :root[lang="en"] .row.stat-bar {
+    gap: 4px;
+    padding: 6px;
+  }
+  :root[lang="en"] .stat-bar .value_box {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  :root[lang="en"] .stat-bar .value_box .value {
+    font-size: 12px;
+  }
+  :root[lang="en"] .launcher-group select {
+    width: 80px;
+  }
+}

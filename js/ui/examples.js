@@ -53,7 +53,11 @@ async function pick(item, btn) {
     if (!(await confirmDiscard(t("読み込む")))) return;
     const res = await fetch(BASE + item.file, { cache: "default" });
     if (!res.ok) throw new Error(item.file + " (" + res.status + ")");
-    if (loadMissionData(await res.json(), shown(item, "name"))) closeExamples();
+    const data = await res.json();
+    // ファイルの中の名前は日本語で固めてある。一覧に出しているのと同じ名前で
+    // 読み込む (英語表示のときに、ミッション名だけ日本語で残らないように)
+    data.name = shown(item, "name");
+    if (loadMissionData(data, data.name)) closeExamples();
   } catch (e) {
     notify(t("例を読み込めませんでした"));
   } finally {

@@ -37,6 +37,7 @@ import {
 import { State, PlotState, Sequence_Type } from '../core/state.js';
 import { JulianToDate } from '../core/trajectory.js';
 import { notify } from '../ui/topbar.js';
+import { t } from '../ui/i18n.js';
 
 /**
  * 天体の軌道と丸の出し入れは main.js が持っている (天体名の表もあちら側に
@@ -332,7 +333,7 @@ function sequenceRows() {
     const n = m.planet_num(i);
     rows.push({
       badge: i + 1 + ". " + m.type(i),
-      name: m.type(i) === Sequence_Type.Maneuver ? "深宇宙" : n >= 0 ? State.planet_list[n] : "---",
+      name: m.type(i) === Sequence_Type.Maneuver ? t("深宇宙") : n >= 0 ? t(State.planet_list[n]) : "---",
       date: JulianToDate(m.date(i)).toLocaleDateString(),
     });
   }
@@ -345,14 +346,14 @@ function statItems() {
   const rocket = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].text : "-";
   const numeric = /^[\d.]+$/.test(txt("wet_mass"));
   const items = [
-    { title: "脱出速度", value: txt("v_inf"), unit: "km/s", color: color_of("v_inf") },
-    { title: "打上げエネルギー", value: txt("C3"), unit: "km²/s²", color: color_of("C3") },
-    { title: "総ΔV", value: txt("total_dv"), unit: "m/s", color: color_of("total_dv") },
-    { title: "打ち上げロケット", value: rocket, unit: "" },
-    { title: "打上げ質量", value: txt("wet_mass"), unit: numeric ? "kg" : "", color: color_of("wet_mass") },
+    { title: t("脱出速度"), value: txt("v_inf"), unit: "km/s", color: color_of("v_inf") },
+    { title: t("打上げエネルギー"), value: txt("C3"), unit: "km²/s²", color: color_of("C3") },
+    { title: t("総ΔV"), value: txt("total_dv"), unit: "m/s", color: color_of("total_dv") },
+    { title: t("打ち上げロケット"), value: rocket, unit: "" },
+    { title: t("打上げ質量"), value: txt("wet_mass"), unit: numeric ? "kg" : "", color: color_of("wet_mass") },
   ];
   // 打ち上げられない設計では「残る質量」に出す数が無い (画面でも畳んでいる)
-  if (numeric) items.push({ title: "残る質量", value: txt("dry_mass"), unit: "kg", color: color_of("dry_mass") });
+  if (numeric) items.push({ title: t("残る質量"), value: txt("dry_mass"), unit: "kg", color: color_of("dry_mass") });
   return items;
 }
 
@@ -371,13 +372,13 @@ function drawHeader(ctx, c, name, period) {
   if (period && period !== "-") {
     ctx.font = "500 13px " + FONT;
     ctx.fillStyle = c.textMuted;
-    ctx.fillText("期間 " + period, PAD, PAD + 46);
+    ctx.fillText(t("期間 {duration}", { duration: period }), PAD, PAD + 46);
   }
 
   ctx.textAlign = "right";
   ctx.font = "600 13px " + FONT;
   ctx.fillStyle = c.textMuted;
-  ctx.fillText("だれでも軌道設計", W - PAD, PAD + 26);
+  ctx.fillText(t("だれでも軌道設計"), W - PAD, PAD + 26);
 }
 
 function drawView(ctx, c, shot, x, y) {
@@ -441,14 +442,14 @@ function drawSequence(ctx, c, rows, x, y, h) {
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = c.textMuted;
   ctx.font = "700 12px " + FONT;
-  ctx.fillText("ミッションシーケンス", x, y + 12);
+  ctx.fillText(t("ミッションシーケンス"), x, y + 12);
 
   let cy = y + 26;
   for (const r of rows) {
     if (cy + CARD_H > y + h) {
       ctx.fillStyle = c.textMuted;
       ctx.font = "500 12px " + FONT;
-      ctx.fillText("ほか " + (rows.length - rows.indexOf(r)) + " 件", x + 4, cy + 14);
+      ctx.fillText(t("ほか {n} 件", { n: rows.length - rows.indexOf(r) }), x + 4, cy + 14);
       break;
     }
     roundRect(ctx, x + 0.5, cy + 0.5, SEQ_W - 1, CARD_H - 1, 8);
@@ -538,11 +539,11 @@ function safe_name(name) {
 export async function renderMissionImage(name) {
   const mission = State.mission_sequence;
   if (!mission || mission.count === 0) {
-    notify("画像にするシーケンスがありません");
+    notify(t("画像にするシーケンスがありません"));
     return undefined;
   }
   if (!renderer || !camera || !scene) {
-    notify("太陽系ビューがまだ準備できていません");
+    notify(t("太陽系ビューがまだ準備できていません"));
     return undefined;
   }
 
@@ -572,7 +573,7 @@ export async function renderMissionImage(name) {
 
   const shot = captureView(mission, VIEW_W, VIEW_H);
 
-  drawHeader(ctx, c, name || "無題のミッション", txt("duration"));
+  drawHeader(ctx, c, name || t("無題のミッション"), txt("duration"));
   const body_y = PAD + HEAD_H + GAP;
   drawView(ctx, c, shot, PAD, body_y);
   drawSequence(ctx, c, rows, PAD + VIEW_W + GAP, body_y, body_h);

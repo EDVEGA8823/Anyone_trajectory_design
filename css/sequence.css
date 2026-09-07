@@ -236,3 +236,7 @@
 #sequence_propaty {
   width: 70px;
 }
+/* 英語の「Change」は日本語の「変更」より横に長い */
+:root[lang="en"] #sequence_propaty {
+  width: 86px;
+}

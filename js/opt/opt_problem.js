@@ -69,6 +69,7 @@ import {
   G0,
 } from '../core/trajectory.js';
 import { launcher_mass, launch_declination, launcher_list } from '../core/launchers.js';
+import { t } from '../ui/i18n.js';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -405,13 +406,13 @@ export function scoreMission(mission, opt = DEFAULT_OPTIONS) {
     over_vinf: 0,
   };
   if (mission.count < 2) {
-    out.reason = 'ノードが2つ未満';
+    out.reason = t('ノードが2つ未満');
     return out;
   }
 
   const dv = mission.get_total_dv();
   if (!isFinite(dv) || dv < 0) {
-    out.reason = '総ΔVが求まらない';
+    out.reason = t('総ΔVが求まらない');
     return out;
   }
   out.dv = dv;
@@ -420,7 +421,7 @@ export function scoreMission(mission, opt = DEFAULT_OPTIONS) {
   const v_vec = mission.get_launch_v_inf_vec();
   const vinf = mission.get_v_inf();
   if (v_vec == undefined || !isFinite(vinf)) {
-    out.reason = '打上げのV∞が求まらない';
+    out.reason = t('打上げのV∞が求まらない');
     return out;
   }
   out.vinf = vinf;
@@ -429,7 +430,7 @@ export function scoreMission(mission, opt = DEFAULT_OPTIONS) {
   // 軌道が繋がっているか。繋がっていないレグは位置が undefined になる
   for (let i = 0; i < mission.count; i++) {
     if (mission.get_s_c_pos(i) == undefined) {
-      out.reason = i + '番のノードで軌道が繋がっていない';
+      out.reason = t('{i}番のノードで軌道が繋がっていない', { i });
       return out;
     }
   }
@@ -459,11 +460,11 @@ export function scoreMission(mission, opt = DEFAULT_OPTIONS) {
   out.final_mass = final_mass(m, dv) ?? 0;
 
   if (out.over_vinf > 0) {
-    out.reason = 'この脱出速度はロケットの能力を超えている';
+    out.reason = t('この脱出速度はロケットの能力を超えている');
     return out;
   }
   if (!(out.final_mass > 0)) {
-    out.reason = '最終質量が求まらない';
+    out.reason = t('最終質量が求まらない');
     return out;
   }
   out.ok = true;

@@ -1,5 +1,6 @@
 import { MU_SUN, get_planet_elements, get_planets_pos, JulianToDate, lambert_min_tof } from '../core/trajectory.js';
 import { cssColor, onThemeChange, isDark } from './theme.js';
+import { t, onLangChange } from './i18n.js';
 
 // ポークチョップ図。
 //
@@ -192,18 +193,18 @@ async function compute_grid(spec, on_progress, generation) {
   const arr_t = new Float64Array(rows);
 
   for (let j = 0; j < cols; j++) {
-    const t = cols === 1 ? dep0 : dep0 + ((dep1 - dep0) * j) / (cols - 1);
-    dep_t[j] = t;
-    const { r, v } = get_planets_pos(get_planet_elements(t, dep_num));
+    const jd = cols === 1 ? dep0 : dep0 + ((dep1 - dep0) * j) / (cols - 1);
+    dep_t[j] = jd;
+    const { r, v } = get_planets_pos(get_planet_elements(jd, dep_num));
     for (let c = 0; c < 3; c++) {
       dep_r[j * 3 + c] = r[c];
       dep_v[j * 3 + c] = v[c];
     }
   }
   for (let k = 0; k < rows; k++) {
-    const t = rows === 1 ? arr0 : arr0 + ((arr1 - arr0) * k) / (rows - 1);
-    arr_t[k] = t;
-    const { r, v } = get_planets_pos(get_planet_elements(t, arr_num));
+    const jd = rows === 1 ? arr0 : arr0 + ((arr1 - arr0) * k) / (rows - 1);
+    arr_t[k] = jd;
+    const { r, v } = get_planets_pos(get_planet_elements(jd, arr_num));
     for (let c = 0; c < 3; c++) {
       arr_r[k * 3 + c] = r[c];
       arr_v[k * 3 + c] = v[c];
@@ -441,8 +442,8 @@ function cell_combo(g, idx) {
    色と目盛り
    ================================================================== */
 
-function color_at(t) {
-  const x = Math.min(1, Math.max(0, t));
+function color_at(f) {
+  const x = Math.min(1, Math.max(0, f));
   for (let i = 1; i < COLOR_STOPS.length; i++) {
     const a = COLOR_STOPS[i - 1];
     const b = COLOR_STOPS[i];
@@ -825,10 +826,10 @@ function draw_rev_borders(ctx, rect) {
  */
 function draw_dep_min(ctx, rect) {
   if (!target || target.dep_min_date == undefined || !view) return;
-  const t = target.dep_min_date;
-  if (t <= view.dep0) return; // 窓がまるごと到着後 (境界は窓の外・左)
+  const t_min = target.dep_min_date;
+  if (t_min <= view.dep0) return; // 窓がまるごと到着後 (境界は窓の外・左)
 
-  const xAt = to_px(rect, Math.min(t, view.dep1), view.arr0).x;
+  const xAt = to_px(rect, Math.min(t_min, view.dep1), view.arr0).x;
   const x = clamp(xAt, rect.x, rect.x + rect.w);
   const w = x - rect.x;
   if (w <= 0) return;
@@ -848,7 +849,7 @@ function draw_dep_min(ctx, rect) {
   ctx.stroke();
   ctx.restore();
 
-  if (t > view.dep1) return; // 境界そのものは窓の外 (右)。斜線だけで済ませる
+  if (t_min > view.dep1) return; // 境界そのものは窓の外 (右)。斜線だけで済ませる
 
   ctx.save();
   ctx.strokeStyle = PC.warn;
@@ -866,7 +867,7 @@ function draw_dep_min(ctx, rect) {
   const near_right = x > rect.x + rect.w - 70;
   ctx.textAlign = near_right ? "right" : "left";
   ctx.textBaseline = "top";
-  ctx.fillText("到着 " + fmt_date(t, true), x + (near_right ? -4 : 4), rect.y + 3);
+  ctx.fillText(t("到着 {date}", { date: fmt_date(t_min, true) }), x + (near_right ? -4 : 4), rect.y + 3);
   ctx.restore();
 }
 
@@ -899,10 +900,10 @@ function draw_tof_lines(ctx, rect) {
     ctx.stroke();
 
     // 線の途中に日数を置く。潰れないよう端から少し内側に
-    const t = 0.72;
-    const lx = a.x + (b.x - a.x) * t;
-    const ly = a.y + (b.y - a.y) * t;
-    const text = Math.round(T) + "日";
+    const at = 0.72;
+    const lx = a.x + (b.x - a.x) * at;
+    const ly = a.y + (b.y - a.y) * at;
+    const text = t("{days}日", { days: Math.round(T) });
     ctx.save();
     ctx.setLineDash([]);
     const tw = ctx.measureText(text).width;
@@ -954,12 +955,12 @@ function draw_axes(ctx, rect) {
   ctx.font = "600 11px " + FONT;
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
-  ctx.fillText("出発日", rect.x + rect.w / 2, canvas.clientHeight - 3);
+  ctx.fillText(t("出発日"), rect.x + rect.w / 2, canvas.clientHeight - 3);
   ctx.save();
   ctx.translate(8, rect.y + rect.h / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textBaseline = "top";
-  ctx.fillText("到着日", 0, 0);
+  ctx.fillText(t("到着日"), 0, 0);
   ctx.restore();
   ctx.restore();
 }
@@ -979,7 +980,7 @@ function draw_colorbar(ctx, rect, range) {
   ctx.fillStyle = PC.labelDim;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillText("以上", x + w + 5, rect.y + over_h / 2);
+  ctx.fillText(t("以上"), x + w + 5, rect.y + over_h / 2);
   ctx.restore();
 
   for (let i = 0; i < h; i++) {
@@ -1137,14 +1138,12 @@ function build_window() {
   const root = el("div", "pc-window");
 
   const head = el("div", "pc-head");
-  title_el = el("div", "pc-title", "出発日と到着日の地図");
+  title_el = el("div", "pc-title", t("出発日と到着日の地図"));
   title_el.title =
-    "出発日 (横) と到着日 (縦) の組み合わせを片っ端から解いて、\n" +
-    "どれくらい楽に行けるかを色で塗った地図です。青いところほど楽に行けます。\n" +
-    "軌道設計では「ポークチョップ図」と呼ばれています。";
+    t("出発日 (横) と到着日 (縦) の組み合わせを片っ端から解いて、\nどれくらい楽に行けるかを色で塗った地図です。青いところほど楽に行けます。\n軌道設計では「ポークチョップ図」と呼ばれています。");
   const close = el("button", "pc-close", "×");
   close.type = "button";
-  close.title = "閉じる";
+  close.title = t("閉じる");
   close.onclick = () => closePorkchop();
   head.appendChild(title_el);
   head.appendChild(close);
@@ -1161,10 +1160,7 @@ function build_window() {
   }
   metric_sel.value = metric;
   metric_sel.title =
-    "図の色が何を表すかを選びます\n" +
-    "打上げエネルギー: 出発の負担。小さいほど重い探査機を打ち上げられる\n" +
-    "到着の速さ: 目的地に着くときの速さ。小さいほど、着いてからの減速が楽\n" +
-    "出発と到着の合計: 行きと着きの両方をまとめて見たいとき";
+    t("図の色が何を表すかを選びます\n打上げエネルギー: 出発の負担。小さいほど重い探査機を打ち上げられる\n到着の速さ: 目的地に着くときの速さ。小さいほど、着いてからの減速が楽\n出発と到着の合計: 行きと着きの両方をまとめて見たいとき");
   metric_sel.onchange = () => {
     metric = metric_sel.value;
     choose_solutions(grid); // 量が変われば、どの周回数が安いかも変わる
@@ -1177,10 +1173,10 @@ function build_window() {
   // 周回数。太陽を何周してから着く解を見るか
   rev_sel = document.createElement("select");
   [
-    ["auto", "周回 自動"],
-    ["0", "周回 直行"],
-    ["1", "周回 1周"],
-    ["2", "周回 2周"],
+    ["auto", t("周回 自動")],
+    ["0", t("周回 直行")],
+    ["1", t("周回 1周")],
+    ["2", t("周回 2周")],
   ].forEach(([v, t]) => {
     const o = document.createElement("option");
     o.value = v;
@@ -1189,9 +1185,7 @@ function build_window() {
   });
   rev_sel.value = "auto";
   rev_sel.title =
-    "太陽を何周してから着く行き方を見るかを選びます。\n" +
-    "自動: 点ごとに、いちばん安く行ける周回数を採る (点線がその境目)\n" +
-    "固定すると、その周回数だけの地図になります";
+    t("太陽を何周してから着く行き方を見るかを選びます。\n自動: 点ごとに、いちばん安く行ける周回数を採る (点線がその境目)\n固定すると、その周回数だけの地図になります");
   rev_sel.onchange = () => {
     rev_mode = rev_sel.value === "auto" ? "auto" : Number(rev_sel.value);
     // 多周回の解は飛行時間が長いところにしか無い。いまの範囲のままだと
@@ -1222,7 +1216,7 @@ function build_window() {
     input.step = "10";
     input.title = title;
     wrap.appendChild(input);
-    wrap.appendChild(el("span", "pc-unit", "日"));
+    wrap.appendChild(el("span", "pc-unit", t("日##ポークチョップの単位")));
     input.onchange = () => {
       apply_inputs();
       recompute();
@@ -1230,14 +1224,14 @@ function build_window() {
     bar.appendChild(wrap);
     return input;
   };
-  dep_span_input = mk_span("出発 ±", "横軸に映す出発日の幅 (真ん中から前後この日数)");
-  arr_span_input = mk_span("到着 ±", "縦軸に映す到着日の幅 (真ん中から前後この日数)");
+  dep_span_input = mk_span(t("出発 ±"), t("横軸に映す出発日の幅 (真ん中から前後この日数)"));
+  arr_span_input = mk_span(t("到着 ±"), t("縦軸に映す到着日の幅 (真ん中から前後この日数)"));
 
   res_sel = document.createElement("select");
   [
-    ["60", "粗い"],
-    ["100", "標準"],
-    ["150", "細かい"],
+    ["60", t("粗い")],
+    ["100", t("標準")],
+    ["150", t("細かい")],
   ].forEach(([v, t]) => {
     const o = document.createElement("option");
     o.value = v;
@@ -1245,16 +1239,14 @@ function build_window() {
     res_sel.appendChild(o);
   });
   res_sel.value = "100";
-  res_sel.title = "図の細かさ。細かいほど計算に時間がかかります";
+  res_sel.title = t("図の細かさ。細かいほど計算に時間がかかります");
   res_sel.onchange = () => recompute();
   bar.appendChild(res_sel);
 
-  const fit = el("button", "pc-sub", "色合わせ");
+  const fit = el("button", "pc-sub", t("色合わせ"));
   fit.type = "button";
   fit.title =
-    "いま映っている範囲に合わせて、色を塗り直します。\n" +
-    "拡大しても色の段階はそのままなので、拡大したら一面同じ色になった、\n" +
-    "というときに押してください。";
+    t("いま映っている範囲に合わせて、色を塗り直します。\n拡大しても色の段階はそのままなので、拡大したら一面同じ色になった、\nというときに押してください。");
   fit.onclick = () => {
     ensure_color_range(true);
     draw();
@@ -1262,9 +1254,9 @@ function build_window() {
   };
   bar.appendChild(fit);
 
-  const reset = el("button", "pc-run", "範囲を戻す");
+  const reset = el("button", "pc-run", t("範囲を戻す"));
   reset.type = "button";
-  reset.title = "最初に映していた、行きやすい時期のまわりに戻します";
+  reset.title = t("最初に映していた、行きやすい時期のまわりに戻します");
   reset.onclick = () => {
     if (!target) return;
     view = auto_view(target);
@@ -1288,7 +1280,7 @@ function build_window() {
   body.appendChild(spinner_el);
   root.appendChild(body);
 
-  hover_el = el("div", "pc-hover", HOVER_HINT);
+  hover_el = el("div", "pc-hover", t(HOVER_HINT));
   root.appendChild(hover_el);
   status_el = el("div", "pc-status", "");
   root.appendChild(status_el);
@@ -1296,7 +1288,7 @@ function build_window() {
   canvas.addEventListener("mousemove", on_move);
   canvas.addEventListener("mouseleave", () => {
     hover_cell = null;
-    hover_el.textContent = HOVER_HINT;
+    hover_el.textContent = t(HOVER_HINT);
     draw();
   });
   canvas.addEventListener("click", on_click);
@@ -1419,28 +1411,25 @@ function on_move(e) {
   const c = hovered(e);
   hover_cell = c;
   if (!c) {
-    hover_el.textContent = HOVER_HINT;
+    hover_el.textContent = t(HOVER_HINT);
   } else if (c.before_arrival) {
     hover_el.textContent =
-      fmt_date(c.dep) + " : この天体に着くのが " + fmt_date(target.dep_min_date) + " なので、まだ出発できません";
+      t("{dep} : この天体に着くのが {min} なので、まだ出発できません",
+        { dep: fmt_date(c.dep), min: fmt_date(target.dep_min_date) });
   } else if (!(c.c3 === c.c3)) {
-    hover_el.textContent = fmt_date(c.dep) + " → " + fmt_date(c.arr) + " : この組み合わせでは飛べません";
+    hover_el.textContent = t("{dep} → {arr} : この組み合わせでは飛べません",
+      { dep: fmt_date(c.dep), arr: fmt_date(c.arr) });
   } else {
     const tof = Math.round(c.arr - c.dep);
     hover_el.textContent =
-      fmt_date(c.dep) +
-      " → " +
-      fmt_date(c.arr) +
-      " (飛行 " +
-      tof +
-      "日" +
-      (c.rev > 0 ? " ・ " + c.rev + "周" : "") +
-      ") ・ 打上げ " +
-      c.c3.toFixed(1) +
-      " km²/s² ・ 到着 " +
-      c.varr.toFixed(2) +
-      " km/s" +
-      (on_pick ? " ・ 押すとこの日付にします" : "");
+      t("{dep} → {arr} (飛行 {tof}日{rev}) ・ 打上げ {c3} km²/s² ・ 到着 {varr} km/s", {
+        dep: fmt_date(c.dep),
+        arr: fmt_date(c.arr),
+        tof,
+        rev: c.rev > 0 ? t(" ・ {n}周", { n: c.rev }) : "",
+        c3: c.c3.toFixed(1),
+        varr: c.varr.toFixed(2),
+      }) + (on_pick ? t(" ・ 押すとこの日付にします") : "");
   }
   draw();
 }
@@ -1555,49 +1544,49 @@ function on_pan_start(e) {
 // 指1本で移動、2本で拡大縮小
 let touch_state = null;
 
-function touch_center(t) {
+function touch_center(touches) {
   const r = canvas.getBoundingClientRect();
   const sx = canvas.clientWidth / r.width;
   const sy = canvas.clientHeight / r.height;
   let x = 0;
   let y = 0;
-  for (const p of t) {
+  for (const p of touches) {
     x += (p.clientX - r.left) * sx;
     y += (p.clientY - r.top) * sy;
   }
-  return { x: x / t.length, y: y / t.length };
+  return { x: x / touches.length, y: y / touches.length };
 }
 
-function touch_spread(t) {
-  return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+function touch_spread(touches) {
+  return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
 }
 
 function on_touch_start(e) {
   if (!view) return;
-  const t = Array.from(e.touches);
+  const touches = Array.from(e.touches);
   touch_state = {
     v0: { ...view },
-    center: touch_center(t),
-    spread: t.length >= 2 ? touch_spread(t) : 0,
-    count: t.length,
+    center: touch_center(touches),
+    spread: touches.length >= 2 ? touch_spread(touches) : 0,
+    count: touches.length,
   };
   e.preventDefault();
 }
 
 function on_touch_move(e) {
   if (!view || !touch_state) return;
-  const t = Array.from(e.touches);
-  if (t.length !== touch_state.count) {
+  const touches = Array.from(e.touches);
+  if (touches.length !== touch_state.count) {
     on_touch_start(e); // 指の数が変わったら取り直す
     return;
   }
   const rect = plot_rect();
-  const c = touch_center(t);
+  const c = touch_center(touches);
   const v0 = touch_state.v0;
 
   let f = 1;
-  if (t.length >= 2 && touch_state.spread > 1) {
-    f = clamp(touch_state.spread / touch_spread(t), 0.1, 10);
+  if (touches.length >= 2 && touch_state.spread > 1) {
+    f = clamp(touch_state.spread / touch_spread(touches), 0.1, 10);
   }
 
   // つまんだ点の日付を動かさずに、指の開き具合で伸縮 + 中心の移動を重ねる
@@ -1677,22 +1666,22 @@ function update_status(extra) {
   }
   const m = METRICS[metric];
   status_el.textContent =
-    "色は" +
-    m.label +
-    " [" +
-    m.unit +
-    "] ・ ◇ いちばん安い点 / 破線 いまの設定 / 灰色 高すぎるところ" +
-    (target && target.dep_min_date != undefined ? " / 斜線 まだ出発できないところ" : "");
+    t("色は{metric} [{unit}] ・ ◇ いちばん安い点 / 破線 いまの設定 / 灰色 高すぎるところ",
+      { metric: t(m.label), unit: m.unit }) +
+    (target && target.dep_min_date != undefined ? t(" / 斜線 まだ出発できないところ") : "");
   // 細かい内訳は、読みたい人だけがカーソルを乗せて読めばよい
   status_el.title =
-    (rev_mode === "auto" ? "周回数は点ごとにいちばん安いものを採用 (点線がその境目)" : rev_mode === 0 ? "直行のみ" : rev_mode + "周のみ") +
+    (rev_mode === "auto"
+      ? t("周回数は点ごとにいちばん安いものを採用 (点線がその境目)")
+      : rev_mode === 0
+      ? t("直行のみ")
+      : t("{n}周のみ", { n: rev_mode })) +
     "\n" +
-    grid.cols +
-    "×" +
-    grid.rows +
-    " 点のうち " +
-    (grid.solved ?? 0) +
-    " 点で行き方が見つかりました";
+    t("{cols}×{rows} 点のうち {solved} 点で行き方が見つかりました", {
+      cols: grid.cols,
+      rows: grid.rows,
+      solved: grid.solved ?? 0,
+    });
 }
 
 /* ==================================================================
@@ -1725,7 +1714,7 @@ async function recompute() {
   const generation = ++job;
   show_spinner(true);
   set_progress(0);
-  update_status("計算中…");
+  update_status(t("計算中…"));
   const t0 = performance.now();
 
   const result = await compute_grid(spec, set_progress, generation);
@@ -1759,7 +1748,7 @@ export function openPorkchop(info) {
 
   const same = target && target.index === info.index && target.dep_num === info.dep_num && target.arr_num === info.arr_num;
   target = { ...info };
-  title_el.textContent = "出発日と到着日の地図  " + info.dep_name + " → " + info.arr_name;
+  title_el.textContent = t("出発日と到着日の地図") + "  " + info.dep_name + " → " + info.arr_name;
 
   if (!same || !grid || !view) {
     // 対象が変わったら、ホーマン遷移から見積もった窓のまわりを映す
@@ -1781,6 +1770,16 @@ export function closePorkchop() {
   show_spinner(false);
   if (win) win.style.display = "none";
 }
+
+// 言語が変わったら、窓は組み直す (開いていたら開き直す)
+onLangChange(() => {
+  const was = isPorkchopOpen();
+  if (win) {
+    win.remove();
+    win = null;
+  }
+  if (was && target) openPorkchop(target);
+});
 
 export function isPorkchopOpen() {
   return !!win && win.style.display !== "none";

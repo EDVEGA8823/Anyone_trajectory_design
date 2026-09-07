@@ -175,14 +175,16 @@ const DELTA_HINT = "軌道面からどれだけ上を向けるか (上向きが�
 function arrivalVinfRow(mission, i, prefix = "") {
   const a = mission.leg_arrival_vinf(i);
   if (a == undefined) return null;
-  const name = State.planet_list[a.planet];
+  const name = t(State.planet_list[a.planet]);
   return [
     // 惑星名は短いので見出しに入れてしまう。小天体の長い名前は説明の側へ
-    prefix + (name && name.length <= 5 ? name + "での V∞" : "着くときの V∞"),
+    name
+      ? t("{name}での V∞", { name: t(name) })
+      : t("着くときの V∞"),
     a.vinf.toFixed(3) + " km/s",
     null,
-    (name ? name : "次の天体") + "に着くときの、その天体から見た速さ。\n" +
-      "スイングバイで曲げられる角度は、この速さと近づく高さで決まる。",
+    t("{name}に着くときの、その天体から見た速さ。\nスイングバイで曲げられる角度は、この速さと近づく高さで決まる。",
+      { name: name ? t(name) : t("次の天体") }),
   ];
 }
 
@@ -199,7 +201,7 @@ function arrivalVinfRow(mission, i, prefix = "") {
  */
 function sequence_title(mission, id) {
   const type = mission.type(id);
-  const label = type === Sequence_Type.Swingby && mission.is_auto_mode(id) ? "パワードスイングバイ" : type;
+  const label = type === Sequence_Type.Swingby && mission.is_auto_mode(id) ? t("パワードスイングバイ") : t(type);
   return id + 1 + ".  " + label;
 }
 
@@ -218,13 +220,13 @@ function sequence_name(mission, id) {
   if (type === Sequence_Type.Maneuver) {
     // 並びの最後の自動マヌーバだけが次の目的地へ繋ぐ役目を持つので、
     // 手で足した手動マヌーバとは見分けが付くようにする。
-    if (!mission.is_auto_mode(id)) return "深宇宙 (手動)";
+    if (!mission.is_auto_mode(id)) return t("深宇宙 (手動)");
     const dsm = mission.get_dsm_info(id);
-    return dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : "深宇宙";
+    return dsm ? "ΔV " + (dsm.dv * 1000).toFixed(0) + " m/s" : t("深宇宙");
   }
   if (type === Sequence_Type.End) return end_orbit_label(mission.get_end_info(id));
   if (mission.planet_num(id) == -1) return "---";
-  const body = State.planet_list[mission.planet_num(id)];
+  const body = t(State.planet_list[mission.planet_num(id)]);
   if (type === Sequence_Type.Swingby && mission.is_auto_mode(id)) {
     // 0 m/s なら燃料を使わずに曲げきれているということ。設計の要点なので
     // 0 のときも隠さずに出す
@@ -253,7 +255,7 @@ export function add_sequence(id) {
   // 連番と種別。以前は枠の上に飛び出していたが、中に入れて縦を詰める
   const badge = document.createElement("span");
   badge.className = "seq-badge";
-  badge.textContent = id + 1 + ". " + mission.type(id);
+  badge.textContent = id + 1 + ". " + t(mission.type(id));
   head.appendChild(badge);
 
   const span1 = document.createElement("span");
@@ -289,7 +291,7 @@ export function add_sequence(id) {
   let add_sequence_elem = document.createElement("div");
   add_sequence_elem.className = "add_sequence";
   add_sequence_elem.id = id + 1;
-  add_sequence_elem.textContent = "+ シーケンスを追加";
+  add_sequence_elem.textContent = t("+ シーケンスを追加");
   sequence.appendChild(add_sequence_elem);
 }
 
@@ -300,7 +302,7 @@ function make_check_box(id) {
   box.type = "checkbox";
   box.className = "seq-check";
   box.checked = State.checked.has(id);
-  box.title = "まとめて操作する対象にする";
+  box.title = t("まとめて操作する対象にする");
   box.onclick = (event) => {
     event.stopPropagation(); // 枠のクリック(=シーケンスの選択)まで伝えない
     if (box.checked) State.checked.add(id);
@@ -327,13 +329,13 @@ export function renderBulkBar() {
 
   const label = document.createElement("span");
   label.className = "bulk-count";
-  label.textContent = count + "件を選択中";
+  label.textContent = t("{n}件を選択中", { n: count });
   bar.appendChild(label);
 
   // 時刻の追従は見えない挙動なので、選んでいる間は明示しておく
   const hint = document.createElement("span");
   hint.className = "bulk-hint";
-  hint.textContent = "時刻は同じ差分で一緒に動きます";
+  hint.textContent = t("時刻は同じ差分で一緒に動きます");
   bar.appendChild(hint);
 
   const actions = document.createElement("div");
@@ -342,7 +344,7 @@ export function renderBulkBar() {
   const clear = document.createElement("button");
   clear.type = "button";
   clear.className = "bulk-btn";
-  clear.textContent = "選択解除";
+  clear.textContent = t("選択解除");
   clear.onclick = () => {
     clear_checks();
     change_sequence();
@@ -353,8 +355,8 @@ export function renderBulkBar() {
   const del = document.createElement("button");
   del.type = "button";
   del.className = "bulk-btn bulk-btn--icon danger";
-  del.title = "選んだシーケンスをまとめて削除";
-  del.setAttribute("aria-label", "選んだシーケンスをまとめて削除");
+  del.title = t("選んだシーケンスをまとめて削除");
+  del.setAttribute("aria-label", t("選んだシーケンスをまとめて削除"));
   del.innerHTML =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
     ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -371,10 +373,10 @@ async function confirm_delete_checked() {
     .sort((a, b) => a - b)
     .map((i) => i + 1 + ". " + State.mission_sequence.type(i));
   const ok = await confirmDialog({
-    title: State.checked.size + "件のシーケンスを削除します",
-    message: names.join("\n") + "\n\nこの操作は取り消せません。",
-    ok: "削除",
-    cancel: "やめる",
+    title: t("{n}件のシーケンスを削除します", { n: State.checked.size }),
+    message: names.join("\n") + "\n\n" + t("この操作は取り消せません。"),
+    ok: t("削除"),
+    cancel: t("やめる"),
     danger: true,
   });
   if (ok) delete_checked();
@@ -391,7 +393,7 @@ function make_delete_button(id) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "seq-delete";
-  btn.title = "このシーケンスを削除";
+  btn.title = t("このシーケンスを削除");
   // stroke="currentColor" にしてCSS側の色(ホバーで赤)に追従させる。
   // アイコン自体はクリック判定を持たせない (押されたのはボタン、として扱う)
   btn.innerHTML =
@@ -415,7 +417,7 @@ export function change_sequence() {
   let add_sequence_elem = document.createElement("div");
   add_sequence_elem.className = "add_sequence";
   add_sequence_elem.id = 0;
-  add_sequence_elem.textContent = "+ シーケンスを追加";
+  add_sequence_elem.textContent = t("+ シーケンスを追加");
   sequence.appendChild(add_sequence_elem);
 
   for (let i = 0; i < State.mission_sequence.count; i++) {
@@ -465,19 +467,19 @@ const DV_LEVELS = [300, 1000, 2500]; // [m/s] 小さいほど楽
 const KEEP_LEVELS = [0.25, 0.5, 0.8]; // 残る質量の割合。大きいほど楽
 
 // 小さいほど良い量
-function level_low(v, t) {
+function level_low(v, th) {
   if (!isFinite(v)) return null;
-  if (v < t[0]) return "good";
-  if (v < t[1]) return "ok";
-  if (v < t[2]) return "warn";
+  if (v < th[0]) return "good";
+  if (v < th[1]) return "ok";
+  if (v < th[2]) return "warn";
   return "bad";
 }
 // 大きいほど良い量
-function level_high(v, t) {
+function level_high(v, th) {
   if (!isFinite(v)) return null;
-  if (v >= t[2]) return "good";
-  if (v >= t[1]) return "ok";
-  if (v >= t[0]) return "warn";
+  if (v >= th[2]) return "good";
+  if (v >= th[1]) return "ok";
+  if (v >= th[0]) return "warn";
   return "bad";
 }
 
@@ -533,13 +535,13 @@ function update_duration() {
   const ok = days != undefined && isFinite(days) && days > 0;
   el.textContent = ok
     ? days < 365.25
-      ? (days / (365.25 / 12)).toFixed(1) + "ヶ月"
-      : (days / 365.25).toFixed(1) + "年"
+      ? t("{n}ヶ月", { n: (days / (365.25 / 12)).toFixed(1) })
+      : t("{n}年", { n: (days / 365.25).toFixed(1) })
     : "-";
   if (box) {
     box.title = ok
-      ? "打上げから最後のシーケンスまでの長さ (" + days.toFixed(0) + "日)"
-      : "シーケンスが2つ以上あると出ます";
+      ? t("打上げから最後のシーケンスまでの長さ ({days}日)", { days: days.toFixed(0) })
+      : t("シーケンスが2つ以上あると出ます");
   }
 }
 
@@ -580,7 +582,7 @@ function update_launch_mass(vinf, dv_kms) {
 
   // 打上げ能力の表・式はいずれも地球からの打上げのもの
   if (mission.count === 0 || mission.planet_num(0) !== EARTH) {
-    show("-", "-", "地球からの打上げのときだけ見積もれます", null);
+    show("-", "-", t("地球からの打上げのときだけ見積もれます"), null);
     return;
   }
 
@@ -591,16 +593,15 @@ function update_launch_mass(vinf, dv_kms) {
   const approx = confidence === "speculative";
 
   if (status === "over_vinf") {
-    show("打ち上げ不可", "-", "この速度まで加速するのは、このロケットの能力を超えています", "bad", approx);
+    show(t("打ち上げ不可"), "-", t("この速度まで加速するのは、このロケットの能力を超えています"), "bad", approx);
     return;
   }
   // キックステージ付きの構成は、上段のΔVが固定なので低いエネルギーの打上げには使えない
   if (status === "below_range") {
     show(
-      "この構成では不可",
+      t("この構成では不可"),
       "-",
-      "上段 (キックステージ) が強すぎて、この程度の打上げエネルギーには使えません。\n" +
-        "遠くへ速く行くとき専用の構成です",
+      t("上段 (キックステージ) が強すぎて、この程度の打上げエネルギーには使えません。\n遠くへ速く行くとき専用の構成です"),
       "bad",
       approx
     );
@@ -633,13 +634,12 @@ const CONFIDENCE_NOTE = {
 
 function launch_mass_note(status, decl, sourceMode, confidence) {
   const base =
-    "打上げ質量: 燃料も含めた、打ち上げるときの全体の質量\n" +
-    "残る質量: 総ΔVの分の燃料を使い切った後に残る、探査機そのものの質量\n" +
-    "打ち上げる向き (赤緯 " + decl.toFixed(1) + "°) と探査機の燃費 (比推力 " + SPACECRAFT_ISP + "秒) から見積もっています";
+    t("打上げ質量: 燃料も含めた、打ち上げるときの全体の質量\n残る質量: 総ΔVの分の燃料を使い切った後に残る、探査機そのものの質量\n打ち上げる向き (赤緯 {decl}°) と探査機の燃費 (比推力 {isp}秒) から見積もっています",
+      { decl: decl.toFixed(1), isp: SPACECRAFT_ISP });
   const from = SOURCE_NOTE[sourceMode];
   const conf = CONFIDENCE_NOTE[confidence];
-  const origin = from ? "\n出どころ: " + from + (conf ? " / " + conf : "") : "";
-  if (status === "outside_range") return base + origin + "\n(この機種の見積もりが妥当な範囲の外です)";
+  const origin = from ? "\n" + t("出どころ: {from}", { from: t(from) + (conf ? " / " + t(conf) : "") }) : "";
+  if (status === "outside_range") return base + origin + "\n" + t("(この機種の見積もりが妥当な範囲の外です)");
   return base + origin;
 }
 
@@ -651,8 +651,8 @@ export function initLauncherSelect() {
   launcher_list().forEach((l) => {
     const option = document.createElement("option");
     option.value = l.id;
-    option.text = l.label;
-    option.title = l.note;
+    option.text = t(l.label);
+    option.title = t(l.note);
     select.add(option);
   });
   select.value = State.launcher;
@@ -676,7 +676,8 @@ export function change_sequence_propaty() {
 
   State.planet_list.forEach((element) => {
     let option = document.createElement("option");
-    option.text = element;
+    // 出す文字だけ訳す。value は日本語のまま (中身の識別に使っている)
+    option.text = t(element);
     option.value = element;
     select.add(option);
   });
@@ -736,15 +737,15 @@ export function change_sequence_propaty() {
   if (type_hint) type_hint.textContent = "";
 
   if (is_first) {
-    close_type("先頭のシーケンスは常に打上げです。");
+    close_type(t("先頭のシーケンスは常に打上げです。"));
   } else if (is_maneuver) {
     close_type(
-      "マヌーバは手動モードの区間に付いてくるので、種別は変えられません。",
-      "要らなくなったら、これを削除するか、手前のシーケンスを自動モードに戻してください"
+      t("マヌーバは手動モードの区間に付いてくるので、種別は変えられません。"),
+      t("要らなくなったら、これを削除するか、手前のシーケンスを自動モードに戻してください")
     );
   } else {
     let option1 = document.createElement("option");
-    option1.text = "変更";
+    option1.text = t("変更##種別を選ぶ");
     option1.value = "default";
     option1.hidden = true;
     option1.selected = true;
@@ -760,7 +761,7 @@ export function change_sequence_propaty() {
       if (value === Sequence_Type.None) return;
       if (!State.mission_sequence.can_set_type(State.selected_sequence, value)) return;
       const option = document.createElement("option");
-      option.text = value;
+      option.text = t(value);
       option.value = value;
       sequence_propaty.add(option);
       choices++;
@@ -774,11 +775,11 @@ export function change_sequence_propaty() {
       sequence_propaty.removeChild(option1);
       if (State.mission_sequence.planet_num(State.selected_sequence) === -1) {
         close_type(
-          "先に天体を選ぶと、種別を選べるようになります。",
-          "選べる種別は天体で変わる (惑星ならスイングバイ・周回軌道投入、小天体ならフライバイ・ランデブー)"
+          t("先に天体を選ぶと、種別を選べるようになります。"),
+          t("選べる種別は天体で変わる (惑星ならスイングバイ・周回軌道投入、小天体ならフライバイ・ランデブー)")
         );
       } else {
-        close_type("この位置・この天体で選べる種別はありません。");
+        close_type(t("この位置・この天体で選べる種別はありません。"));
       }
     }
   }
@@ -797,7 +798,7 @@ export function change_sequence_propaty() {
     change_sequence_propaty();
   };
 
-  sequence_type.textContent = State.mission_sequence.type(State.selected_sequence);
+  sequence_type.textContent = t(State.mission_sequence.type(State.selected_sequence));
 }
 
 export function calc() {
@@ -911,7 +912,7 @@ export function make_plot() {
 export function import_small_body(body) {
   const { num, added } = addSmallBody(body);
   if (!added) {
-    notify("「" + bodyLabel(body) + "」はすでに一覧にあります");
+    notify(t("「{name}」はすでに一覧にあります", { name: bodyLabel(body) }));
     return num;
   }
 
@@ -925,7 +926,7 @@ export function import_small_body(body) {
   update_plot();
   toggle_planet();
   change_sequence_propaty(); // 天体の選択肢に加える
-  notify("「" + bodyLabel(body) + "」を天体に追加しました (シーケンスの天体欄から選べます)");
+  notify(t("「{name}」を天体に追加しました (シーケンスの天体欄から選べます)", { name: bodyLabel(body) }));
   return num;
 }
 
@@ -963,7 +964,7 @@ export function openHelpWindow() {
   );
   if (!help_window) {
     // ポップアップを止められている場合。押しても何も起きないと壊れて見える
-    notify("窓を開けませんでした。ポップアップの許可を確かめてください");
+    notify(t("窓を開けませんでした。ポップアップの許可を確かめてください"));
     return;
   }
   help_window.focus();
@@ -980,7 +981,7 @@ export function openHelpTab() {
  * 取り込んだ小天体も含めて、読み込んだ直後と同じまっさらな状態に戻す。
  */
 export async function new_mission() {
-  if (!(await confirmDiscard("新しく作り直す"))) return;
+  if (!(await confirmDiscard(t("新しく作り直す")))) return;
 
   State.mission_sequence = new Mission();
   State.selected_sequence = -1;
@@ -1000,7 +1001,7 @@ export async function new_mission() {
   updateAfterAdd(); // 一覧・操作パネル・時刻欄・マーカーをまとめて作り直す
   markMissionSaved(); // 空なので、失うものはもう無い
   resetHistory(); // まっさらにしたので、ここより前へは戻さない
-  notify("新しいミッションを始めました");
+  notify(t("新しいミッションを始めました"));
 }
 
 /**
@@ -1022,9 +1023,8 @@ export function remove_small_body(num) {
   const used = mission ? mission.nodes_using_planet(num) : [];
   if (used.length > 0) {
     notify(
-      "「" + body.label + "」はシーケンス " +
-        used.map((i) => i + 1).join("・") +
-        " で使われています。先に別の天体に変えるか、そのシーケンスを消してください"
+      t("「{name}」はシーケンス {list} で使われています。先に別の天体に変えるか、そのシーケンスを消してください",
+        { name: body.label, list: used.map((i) => i + 1).join("・") })
     );
     return false;
   }
@@ -1039,7 +1039,7 @@ export function remove_small_body(num) {
   toggle_planet();
   change_sequence_propaty(); // 天体の選択肢から外す
   updateControlPanelDisplay();
-  notify("「" + body.label + "」を一覧から外しました");
+  notify(t("「{name}」を一覧から外しました", { name: body.label }));
   return true;
 }
 
@@ -1158,7 +1158,7 @@ export function toggle_visibility(i, visible) {
   if (PlotState.planet_speres[i]) {
     PlotState.planet_speres[i].visible = visible;
     if (visible) {
-      PlotState.planet_speres[i].children[0].element.innerHTML = State.planet_list[i];
+      PlotState.planet_speres[i].children[0].element.textContent = t(State.planet_list[i]);
     } else {
       PlotState.planet_speres[i].children[0].element.innerHTML = "";
     }
@@ -1347,8 +1347,8 @@ function porkchop_target(i) {
     dep_date,
     arr_date,
     dep_min_date,
-    dep_name: State.planet_list[dep_num],
-    arr_name: State.planet_list[arr_num],
+    dep_name: t(State.planet_list[dep_num]),
+    arr_name: t(State.planet_list[arr_num]),
   };
 }
 
@@ -1359,15 +1359,14 @@ function makePorkchopButton(i) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "pc-open";
-  btn.textContent = "出発日と到着日を探す";
+  btn.textContent = t("出発日と到着日を探す");
   if (pc) {
     btn.title =
-      "出発日と到着日をいろいろ変えて、どの組み合わせが楽に行けるかを\n" +
-      "地図 (ポークチョップ図) にします。押した点をそのまま日付にできます。";
+      t("出発日と到着日をいろいろ変えて、どの組み合わせが楽に行けるかを\n地図 (ポークチョップ図) にします。押した点をそのまま日付にできます。");
     btn.onclick = () => openPorkchop(pc);
   } else {
     btn.disabled = true;
-    btn.title = "次のシーケンスの天体を決めると開けます";
+    btn.title = t("次のシーケンスの天体を決めると開けます");
   }
   return btn;
 }
@@ -1413,12 +1412,15 @@ function apply_porkchop_pick({ index, dep_date, arr_date, revs, low_path }) {
   const shifted = [];
   const say = (name, off) => {
     if (Math.abs(off) <= 0.5) return;
-    shifted.push(name + "を " + Math.abs(Math.round(off)) + " 日" + (off > 0 ? "遅らせ" : "早め"));
+    shifted.push(
+      t(off > 0 ? "{name}を {n} 日遅らせ" : "{name}を {n} 日早め",
+        { name, n: Math.abs(Math.round(off)) })
+    );
   };
-  say("出発", off_dep);
-  say("到着", off_arr);
+  say(t("出発"), off_dep);
+  say(t("到着"), off_arr);
   if (shifted.length > 0) {
-    porkchopNote("前後のシーケンスとの間隔が詰まっているため、" + shifted.join("、") + "ました");
+    porkchopNote(t("前後のシーケンスとの間隔が詰まっているため、{list}ました", { list: shifted.join("、") }));
   }
 }
 
@@ -1451,8 +1453,8 @@ export function renderLaunchControls() {
   if (modeRow) {
     modeRow.innerHTML = "";
     [
-      ["自動", true],
-      ["手動", false],
+      [t("自動"), true],
+      [t("手動"), false],
     ].forEach(([text, auto]) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1461,7 +1463,7 @@ export function renderLaunchControls() {
       // 最終軌道が続いている間は目的地が無いので自動には戻せない
       if (auto && !mission.can_set_auto(i)) {
         btn.disabled = true;
-        btn.title = "この先に目的地が無いので、自動にはできません";
+        btn.title = t("この先に目的地が無いので、自動にはできません");
       }
       btn.onclick = () => {
         mission.set_auto_mode(i, auto);
@@ -1476,13 +1478,13 @@ export function renderLaunchControls() {
   if (is_auto) {
     // 自動でも向きは決まっているので、ビューと同じ量を数字でも並べる
     const angles = mission.get_launch_angles();
-    const rows = [["脱出速度 V∞", vinf.toFixed(3) + " km/s"]];
+    const rows = [[t("脱出速度 V∞"), vinf.toFixed(3) + " km/s"]];
     const arrive = arrivalVinfRow(mission, i);
     if (arrive) rows.push(arrive);
-    rows.push(["打上げエネルギー", (vinf * vinf).toFixed(2) + " km²/s²", null, null, true]);
+    rows.push([t("打上げエネルギー"), (vinf * vinf).toFixed(2) + " km²/s²", null, null, true]);
     if (angles) {
-      rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°", null, ALPHA_HINT, true]);
-      rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°", null, DELTA_HINT, true]);
+      rows.push([t("方位角 α"), (angles.alpha * RAD2DEG).toFixed(1) + "°", null, t(ALPHA_HINT), true]);
+      rows.push([t("仰角 δ"), (angles.delta * RAD2DEG).toFixed(1) + "°", null, t(DELTA_HINT), true]);
     }
     container.appendChild(makeReadout(rows));
 
@@ -1510,31 +1512,31 @@ export function renderLaunchControls() {
     form.appendChild(field);
   };
 
-  addField("vinf", "脱出速度 V∞ [km/s]", mission.launch_vinf().toFixed(3), 0.01, (v) => {
+  addField("vinf", t("脱出速度 V∞ [km/s]"), mission.launch_vinf().toFixed(3), 0.01, (v) => {
     mission.set_launch_vinf(v);
     refresh_after_swingby_change();
   });
-  addField("alpha", "方位角 α [deg]", (mission.launch_alpha() * RAD2DEG).toFixed(1), 0.1, (v) => {
+  addField("alpha", t("方位角 α [deg]"), (mission.launch_alpha() * RAD2DEG).toFixed(1), 0.1, (v) => {
     mission.set_launch_alpha(v * DEG2RAD);
     refresh_after_swingby_change();
   });
-  addField("delta", "仰角 δ [deg]", (mission.launch_delta() * RAD2DEG).toFixed(1), 0.1, (v) => {
+  addField("delta", t("仰角 δ [deg]"), (mission.launch_delta() * RAD2DEG).toFixed(1), 0.1, (v) => {
     mission.set_launch_delta(v * DEG2RAD);
     refresh_after_swingby_change();
   });
 
   const hint = document.createElement("div");
   hint.className = "swingby-hint";
-  hint.textContent = "α: 天体が進む向きから / δ: 軌道面からの傾き";
+  hint.textContent = t("α: 天体が進む向きから / δ: 軌道面からの傾き");
   form.appendChild(hint);
   container.appendChild(form);
 
   const rows = [];
   const dsm = mission.get_dsm_info(i + 1);
-  if (dsm) rows.push([FIX_DV_LABEL, (dsm.dv * 1000).toFixed(1) + " m/s", null, FIX_DV_HINT]);
+  if (dsm) rows.push([t(FIX_DV_LABEL), (dsm.dv * 1000).toFixed(1) + " m/s", null, t(FIX_DV_HINT)]);
   const arrive_launch = arrivalVinfRow(mission, i);
   if (arrive_launch) rows.push(arrive_launch);
-  rows.push(["打上げエネルギー", (vinf * vinf).toFixed(2) + " km²/s²", null, null, true]);
+  rows.push([t("打上げエネルギー"), (vinf * vinf).toFixed(2) + " km²/s²", null, null, true]);
   container.appendChild(makeReadout(rows));
 }
 
@@ -1568,7 +1570,7 @@ export function renderLegEvents() {
   if (events.length === 0) {
     const empty = document.createElement("div");
     empty.className = "leg-event-empty";
-    empty.textContent = "この区間に近日点・遠日点・交点はありません";
+    empty.textContent = t("この区間に近日点・遠日点・交点はありません");
     list.appendChild(empty);
     return;
   }
@@ -1581,7 +1583,7 @@ export function renderLegEvents() {
 
     const name = document.createElement("span");
     name.className = "leg-event-name";
-    name.textContent = LEG_EVENT_LABEL[ev.type] ?? ev.type;
+    name.textContent = t(LEG_EVENT_LABEL[ev.type] ?? ev.type);
 
     const date = document.createElement("span");
     date.className = "leg-event-date";
@@ -1596,13 +1598,13 @@ export function renderLegEvents() {
     row.appendChild(dist);
 
     row.classList.add("pinnable");
-    row.title = "この点に固定する (前後の時刻を変えても追従します)";
+    row.title = t("この点に固定する (前後の時刻を変えても追従します)");
     if (pinned === ev.type) {
       row.classList.add("pinned");
-      row.title = "固定を解除する";
+      row.title = t("固定を解除する");
       const mark = document.createElement("span");
       mark.className = "leg-event-pin";
-      mark.textContent = "固定中";
+      mark.textContent = t("固定中");
       row.appendChild(mark);
     }
     row.addEventListener("click", () => pin_node_to_event(i, ev.type));
@@ -1612,7 +1614,7 @@ export function renderLegEvents() {
   if (events.length > MAX_LEG_EVENTS) {
     const more = document.createElement("div");
     more.className = "leg-event-empty";
-    more.textContent = "ほか " + (events.length - MAX_LEG_EVENTS) + " 件";
+    more.textContent = t("ほか {n} 件", { n: events.length - MAX_LEG_EVENTS });
     list.appendChild(more);
   }
 }
@@ -1695,15 +1697,16 @@ export function renderLegControls() {
     const ok = m === 0 || (need != undefined && tof_days >= need);
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = m === 0 ? "直行" : m + "周";
+    btn.textContent = m === 0 ? t("直行") : t("{n}周", { n: m });
     btn.className = "mode-btn" + (wanted === m ? " active" : "");
     btn.disabled = !ok && wanted !== m;
     btn.title =
       m === 0
-        ? "太陽をまわらずに直接向かう"
+        ? t("太陽をまわらずに直接向かう")
         : need == undefined
-        ? "この区間では" + m + "周する解が見つかりません"
-        : m + "周するには最短 " + need.toFixed(0) + " 日 (いまは " + tof_days.toFixed(0) + " 日)";
+        ? t("この区間では{n}周する解が見つかりません", { n: m })
+        : t("{n}周するには最短 {need} 日 (いまは {now} 日)",
+            { n: m, need: need.toFixed(0), now: tof_days.toFixed(0) });
     btn.onclick = () => {
       mission.set_leg_revs(i, m);
       refresh_after_swingby_change();
@@ -1718,7 +1721,7 @@ export function renderLegControls() {
     const preview = mission.leg_branch_preview(i);
     const label = document.createElement("span");
     label.className = "leg-branch-label";
-    label.textContent = "軌道の取り方";
+    label.textContent = t("軌道の取り方");
     branch_row.appendChild(label);
     const btns = document.createElement("div");
     btns.className = "leg-btns";
@@ -1727,10 +1730,10 @@ export function renderLegControls() {
       const ap = low ? preview.low : preview.high;
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.textContent = ap == undefined ? "もう一方" : "遠日点 " + (ap / AU).toFixed(2) + " AU";
+      btn.textContent = ap == undefined ? t("もう一方") : t("遠日点 {au} AU", { au: (ap / AU).toFixed(2) });
       btn.className = "mode-btn" + (mission.leg_low_path(i) === low ? " active" : "");
       btn.disabled = ap == undefined && mission.leg_low_path(i) !== low;
-      btn.title = "同じ周回数でも軌道の取り方は2通りあります。こちらで行く";
+      btn.title = t("同じ周回数でも軌道の取り方は2通りあります。こちらで行く");
       btn.onclick = () => {
         mission.set_leg_low_path(i, low);
         refresh_after_swingby_change();
@@ -1741,15 +1744,15 @@ export function renderLegControls() {
 
   // 縦を詰めたいので横一列に並べる。
   // 遠日点は多周回のときは「軌道の取り方」のボタンに出ているので繰り返さない
-  const rows = [["飛行時間", tof_days.toFixed(0) + " 日"]];
+  const rows = [[t("飛行時間"), t("{n} 日", { n: tof_days.toFixed(0) })]];
   const arrive_leg = arrivalVinfRow(mission, i);
   if (arrive_leg) rows.push(arrive_leg);
   if (wanted === 0 && info && info.aphelion != undefined) {
-    rows.push(["遠日点", (info.aphelion / AU).toFixed(2) + " AU"]);
+    rows.push([t("遠日点"), (info.aphelion / AU).toFixed(2) + " AU"]);
   }
   const next_need = min_days[Math.min(wanted + 1, MAX_LEG_REVS)];
   if (next_need != undefined && wanted < MAX_LEG_REVS) {
-    rows.push([wanted + 1 + "周にするには", next_need.toFixed(0) + " 日以上"]);
+    rows.push([t("{n}周にするには", { n: wanted + 1 }), t("{n} 日以上", { n: next_need.toFixed(0) })]);
   }
   readout.innerHTML = "";
   readout.appendChild(makeReadout(rows, { inline: true }));
@@ -1757,9 +1760,10 @@ export function renderLegControls() {
   // いま何周かは押されているボタンで読めるので、バッジは注意のときだけ出す
   if (info && info.fallback) {
     // 指定した周回数では解けず、落として解いた
-    badge.textContent = info.revs + "周に変更";
+    badge.textContent = t("{n}周に変更", { n: info.revs });
     badge.className = "orbit-badge caution";
-    badge.title = wanted + "周するには日数が足りないので、" + info.revs + "周として計算しています";
+    badge.title = t("{want}周するには日数が足りないので、{use}周として計算しています",
+      { want: wanted, use: info.revs });
   } else {
     badge.textContent = "";
     badge.className = "orbit-badge";
@@ -1798,8 +1802,8 @@ export function renderEncounterControls() {
     mode_row.style.display = is_departure ? "flex" : "none";
     if (is_departure) {
       [
-        ["自動", true],
-        ["手動", false],
+        [t("自動"), true],
+        [t("手動"), false],
       ].forEach(([text, auto]) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -1808,7 +1812,7 @@ export function renderEncounterControls() {
         // 最終軌道が続いている間は目的地が無いので自動には戻せない (打上げと同じ)
         if (auto && !mission.can_set_auto(i)) {
           btn.disabled = true;
-          btn.title = "この先に目的地が無いので、自動にはできません";
+          btn.title = t("この先に目的地が無いので、自動にはできません");
         }
         btn.onclick = () => {
           mission.set_auto_mode(i, auto);
@@ -1866,7 +1870,7 @@ export function renderEncounterControls() {
   if (info == null) {
     badge.textContent = "";
     badge.className = "orbit-badge";
-    box.appendChild(makeReadout([["", "手前の区間が決まると計算されます"]]));
+    box.appendChild(makeReadout([["", t("手前の区間が決まると計算されます")]]));
     // ポークチョップ図は「次の天体までのレグ」の話なので再出発だけ
     if (is_departure) box.appendChild(makePorkchopButton(i));
     return;
@@ -1875,10 +1879,10 @@ export function renderEncounterControls() {
   const rows = [];
   const ms = (v) => (v * 1000).toFixed(0) + " m/s";
   if (info.kind === "rendezvous") {
-    rows.push(["到着ΔV", ms(info.dv), null, "天体に速度を合わせて並んで進むために要る噴射"]);
-    rows.push(["この先", info.terminal ? "天体と一緒に進む" : "「再出発」で次へ向かう"]);
+    rows.push([t("到着ΔV"), ms(info.dv), null, t("天体に速度を合わせて並んで進むために要る噴射")]);
+    rows.push([t("この先"), t(info.terminal ? "天体と一緒に進む" : "「再出発」で次へ向かう")]);
     if (info.v_rel_in != undefined) {
-      rows.push(["近づいてくる速さ", info.v_rel_in.toFixed(3) + " km/s", null, null, true]);
+      rows.push([t("近づいてくる速さ"), info.v_rel_in.toFixed(3) + " km/s", null, null, true]);
     }
   } else if (info.kind === "departure") {
     // 小天体には意味のある重力圏が無く、噴いたΔVがそのまま天体に対する
@@ -1902,12 +1906,12 @@ export function renderEncounterControls() {
         inputs.appendChild(makeParamField(key, label, input, DEPARTURE_HANDLE));
       };
       // ΔVの単位は他の節 (マヌーバ・投入/脱出) と揃えて m/s で受け取る
-      addField("vinf", "出発ΔV [m/s]", (mission.depart_v(i) * 1000).toFixed(0), 1, undefined, (v) =>
+      addField("vinf", t("出発ΔV [m/s]"), (mission.depart_v(i) * 1000).toFixed(0), 1, undefined, (v) =>
         mission.set_depart_v(i, v / 1000)
       );
       addField(
         "alpha",
-        "方位角 α [deg]",
+        t("方位角 α [deg]"),
         (mission.depart_alpha(i) * RAD2DEG).toFixed(1),
         0.1,
         ALPHA_HINT,
@@ -1915,33 +1919,33 @@ export function renderEncounterControls() {
       );
       addField(
         "delta",
-        "仰角 δ [deg]",
+        t("仰角 δ [deg]"),
         (mission.depart_delta(i) * RAD2DEG).toFixed(1),
         0.1,
         DELTA_HINT,
         (v) => mission.set_depart_delta(i, v * DEG2RAD)
       );
       const dsm = mission.get_dsm_info(i + 1);
-      if (dsm) rows.push([FIX_DV_LABEL, ms(dsm.dv), null, FIX_DV_HINT]);
+      if (dsm) rows.push([t(FIX_DV_LABEL), ms(dsm.dv), null, t(FIX_DV_HINT)]);
       const arrive_dep = arrivalVinfRow(mission, i);
       if (arrive_dep) rows.push(arrive_dep);
     } else {
-      rows.push(["出発ΔV", ms(info.dv)]);
+      rows.push([t("出発ΔV"), ms(info.dv)]);
       const arrive_dep = arrivalVinfRow(mission, i);
       if (arrive_dep) rows.push(arrive_dep);
       const angles = mission.get_launch_angles(i);
       if (angles) {
-        rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°", null, ALPHA_HINT, true]);
-        rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°", null, DELTA_HINT, true]);
+        rows.push([t("方位角 α"), (angles.alpha * RAD2DEG).toFixed(1) + "°", null, t(ALPHA_HINT), true]);
+        rows.push([t("仰角 δ"), (angles.delta * RAD2DEG).toFixed(1) + "°", null, t(DELTA_HINT), true]);
       }
     }
   } else {
     // フライバイは噴射しない。ΔVはかからない
-    rows.push(["必要なΔV", "0 m/s (噴射なし)"]);
+    rows.push([t("必要なΔV"), t("0 m/s (噴射なし)")]);
     const dsm = mission.get_dsm_info(i + 1);
-    if (dsm) rows.push([FIX_DV_LABEL, ms(dsm.dv), null, FIX_DV_HINT]);
+    if (dsm) rows.push([t(FIX_DV_LABEL), ms(dsm.dv), null, t(FIX_DV_HINT)]);
     if (info.v_rel_in != undefined) {
-      rows.push(["すれ違う速さ", info.v_rel_in.toFixed(3) + " km/s", null, null, true]);
+      rows.push([t("すれ違う速さ"), info.v_rel_in.toFixed(3) + " km/s", null, null, true]);
     }
   }
   if (rows.length > 0) box.appendChild(makeReadout(rows));
@@ -1951,21 +1955,21 @@ export function renderEncounterControls() {
 
   const dv_ms = info.dv * 1000;
   if (info.kind === "flyby") {
-    badge.textContent = "噴射なし";
+    badge.textContent = t("噴射なし");
     badge.className = "orbit-badge safe";
     return;
   }
-  badge.textContent = dv_ms < 1 ? "ΔV不要" : dv_ms < 500 ? "現実的" : dv_ms < 2000 ? "重い" : "かなり重い";
+  badge.textContent = t(dv_ms < 1 ? "ΔV不要" : dv_ms < 500 ? "現実的" : dv_ms < 2000 ? "重い" : "かなり重い");
   badge.className =
     "orbit-badge " + (dv_ms < 1 ? "safe" : dv_ms < 500 ? "" : dv_ms < 2000 ? "caution" : "risk");
 }
 
 // 到達した軌道の一言まとめ (シーケンス一覧のカードにも使う)
 export function end_orbit_label(info) {
-  if (info == null) return "まだ決まっていません";
-  if (info.e >= 1.001) return "太陽系脱出";
-  if (info.e >= 0.999) return "脱出ぎりぎり";
-  return "太陽周回";
+  if (info == null) return t("まだ決まっていません");
+  if (info.e >= 1.001) return t("太陽系脱出");
+  if (info.e >= 0.999) return t("脱出ぎりぎり");
+  return t("太陽周回");
 }
 
 const SEC_PER_YEAR = 365.25 * 86400;
@@ -1981,7 +1985,7 @@ export function renderEndControls() {
   container.innerHTML = "";
 
   if (info == null) {
-    summary.textContent = "手前の区間が決まると計算されます";
+    summary.textContent = t("手前の区間が決まると計算されます");
     summary.className = "end-summary";
     return;
   }
@@ -1993,17 +1997,17 @@ export function renderEndControls() {
   // 成果そのものなので出し、形や傾きは確かめるときだけのものなので畳む。
   const tiles = info.escaping
     ? [
-        ["太陽系を出る速さ", Math.sqrt(Math.max(info.c3, 0)).toFixed(2), "km/s", true],
-        ["近日点", (info.periapsis / AU).toFixed(3), "AU", true],
-        ["離心率", info.e.toFixed(3), "", false, true],
-        ["軌道の傾き", (info.inc * RAD2DEG).toFixed(2), "°", false, true],
+        [t("太陽系を出る速さ"), Math.sqrt(Math.max(info.c3, 0)).toFixed(2), "km/s", true],
+        [t("近日点##太陽中心軌道"), (info.periapsis / AU).toFixed(3), "AU", true],
+        [t("離心率"), info.e.toFixed(3), "", false, true],
+        [t("軌道の傾き"), (info.inc * RAD2DEG).toFixed(2), "°", false, true],
       ]
     : [
-        ["近日点", (info.periapsis / AU).toFixed(3), "AU", true],
-        ["遠日点", (info.apoapsis / AU).toFixed(3), "AU", true],
-        ["1周の時間", (info.period / SEC_PER_YEAR).toFixed(2), "年", false],
-        ["離心率", info.e.toFixed(3), "", false, true],
-        ["軌道の傾き", (info.inc * RAD2DEG).toFixed(2), "°", false, true],
+        [t("近日点##太陽中心軌道"), (info.periapsis / AU).toFixed(3), "AU", true],
+        [t("遠日点"), (info.apoapsis / AU).toFixed(3), "AU", true],
+        [t("1周の時間"), (info.period / SEC_PER_YEAR).toFixed(2), t("年##単位"), false],
+        [t("離心率"), info.e.toFixed(3), "", false, true],
+        [t("軌道の傾き"), (info.inc * RAD2DEG).toFixed(2), "°", false, true],
       ];
 
   fillTiles(container, tiles);
@@ -2028,7 +2032,7 @@ export function renderManeuverControls() {
   // 並びの最後の自動マヌーバは次の目的地へ繋ぐ役目を負っていて値は計算で決まる。
   // 手前の手動マヌーバはユーザーが (ΔV, α, δ) を指定する。どちらなのかを明示する。
   if (badge) {
-    badge.textContent = is_auto ? "自動 (行き先に合わせる)" : "手動";
+    badge.textContent = t(is_auto ? "自動 (行き先に合わせる)" : "手動");
     badge.className = "orbit-badge" + (is_auto ? "" : " safe");
   }
 
@@ -2059,23 +2063,23 @@ export function renderManeuverControls() {
       inputs.appendChild(makeParamField(key, label, input, DSM_HANDLE));
     };
 
-    addField("dv", "ΔV [m/s]", (mission.dsm_dv(i) * 1000).toFixed(0), 1, "どれだけ速度を変えるか", (v) =>
+    addField("dv", "ΔV [m/s]", (mission.dsm_dv(i) * 1000).toFixed(0), 1, t("どれだけ速度を変えるか"), (v) =>
       mission.set_dsm_dv(i, v / 1000)
     );
     addField(
       "alpha",
-      "方位角 α [deg]",
+      t("方位角 α [deg]"),
       (mission.dsm_alpha(i) * RAD2DEG).toFixed(1),
       0.1,
-      "軌道面の中で、探査機が進む向きを0度として測った角",
+      t("軌道面の中で、探査機が進む向きを0度として測った角"),
       (v) => mission.set_dsm_alpha(i, v * DEG2RAD)
     );
     addField(
       "delta",
-      "仰角 δ [deg]",
+      t("仰角 δ [deg]"),
       (mission.dsm_delta(i) * RAD2DEG).toFixed(1),
       0.1,
-      "軌道面からどれだけ上を向けるか (上向きが正、±90度)",
+      t("軌道面からどれだけ上を向けるか (上向きが正、±90度)"),
       (v) => mission.set_dsm_delta(i, v * DEG2RAD)
     );
 
@@ -2094,7 +2098,7 @@ export function renderManeuverControls() {
   if (dsm == null) {
     const note = document.createElement("div");
     note.className = "swingby-hint";
-    note.textContent = "前後の区間が決まると計算されます";
+    note.textContent = t("前後の区間が決まると計算されます");
     container.appendChild(note);
     return;
   }
@@ -2105,14 +2109,14 @@ export function renderManeuverControls() {
   const tiles = [
     ["ΔV", (dsm.dv * 1000).toFixed(1), "m/s", true],
     ...(arrive_dsm ? [[arrive_dsm[0], arrive_dsm[1].replace(" km/s", ""), "km/s", false]] : []),
-    ["太陽からの距離", (norm(dsm.r) / AU).toFixed(3), "AU", false],
-    ["噴射前の速さ", norm(dsm.v_before).toFixed(3), "km/s", false, true],
-    ["噴射後の速さ", norm(dsm.v_after).toFixed(3), "km/s", false, true],
+    [t("太陽からの距離"), (norm(dsm.r) / AU).toFixed(3), "AU", false],
+    [t("噴射前の速さ"), norm(dsm.v_before).toFixed(3), "km/s", false, true],
+    [t("噴射後の速さ"), norm(dsm.v_after).toFixed(3), "km/s", false, true],
   ];
   // 自動マヌーバでも向きは決まっているので、手動と同じ2角で読めるようにする
   if (is_auto && dsm.angles) {
-    tiles.push(["方位角 α", (dsm.angles.alpha * RAD2DEG).toFixed(1), "°", false, true]);
-    tiles.push(["仰角 δ", (dsm.angles.delta * RAD2DEG).toFixed(1), "°", false, true]);
+    tiles.push([t("方位角 α"), (dsm.angles.alpha * RAD2DEG).toFixed(1), "°", false, true]);
+    tiles.push([t("仰角 δ"), (dsm.angles.delta * RAD2DEG).toFixed(1), "°", false, true]);
   }
 
   fillTiles(container, tiles);
@@ -2124,9 +2128,9 @@ const SEC_PER_HOUR = 3600;
 // 周期を桁に応じた単位で読みやすく出す
 function format_period(sec) {
   if (!(sec > 0) || !isFinite(sec)) return "-";
-  if (sec < 2 * SEC_PER_DAY) return (sec / SEC_PER_HOUR).toFixed(1) + " 時間";
-  if (sec < 2 * SEC_PER_YEAR) return (sec / SEC_PER_DAY).toFixed(1) + " 日";
-  return (sec / SEC_PER_YEAR).toFixed(2) + " 年";
+  if (sec < 2 * SEC_PER_DAY) return t("{n} 時間", { n: (sec / SEC_PER_HOUR).toFixed(1) });
+  if (sec < 2 * SEC_PER_YEAR) return t("{n} 日", { n: (sec / SEC_PER_DAY).toFixed(1) });
+  return t("{n} 年", { n: (sec / SEC_PER_YEAR).toFixed(2) });
 }
 
 // 半径を桁に応じて出す (地球周回の数千kmから木星周回の数百万kmまで扱うため)
@@ -2172,8 +2176,8 @@ export function renderOrbitControls() {
   if (State.orbit_handle && orbit_handle_seq !== i) setOrbitHandle(null);
   if (State.escape_handle && (is_insert || !is_manual || escape_handle_seq !== i)) setEscapeHandle(null);
 
-  title.textContent = is_insert ? "周回軌道投入 (捕獲)" : "軌道脱出 (再出発)";
-  badge.textContent = is_insert ? "減速" : "加速";
+  title.textContent = t(is_insert ? "周回軌道投入 (捕獲)" : "軌道脱出 (再出発)");
+  badge.textContent = t(is_insert ? "減速" : "加速");
   badge.className = "orbit-badge " + (is_insert ? "brake" : "boost");
 
   const mode_row = document.getElementById("orbit_mode");
@@ -2182,8 +2186,8 @@ export function renderOrbitControls() {
     mode_row.style.display = is_insert ? "none" : "flex";
     if (!is_insert) {
       [
-        ["自動", true],
-        ["手動", false],
+        [t("自動"), true],
+        [t("手動"), false],
       ].forEach(([text, auto]) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -2192,7 +2196,7 @@ export function renderOrbitControls() {
         // 最終軌道が続いている間は目的地が無いので自動には戻せない (打上げと同じ)
         if (auto && !mission.can_set_auto(i)) {
           btn.disabled = true;
-          btn.title = "この先に目的地が無いので、自動にはできません";
+          btn.title = t("この先に目的地が無いので、自動にはできません");
         }
         btn.onclick = () => {
           mission.set_auto_mode(i, auto);
@@ -2216,8 +2220,8 @@ export function renderOrbitControls() {
     view_mode_row.style.display = is_insert ? "none" : "flex";
     if (!is_insert) {
       [
-        ["近景", "near"],
-        ["遠景", "far"],
+        [t("近景"), "near"],
+        [t("遠景"), "far"],
       ].forEach(([text, mode]) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -2255,7 +2259,7 @@ export function renderOrbitControls() {
     // 縦を使わないよう、説明は読み値の枠に1行だけ出す
     readout.appendChild(
       makeReadout([
-        ["", is_insert ? "天体を選ぶと計算されます" : "直前の「周回軌道投入」と同じ天体からのみ"],
+        ["", t(is_insert ? "天体を選ぶと計算されます" : "直前の「周回軌道投入」と同じ天体からのみ")],
       ])
     );
     // ポークチョップ図は「次の天体までのレグ」の話なので、そのレグを映して
@@ -2297,8 +2301,8 @@ export function renderOrbitControls() {
     const step = Math.max(10, Math.round(R / 500) * 10);
     addField(
       "orbit_rp",
-      "近点高度 [km]",
-      `いちばん近づく高さ。下限 ${(lim.rp_min - R).toFixed(0)} km (大気や放射線帯を避けるため)`,
+      t("近点高度 [km]"),
+      t("いちばん近づく高さ。下限 {km} km (大気や放射線帯を避けるため)", { km: (lim.rp_min - R).toFixed(0) }),
       rp - R,
       step,
       lim.rp_min - R,
@@ -2307,10 +2311,11 @@ export function renderOrbitControls() {
     );
     addField(
       "orbit_ra",
-      "遠点高度 [km]" + (info && info.ra_clamped ? " (上限)" : ""),
-      `いちばん離れる高さ。上限 ${format_radius(lim.ra_max - R)}。これより遠いと太陽に引っぱられて、周回軌道を保てません` +
+      t("遠点高度 [km]") + (info && info.ra_clamped ? " " + t("(上限)") : ""),
+      t("いちばん離れる高さ。上限 {max}。これより遠いと太陽に引っぱられて、周回軌道を保てません", { max: format_radius(lim.ra_max - R) }) +
         (info && info.dv_min != undefined
-          ? "\n上限まで広げたときの" + (is_insert ? "投入" : "脱出") + "ΔV " + (info.dv_min * 1000).toFixed(0) + " m/s"
+          ? "\n" + t(is_insert ? "上限まで広げたときの投入ΔV {dv} m/s" : "上限まで広げたときの脱出ΔV {dv} m/s",
+              { dv: (info.dv_min * 1000).toFixed(0) })
           : ""),
       ra - R,
       step * 10,
@@ -2370,12 +2375,12 @@ export function renderOrbitControls() {
         };
         inputs.appendChild(makeParamField(key, label, input, ESCAPE_HANDLE));
       };
-      addAngleField("vinf", "脱出速度 V∞ [km/s]", mission.depart_v(i).toFixed(3), 0.01, undefined, (v) =>
+      addAngleField("vinf", t("脱出速度 V∞ [km/s]"), mission.depart_v(i).toFixed(3), 0.01, undefined, (v) =>
         mission.set_depart_v(i, v)
       );
       addAngleField(
         "alpha",
-        "方位角 α [deg]",
+        t("方位角 α [deg]"),
         (mission.depart_alpha(i) * RAD2DEG).toFixed(1),
         0.1,
         ALPHA_HINT,
@@ -2383,7 +2388,7 @@ export function renderOrbitControls() {
       );
       addAngleField(
         "delta",
-        "仰角 δ [deg]",
+        t("仰角 δ [deg]"),
         (mission.depart_delta(i) * RAD2DEG).toFixed(1),
         0.1,
         DELTA_HINT,
@@ -2391,9 +2396,9 @@ export function renderOrbitControls() {
       );
       // 出ていく速度は入力欄に出ているので、読み値はそれを実現する代償だけ
       const rows = [];
-      if (info) rows.push(["脱出ΔV", (info.dv * 1000).toFixed(1) + " m/s"]);
+      if (info) rows.push([t("脱出ΔV"), (info.dv * 1000).toFixed(1) + " m/s"]);
       const dsm = mission.get_dsm_info(i + 1);
-      if (dsm) rows.push([FIX_DV_LABEL, (dsm.dv * 1000).toFixed(0) + " m/s", null, FIX_DV_HINT]);
+      if (dsm) rows.push([t(FIX_DV_LABEL), (dsm.dv * 1000).toFixed(0) + " m/s", null, t(FIX_DV_HINT)]);
       const arrive_esc = arrivalVinfRow(mission, i);
       if (arrive_esc) rows.push(arrive_esc);
       if (rows.length > 0) readout.appendChild(makeReadout(rows));
@@ -2403,12 +2408,12 @@ export function renderOrbitControls() {
     // 遠景の読み値は打上げの自動モードと同じ並び (V∞ → 角度 → ボタン)。
     // 近点/遠点/離心率/周期は周回軌道(近景)の話であって遠景の絵とは
     // 対応しないので、ここには出さない。
-    const rows = [["脱出速度 V∞", mission.get_v_inf(i).toFixed(3) + " km/s"]];
+    const rows = [[t("脱出速度 V∞"), mission.get_v_inf(i).toFixed(3) + " km/s"]];
     const arrive_far = arrivalVinfRow(mission, i);
     if (arrive_far) rows.push(arrive_far);
     if (angles) {
-      rows.push(["方位角 α", (angles.alpha * RAD2DEG).toFixed(1) + "°", null, ALPHA_HINT, true]);
-      rows.push(["仰角 δ", (angles.delta * RAD2DEG).toFixed(1) + "°", null, DELTA_HINT, true]);
+      rows.push([t("方位角 α"), (angles.alpha * RAD2DEG).toFixed(1) + "°", null, t(ALPHA_HINT), true]);
+      rows.push([t("仰角 δ"), (angles.delta * RAD2DEG).toFixed(1) + "°", null, t(DELTA_HINT), true]);
     }
     readout.appendChild(makeReadout(rows));
     readout.appendChild(makePorkchopButton(i));
@@ -2417,7 +2422,7 @@ export function renderOrbitControls() {
 
   if (info == null) {
     readout.appendChild(
-      makeReadout([["", is_insert ? "手前の区間が決まると計算" : "次の目的地が決まると計算"]])
+      makeReadout([["", t(is_insert ? "手前の区間が決まると計算" : "次の目的地が決まると計算")]])
     );
     return;
   }
@@ -2428,16 +2433,16 @@ export function renderOrbitControls() {
   // その入力欄の見出しに添えてある)。
   const rows = [
     [
-      is_insert ? "近づく速さ V∞" : "脱出速度 V∞",
+      t(is_insert ? "近づく速さ V∞" : "脱出速度 V∞"),
       info.v_inf.toFixed(3) + " km/s",
       null,
       is_insert
-        ? "遠くから天体に近づいてくるときの速さ。速いほど、捕まるための噴射も重くなる"
-        : "天体の重力を振り切った後に残る速さ",
+        ? t("遠くから天体に近づいてくるときの速さ。速いほど、捕まるための噴射も重くなる")
+        : t("天体の重力を振り切った後に残る速さ"),
     ],
-    [is_insert ? "投入ΔV" : "脱出ΔV", (info.dv * 1000).toFixed(1) + " m/s"],
-    ["1周の時間", format_period(info.period)],
-    ["離心率", info.e.toFixed(4), null, "軌道のつぶれ具合。0で真円、1に近いほど細長い", true],
+    [t(is_insert ? "投入ΔV" : "脱出ΔV"), (info.dv * 1000).toFixed(1) + " m/s"],
+    [t("1周の時間"), format_period(info.period)],
+    [t("離心率"), info.e.toFixed(4), null, t("軌道のつぶれ具合。0で真円、1に近いほど細長い"), true],
   ];
   readout.appendChild(makeReadout(rows));
 }
@@ -2488,7 +2493,7 @@ export function renderEntryControls() {
 
   const planetNum = mission.planet_num(i);
   if (planetNum == -1) {
-    readout.appendChild(makeReadout([["", "天体を選ぶと計算されます"]]));
+    readout.appendChild(makeReadout([["", t("天体を選ぶと計算されます")]]));
     updateEntryView({ planetNum: -1 });
     badge.textContent = "";
     badge.className = "orbit-badge";
@@ -2498,12 +2503,10 @@ export function renderEntryControls() {
   // 突入経路角の入力 (欄を選ぶと3Dビューにハンドルが出る)
   const gamma_deg = mission.entry_gamma(i) * RAD2DEG;
   const label = document.createElement("label");
-  label.textContent = "突入角 γ [deg]";
+  label.textContent = t("突入角 γ [deg]");
   label.title =
-    "地平線から測った、大気に入るときの傾き (下向きが負)。\n" +
-    `無事に降りられるのは、おおむね ${ENTRY_GAMMA_MIN} 〜 ${ENTRY_GAMMA_MAX} 度。\n` +
-    "浅すぎると大気に弾き返されて宇宙へ戻り、深すぎると熱と減速に耐えられない。\n" +
-    "角度を変えても、突入の速さそのものは変わらない。";
+    t("地平線から測った、大気に入るときの傾き (下向きが負)。\n無事に降りられるのは、おおむね {lo} 〜 {hi} 度。\n浅すぎると大気に弾き返されて宇宙へ戻り、深すぎると熱と減速に耐えられない。\n角度を変えても、突入の速さそのものは変わらない。",
+      { lo: ENTRY_GAMMA_MIN, hi: ENTRY_GAMMA_MAX });
   const input = document.createElement("input");
   input.type = "number";
   input.step = "0.1";
@@ -2517,7 +2520,7 @@ export function renderEntryControls() {
   inputs.appendChild(makeParamField("gamma", label, input, ENTRY_HANDLE));
 
   if (info == null) {
-    readout.appendChild(makeReadout([["", "手前の区間が決まると計算されます"]]));
+    readout.appendChild(makeReadout([["", t("手前の区間が決まると計算されます")]]));
     updateEntryView({ planetNum: -1 });
     badge.textContent = "";
     badge.className = "orbit-badge";
@@ -2527,10 +2530,10 @@ export function renderEntryControls() {
   // 突入速度がどのあたりの水準なのかを一言で添える (色は ENTRY_V_LEVELS と同じ段階)
   const v_level = level_low(info.v_entry, ENTRY_V_LEVELS);
   const BADGE = {
-    good: ["実績あり", "safe"],
-    ok: ["実績内", ""],
-    warn: ["要開発", "caution"],
-    bad: ["想定外", "risk"],
+    good: [t("実績あり"), "safe"],
+    ok: [t("実績内"), ""],
+    warn: [t("要開発"), "caution"],
+    bad: [t("想定外"), "risk"],
   };
   const [badge_text, badge_class] = BADGE[v_level] ?? ["", ""];
   badge.textContent = badge_text;
@@ -2541,10 +2544,10 @@ export function renderEntryControls() {
 
   readout.appendChild(
     makeReadout([
-      ["突入速度", info.v_entry.toFixed(3) + " km/s", v_level, ENTRY_V_HINT],
-      ["突入角 γ", g_deg.toFixed(1) + "°", g_level, "浅すぎると弾き返され、深すぎると熱と減速が厳しくなる"],
-      ["近づく速さ V∞", info.v_inf.toFixed(3) + " km/s", null, "天体の重力に引かれる前の速さ", true],
-      ["突入高度", info.altitude.toFixed(0) + " km", null, "ここから大気に入ったとみなす高さ", true],
+      [t("突入速度"), info.v_entry.toFixed(3) + " km/s", v_level, t(ENTRY_V_HINT)],
+      [t("突入角 γ"), g_deg.toFixed(1) + "°", g_level, t("浅すぎると弾き返され、深すぎると熱と減速が厳しくなる")],
+      [t("近づく速さ V∞"), info.v_inf.toFixed(3) + " km/s", null, t("天体の重力に引かれる前の速さ"), true],
+      [t("突入高度"), info.altitude.toFixed(0) + " km", null, t("ここから大気に入ったとみなす高さ"), true],
     ])
   );
 
@@ -2639,12 +2642,12 @@ export function renderSwingbyControls() {
 
   const autoBtn = document.createElement("button");
   autoBtn.type = "button";
-  autoBtn.textContent = "自動";
+  autoBtn.textContent = t("自動");
   autoBtn.className = "mode-btn" + (is_auto ? " active" : "");
   // 最終軌道が続いている間は目的地が無いので自動には戻せない
   if (!State.mission_sequence.can_set_auto(i)) {
     autoBtn.disabled = true;
-    autoBtn.title = "最終軌道で終えている間は手動のみ";
+    autoBtn.title = t("最終軌道で終えている間は手動のみ");
   }
   autoBtn.onclick = () => {
     State.mission_sequence.set_auto_mode(i, true);
@@ -2653,7 +2656,7 @@ export function renderSwingbyControls() {
 
   const manualBtn = document.createElement("button");
   manualBtn.type = "button";
-  manualBtn.textContent = "手動";
+  manualBtn.textContent = t("手動");
   manualBtn.className = "mode-btn" + (!is_auto ? " active" : "");
   manualBtn.onclick = () => {
     State.mission_sequence.set_auto_mode(i, false);
@@ -2672,50 +2675,50 @@ export function renderSwingbyControls() {
       const R = planet_radius[State.mission_sequence.planet_num(i)] ?? 0;
       const rpText =
         info.rp != undefined
-          ? (info.rp - R).toFixed(0) + " km" + (info.rp_clamped ? " (下限)" : "")
+          ? (info.rp - R).toFixed(0) + " km" + (info.rp_clamped ? " " + t("(下限)") : "")
           : "-";
       // 入りと出のV∞は、この節でいちばん大事な量。曲げられる角度がこれで
       // 決まるので、畳まずに先頭に置く (無推力なら2つは同じ大きさになる)
       const rows = [
         [
-          "入ってくる V∞",
+          t("入ってくる V∞"),
           info.v_inf_in.toFixed(3) + " km/s",
           null,
-          "この天体から見た、近づいてくる速さ。曲げられる角度はこれで決まる",
+          t("この天体から見た、近づいてくる速さ。曲げられる角度はこれで決まる"),
         ],
         [
-          "出ていく V∞",
+          t("出ていく V∞"),
           info.v_inf_out.toFixed(3) + " km/s",
           null,
-          "この天体から見た、離れていく速さ。噴かなければ入りと同じ大きさになる",
+          t("この天体から見た、離れていく速さ。噴かなければ入りと同じ大きさになる"),
         ],
-        ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°", null, "重力で進む向きがどれだけ曲がるか"],
-        ["近点高度", rpText, null, "天体の表面からいちばん近づく高さ。低いほど大きく曲がる"],
+        [t("曲げ角"), (info.delta * RAD2DEG).toFixed(1) + "°", null, t("重力で進む向きがどれだけ曲がるか")],
+        [t("近点高度"), rpText, null, t("天体の表面からいちばん近づく高さ。低いほど大きく曲がる")],
         [
-          "近点ΔV",
+          t("近点ΔV"),
           (info.dv_periapsis * 1000).toFixed(1) + " m/s",
           null,
-          "重力だけでは足りないぶんを、いちばん近づく点で噴いて補う量",
+          t("重力だけでは足りないぶんを、いちばん近づく点で噴いて補う量"),
         ],
       ];
       if (info.turn_deficit > 1e-9) {
         rows.push([
-          "曲げきれない角度",
+          t("曲げきれない角度"),
           (info.turn_deficit * RAD2DEG).toFixed(1) + "°",
           "warn",
-          "この高さでは重力だけで曲げきれない角度。噴射で補うので近点ΔVが重くなる",
+          t("この高さでは重力だけで曲げきれない角度。噴射で補うので近点ΔVが重くなる"),
         ]);
       }
       // 同じ天体へ戻ってV∞を育てる設計では、次にいくつになるかが要る。
       // 戻り先が同じ天体だと名前だけでは見分けが付かないので「次の」を付ける
-      const next_auto = arrivalVinfRow(State.mission_sequence, i, "次の");
+      const next_auto = arrivalVinfRow(State.mission_sequence, i, t("次の"));
       if (next_auto) rows.push(next_auto);
 
       container.appendChild(makeReadout(rows));
     } else {
       const readout = document.createElement("div");
       readout.className = "swingby-readout";
-      readout.textContent = "前後の区間が決まると自動で計算されます";
+      readout.textContent = t("前後の区間が決まると自動で計算されます");
       container.appendChild(readout);
     }
   } else {
@@ -2731,8 +2734,8 @@ export function renderSwingbyControls() {
     const min_alt = min_rp != undefined ? min_rp - R : undefined;
 
     const rpLabel = document.createElement("label");
-    rpLabel.textContent = "近点高度 [km]";
-    rpLabel.title = "天体の表面からいちばん近づく高さ。低いほど大きく曲がる";
+    rpLabel.textContent = t("近点高度 [km]");
+    rpLabel.title = t("天体の表面からいちばん近づく高さ。低いほど大きく曲がる");
     const rpInput = document.createElement("input");
     rpInput.type = "number";
     rpInput.step = "10";
@@ -2747,8 +2750,8 @@ export function renderSwingbyControls() {
     };
 
     const betaLabel = document.createElement("label");
-    betaLabel.textContent = "回転角 β [deg]";
-    betaLabel.title = "天体のどちら側を回り込むか。曲がる向きが変わる";
+    betaLabel.textContent = t("回転角 β [deg]");
+    betaLabel.title = t("天体のどちら側を回り込むか。曲がる向きが変わる");
     const betaInput = document.createElement("input");
     betaInput.type = "number";
     betaInput.step = "0.1";
@@ -2764,7 +2767,7 @@ export function renderSwingbyControls() {
     if (min_alt != undefined) {
       const note = document.createElement("div");
       note.className = "swingby-hint";
-      note.textContent = `下限 ${min_alt.toFixed(0)} km (大気・放射線帯)`;
+      note.textContent = t("下限 {km} km (大気・放射線帯)", { km: min_alt.toFixed(0) });
       rpField.appendChild(note);
     }
     form.appendChild(rpField);
@@ -2777,24 +2780,24 @@ export function renderSwingbyControls() {
     if (info) {
       const rows = [
         [
-          "通り過ぎる V∞",
+          t("通り過ぎる V∞"),
           info.v_inf_in.toFixed(3) + " km/s",
           null,
-          "この天体から見た速さ。噴かないので入りと出は同じ大きさで、\n曲げられる角度はこの速さと近点高度だけで決まる",
+          t("この天体から見た速さ。噴かないので入りと出は同じ大きさで、\n曲げられる角度はこの速さと近点高度だけで決まる"),
         ],
-        ["曲げ角", (info.delta * RAD2DEG).toFixed(1) + "°", null, "重力で進む向きがどれだけ曲がるか"],
+        [t("曲げ角"), (info.delta * RAD2DEG).toFixed(1) + "°", null, t("重力で進む向きがどれだけ曲がるか")],
       ];
       const dsm = State.mission_sequence.get_dsm_info(i + 1);
-      if (dsm) rows.push([FIX_DV_LABEL, (dsm.dv * 1000).toFixed(1) + " m/s", null, FIX_DV_HINT]);
+      if (dsm) rows.push([t(FIX_DV_LABEL), (dsm.dv * 1000).toFixed(1) + " m/s", null, t(FIX_DV_HINT)]);
       // 手動スイングバイの先にも次の天体がある。そこでのV∞も設計の的
-      const next_row = arrivalVinfRow(State.mission_sequence, i, "次の");
+      const next_row = arrivalVinfRow(State.mission_sequence, i, t("次の"));
       if (next_row) rows.push(next_row);
       // B面ビューの赤い線は天体中心からの半径なので、その値も添えておく
       rows.push([
-        "近点半径",
+        t("近点半径"),
         info.rp != undefined ? info.rp.toFixed(0) + " km" : "-",
         null,
-        "天体の中心から測った距離",
+        t("天体の中心から測った距離"),
         true,
       ]);
       container.appendChild(makeReadout(rows));
@@ -2916,8 +2919,9 @@ function makeAdvanced(nodes) {
   const head = document.createElement("button");
   head.type = "button";
   head.className = "adv-head";
-  head.innerHTML = '<span class="fold-mark" aria-hidden="true">' + ADV_CHEVRON + "</span><span>高度な情報</span>";
-  head.title = "設計を確かめるときに使う細かい読み取り";
+  head.innerHTML =
+    '<span class="fold-mark" aria-hidden="true">' + ADV_CHEVRON + "</span><span>" + t("高度な情報") + "</span>";
+  head.title = t("設計を確かめるときに使う細かい読み取り");
   head.onclick = () => {
     advanced_open = !advanced_open;
     // 同じ画面に複数出ていても足並みを揃える
@@ -2968,28 +2972,28 @@ function fillTiles(container, tiles) {
   const make_tile = ([title, value, unit, primary]) => {
     const box = document.createElement("div");
     box.className = "value_box" + (primary ? " primary" : "");
-    const t = document.createElement("div");
-    t.className = "title";
-    t.textContent = title;
+    const head = document.createElement("div");
+    head.className = "title";
+    head.textContent = title;
     const v = document.createElement("div");
     v.className = "value";
     v.textContent = value;
     const u = document.createElement("div");
     u.className = "unit";
     u.textContent = unit;
-    box.appendChild(t);
+    box.appendChild(head);
     box.appendChild(v);
     box.appendChild(u);
     return box;
   };
 
-  tiles.filter((t) => !t[4]).forEach((t) => container.appendChild(make_tile(t)));
+  tiles.filter((row) => !row[4]).forEach((row) => container.appendChild(make_tile(row)));
 
-  const adv = tiles.filter((t) => t[4]);
+  const adv = tiles.filter((row) => row[4]);
   if (adv.length > 0) {
     const inner = document.createElement("div");
     inner.className = "row adv-tiles";
-    adv.forEach((t) => inner.appendChild(make_tile(t)));
+    adv.forEach((row) => inner.appendChild(make_tile(row)));
     container.appendChild(makeAdvanced([inner]));
   }
 }
@@ -3141,7 +3145,7 @@ export function update_z_zoom_button(planet_orbits) {
   // 拡大中は必ず出す。隠すと等倍に戻す手段が無くなるため
   btn.hidden = !on && z_zoom_scale(planet_orbits) <= 1;
   btn.classList.toggle("active", on);
-  label.textContent = on ? "Z ×" + (s < 10 ? s.toFixed(1) : s.toFixed(0)) : "Z拡大";
+  label.textContent = on ? "Z ×" + (s < 10 ? s.toFixed(1) : s.toFixed(0)) : t("Z拡大");
 }
 
 function refresh_after_swingby_change() {
@@ -3319,11 +3323,11 @@ function boot() {
 // 続けて押したときに知らせが流れ続けるとかえって邪魔になる。
 // (開いているポークチョップ図は、対象のレグが無くなれば sync_porkchop が閉じる)
 function undo_mission() {
-  if (!undoMission()) notify("これ以上は戻せません");
+  if (!undoMission()) notify(t("これ以上は戻せません"));
 }
 
 function redo_mission() {
-  if (!redoMission()) notify("やり直せる操作はありません");
+  if (!redoMission()) notify(t("やり直せる操作はありません"));
 }
 
 /**
@@ -3351,13 +3355,11 @@ function init_tune_button() {
   if (!btn) return;
 
   const idle = () => {
-    btn.textContent = "自動調整";
+    btn.textContent = t("自動調整");
     btn.disabled = false;
     btn.classList.remove("is-busy");
     btn.title =
-      "いまの設計を出発点に、残る質量がいちばん多くなるよう\n" +
-      "日付やスイングバイのパラメータを調整します\n" +
-      "(いまの設計の近くだけを探すので、軌道の骨格は変わりません)";
+      t("いまの設計を出発点に、残る質量がいちばん多くなるよう\n日付やスイングバイのパラメータを調整します\n(いまの設計の近くだけを探すので、軌道の骨格は変わりません)");
   };
   idle();
 
@@ -3366,36 +3368,41 @@ function init_tune_button() {
     if (running) return;
     const mission = State.mission_sequence;
     if (!mission || mission.count < 2) {
-      notify("シーケンスが2つ以上あると調整できます");
+      notify(t("シーケンスが2つ以上あると調整できます"));
       return;
     }
     running = true;
     btn.disabled = true;
     btn.classList.add("is-busy");
-    btn.textContent = "調整中…";
+    btn.textContent = t("調整中…");
 
     let result;
     try {
       result = await tuneMission(mission, {
         launcher: State.launcher,
         onProgress: ({ gain }) => {
-          btn.textContent = gain > 1e-4 ? "調整中 +" + (gain * 100).toFixed(1) + "%" : "調整中…";
+          btn.textContent =
+            gain > 1e-4 ? t("調整中 +{pct}%", { pct: (gain * 100).toFixed(1) }) : t("調整中…");
         },
       });
     } catch (e) {
-      result = { ok: false, reason: "計算に失敗しました" };
+      result = { ok: false, reason: t("計算に失敗しました") };
     }
     running = false;
     idle();
 
     if (!result.ok) {
-      notify(result.reason ?? "調整できませんでした");
+      notify(t(result.reason ?? "調整できませんでした"));
       return;
     }
     if (!result.improved) {
       // 元から成り立っていない設計を助けられなかったときは、何がまずいのかを
       // そのまま伝える。「良くなりません」だけでは打つ手が分からない
-      notify(result.rescue ? "成り立つ設計が見つかりませんでした (" + result.reason + ")" : "これ以上は良くなりませんでした");
+      notify(
+        result.rescue
+          ? t("成り立つ設計が見つかりませんでした ({reason})", { reason: t(result.reason) })
+          : t("これ以上は良くなりませんでした")
+      );
       return;
     }
 
@@ -3405,7 +3412,7 @@ function init_tune_button() {
     data.launch = result.data.launch;
     data.nodes = result.data.nodes;
     if (!applyMissionData(data, { keepSelection: true })) {
-      notify("調整した結果を反映できませんでした");
+      notify(t("調整した結果を反映できませんでした"));
       return;
     }
     // 一手として戻せるようにする。見張りは押した直後に一度走ってしまうので、
@@ -3415,20 +3422,17 @@ function init_tune_button() {
     // 動いたことが伝わる総ΔVの方で知らせる
     notify(
       result.after < 1
-        ? "総ΔVが " +
-            (result.dv_before ?? 0).toFixed(1) +
-            " → " +
-            (result.dv_after ?? 0).toFixed(1) +
-            " km/s になりました (この設計ではまだ質量が残りません)"
+        ? t("総ΔVが {before} → {after} km/s になりました (この設計ではまだ質量が残りません)", {
+            before: (result.dv_before ?? 0).toFixed(1),
+            after: (result.dv_after ?? 0).toFixed(1),
+          })
         : result.before >= 1
-        ? "残る質量が " +
-          Math.round(result.before) +
-          " → " +
-          Math.round(result.after) +
-          " kg (+" +
-          (result.gain * 100).toFixed(1) +
-          "%) になりました"
-        : "使える設計に直しました (残る質量 " + Math.round(result.after) + " kg)"
+        ? t("残る質量が {before} → {after} kg (+{pct}%) になりました", {
+            before: Math.round(result.before),
+            after: Math.round(result.after),
+            pct: (result.gain * 100).toFixed(1),
+          })
+        : t("使える設計に直しました (残る質量 {kg} kg)", { kg: Math.round(result.after) })
     );
   };
 }
@@ -3485,7 +3489,7 @@ function add_sequence_by_key() {
 // 選んだシーケンスを消す。消せない節 (マヌーバなど) は delete_sequence が断る
 function delete_selected_by_key() {
   if (State.selected_sequence === -1) {
-    notify("消したいシーケンスを選んでください");
+    notify(t("消したいシーケンスを選んでください"));
     return;
   }
   delete_sequence(State.selected_sequence);
@@ -3497,7 +3501,7 @@ function open_porkchop_by_key() {
   const i = State.selected_sequence;
   const pc = i === -1 ? null : porkchop_target(i);
   if (!pc) {
-    notify("出発日と到着日の地図は、次の天体が決まっている自動モードのシーケンスで出せます");
+    notify(t("出発日と到着日の地図は、次の天体が決まっている自動モードのシーケンスで出せます"));
     return;
   }
   openPorkchop(pc);

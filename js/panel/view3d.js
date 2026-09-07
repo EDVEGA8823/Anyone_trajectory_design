@@ -1,3 +1,5 @@
+import { t, onLangChange } from '../ui/i18n.js';
+
 // 操作パネルに置く小さな3Dビュー (スイングバイのB面ビュー、打上げのV∞ビュー) で
 // 共通に使う部品をまとめたもの。
 // メインの太陽系ビュー(plot.js)とは別に、それぞれ独自のシーンを持つビューが
@@ -49,9 +51,9 @@ export function makeRenderLoop(step) {
 export function squareGridGeometry(half, divisions) {
   const pts = [];
   for (let k = 0; k <= divisions; k++) {
-    const t = -half + (2 * half * k) / divisions;
-    pts.push(new THREE.Vector3(t, -half, 0), new THREE.Vector3(t, half, 0));
-    pts.push(new THREE.Vector3(-half, t, 0), new THREE.Vector3(half, t, 0));
+    const u = -half + (2 * half * k) / divisions;
+    pts.push(new THREE.Vector3(u, -half, 0), new THREE.Vector3(u, half, 0));
+    pts.push(new THREE.Vector3(-half, u, 0), new THREE.Vector3(half, u, 0));
   }
   return new THREE.BufferGeometry().setFromPoints(pts);
 }
@@ -212,10 +214,10 @@ function placeOnCircles(group, points, radii, center) {
       const a = dist[i - 1] - r;
       const b = dist[i] - r;
       if ((a <= 0 && b <= 0) || (a > 0 && b > 0)) continue; // またいでいない
-      const t = a === b ? 0 : a / (a - b);
+      const u = a === b ? 0 : a / (a - b);
       const dir = new THREE.Vector3().subVectors(points[i], points[i - 1]);
       if (dir.lengthSq() < 1e-18) continue;
-      cones[k].position.lerpVectors(points[i - 1], points[i], t);
+      cones[k].position.lerpVectors(points[i - 1], points[i], u);
       cones[k].quaternion.setFromUnitVectors(up, dir.normalize());
       cones[k].visible = true;
       k++;
@@ -233,6 +235,16 @@ function placeOnCircles(group, points, radii, center) {
  * @param {HTMLCanvasElement} canvas 貼り付ける先のcanvas (その親に置く)
  * @returns {HTMLElement|null}
  */
+// 作った目印を覚えておき、言語が切り替わったら文字を書き直す。
+// 3Dビューは開いたきり作り直さないので、ここで触らないと日本語のまま残る
+const sun_compasses = [];
+onLangChange(() => {
+  for (const el of sun_compasses) {
+    const span = el.querySelector("span");
+    if (span) span.textContent = t("太陽方向");
+  }
+});
+
 export function makeSunCompass(canvas) {
   const host = canvas && canvas.parentElement;
   if (!host) return null;
@@ -242,8 +254,10 @@ export function makeSunCompass(canvas) {
     '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">' +
     '<path d="M12 22V4M5.5 10.5 12 3.5l6.5 7" fill="none" stroke="currentColor"' +
     ' stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-    "<span>太陽方向</span>";
+    "<span></span>";
+  el.querySelector("span").textContent = t("太陽方向");
   host.appendChild(el);
+  sun_compasses.push(el);
   return el;
 }
 
@@ -416,9 +430,9 @@ export function intersectPlane(raycaster, n) {
   const r = raycaster.ray.direction;
   const dn = r.dot(n);
   if (Math.abs(dn) < 1e-6) return null;
-  const t = -o.dot(n) / dn;
-  if (t <= 0) return null;
-  return new THREE.Vector3().copy(o).addScaledVector(r, t);
+  const u = -o.dot(n) / dn;
+  if (u <= 0) return null;
+  return new THREE.Vector3().copy(o).addScaledVector(r, u);
 }
 
 /**

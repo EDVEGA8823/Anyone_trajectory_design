@@ -24,6 +24,7 @@
  */
 
 import { buildProblem, cloneMission } from './opt_problem.js';
+import { t } from '../ui/i18n.js';
 
 // 一度に止めてよい時間 [ms]。この区切りごとに画面へ制御を返す。
 // 数秒かかることがあるので、その間ボタンが固まって見えないようにする。
@@ -207,15 +208,15 @@ export async function tuneMission(mission, opts = {}) {
     before: 0, after: 0, gain: 0, dv_before: 0, dv_after: 0, calls: 0, ms: 0,
   });
 
-  if (mission == undefined || mission.count < 2) return fail('シーケンスが2つ以上ないと調整できません');
+  if (mission == undefined || mission.count < 2) return fail(t('シーケンスが2つ以上ないと調整できません'));
 
   // 折れ線は描くためだけのもの。切っておくと1回の評価が数倍速くなる
   const work = cloneMission(mission, { arcs: false });
-  if (work == undefined) return fail('ミッションを複製できませんでした');
+  if (work == undefined) return fail(t('ミッションを複製できませんでした'));
 
   const base_opts = opts.launcher ? { launcher: opts.launcher } : {};
   const first = buildProblem(work, base_opts);
-  if (first.n === 0) return fail('動かせるところがありません');
+  if (first.n === 0) return fail(t('動かせるところがありません'));
 
   const t0 = performance.now();
   let calls = 0;

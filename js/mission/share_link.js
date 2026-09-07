@@ -35,6 +35,7 @@ import { resetHistory } from './history.js';
 import { notify } from '../ui/topbar.js';
 import { renderMissionImage } from './export_image.js';
 import { confirmDialog } from '../ui/dialog.js';
+import { t } from '../ui/i18n.js';
 
 // フラグメントに置く名前。数字は形式の版で、serialize() の形が変わっても
 // 古いリンクを見分けられるようにしておく
@@ -166,14 +167,14 @@ export async function toClipboard(text) {
 export async function copyShareLink() {
   const url = await missionShareUrl();
   if (!url) {
-    notify("共有するシーケンスがありません");
+    notify(t("共有するシーケンスがありません"));
     return false;
   }
   if (await toClipboard(url)) {
-    notify("共有リンクをコピーしました");
+    notify(t("共有リンクをコピーしました"));
     return true;
   }
-  notify("コピーできませんでした (アドレス欄からURLを控えてください)");
+  notify(t("コピーできませんでした (アドレス欄からURLを控えてください)"));
   return false;
 }
 
@@ -199,7 +200,7 @@ async function loadFromHash(ask) {
     // 中身のあるフラグメントなのに読めなかったときだけ知らせる
     // (ただの "#" や他の用途の値でいちいち騒がない)
     if (new URLSearchParams(location.hash.replace(/^#/, "")).get(KEY)) {
-      notify("共有リンクを読み取れませんでした");
+      notify(t("共有リンクを読み取れませんでした"));
       clearHash();
     }
     return false;
@@ -207,13 +208,13 @@ async function loadFromHash(ask) {
 
   // 開いた先に作りかけの設計があるときだけ断る。
   // (新しいタブで開いたときは空なので、そのまま入る)
-  if (ask && !(await confirmDiscard("リンクのミッションを開く"))) {
+  if (ask && !(await confirmDiscard(t("リンクのミッションを開く")))) {
     clearHash();
     return false;
   }
 
   if (!applyMissionData(data)) {
-    notify("共有リンクのミッションを開けませんでした");
+    notify(t("共有リンクのミッションを開けませんでした"));
     clearHash();
     return false;
   }
@@ -222,7 +223,7 @@ async function loadFromHash(ask) {
   markMissionSaved();
   resetHistory();
   clearHash();
-  notify("共有リンクからミッションを開きました");
+  notify(t("共有リンクからミッションを開きました"));
   return true;
 }
 
@@ -259,7 +260,7 @@ export function initShareLink() {
 // 投稿の本文。ミッション名は既定のままなら入れない (「無題のミッション」は情報にならない)
 function postText(name) {
   const head = name && name !== DEFAULT_NAME ? "「" + name + "」\n" : "";
-  return head + "#だれでも軌道設計 でミッションを作成しました";
+  return head + t("#だれでも軌道設計 でミッションを作成しました");
 }
 
 /** Xの投稿画面を、本文とURLを入れた状態で開く */
@@ -306,7 +307,7 @@ async function imageToClipboard(blob) {
 export async function shareOnX(name) {
   const url = await missionShareUrl();
   if (!url) {
-    notify("共有するシーケンスがありません");
+    notify(t("共有するシーケンスがありません"));
     return false;
   }
   const text = postText(name);
@@ -334,14 +335,12 @@ export async function shareOnX(name) {
   // 何が起きるかは、開く前に伝える。
   // 開いてから知らせても、新しいタブへ移った後なので目に入らない
   const go = await confirmDialog({
-    title: "Xの投稿画面を開きます",
+    title: t("Xの投稿画面を開きます"),
     message: copied
-      ? "本文と共有リンクを入れた状態で開きます。\n\n" +
-        "画像はクリップボードにコピーしました。投稿欄で貼り付け (Ctrl+V) してください。"
-      : "本文と共有リンクを入れた状態で開きます。\n\n" +
-        "画像はコピーできませんでした。付けたいときは「画像で保存」で保存してから、投稿欄に落としてください。",
-    ok: "開く",
-    cancel: "やめる",
+      ? t("本文と共有リンクを入れた状態で開きます。\n\n画像はクリップボードにコピーしました。投稿欄で貼り付け (Ctrl+V) してください。")
+      : t("本文と共有リンクを入れた状態で開きます。\n\n画像はコピーできませんでした。付けたいときは「画像で保存」で保存してから、投稿欄に落としてください。"),
+    ok: t("開く"),
+    cancel: t("やめる"),
   });
   if (!go) return false;
 

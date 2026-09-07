@@ -1,4 +1,5 @@
 import { State, User_Mode, PlotState, Sequence_Type } from '../core/state.js';
+import { t } from './i18n.js';
 import {
   change_sequence,
   change_sequence_propaty,
@@ -291,12 +292,12 @@ function update_edit_target_label() {
     // 節を触っていないときの時刻は、太陽系ビューが見ている時刻。
     // 日付欄に数字だけ出ていると節の日付と紛らわしいので、そう書いておく
     // (シーケンスが1つも無い起動直後も同じ。惑星の並びを見て回れる)
-    edit_target.textContent = "見ている時刻";
+    edit_target.textContent = t("見ている時刻");
     edit_target.classList.remove("other");
     return;
   }
   const p = State.mission_sequence.planet_num(n);
-  const name = p == -1 ? State.mission_sequence.type(n) : State.planet_list[p];
+  const name = t(p == -1 ? State.mission_sequence.type(n) : State.planet_list[p]);
   edit_target.textContent = n + 1 + ". " + name;
   edit_target.classList.toggle("other", n !== State.selected_sequence);
 }
