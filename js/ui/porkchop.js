@@ -1155,7 +1155,7 @@ function build_window() {
   for (const key of Object.keys(METRICS)) {
     const o = document.createElement("option");
     o.value = key;
-    o.textContent = METRICS[key].label;
+    o.textContent = t(METRICS[key].label);
     metric_sel.appendChild(o);
   }
   metric_sel.value = metric;

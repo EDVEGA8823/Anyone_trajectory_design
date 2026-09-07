@@ -236,7 +236,8 @@
 #sequence_propaty {
   width: 70px;
 }
-/* 英語の「Change」は日本語の「変更」より横に長い */
+/* 英語の「Change」は日本語の「変更」より横に長い。
+   選択欄の矢印のぶんも要るので、文字の幅ぴったりでは足りない */
 :root[lang="en"] #sequence_propaty {
-  width: 86px;
+  width: 96px;
 }
