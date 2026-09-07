@@ -11,8 +11,19 @@
   const I = await import("./js/ui/i18n.js");
 
   // 台本は日本語の見出しで欄やボタンを指す。英語表示のときは、
-  // アプリと同じ対訳表を通していまの言語の言い方に直してから探す
-  window.__ATD_T = (s) => I.t(s);
+  // アプリと同じ対訳表を通していまの言語の言い方に直してから探す。
+  //
+  // 欄の見出しは「近点高度 [km]」のように単位が付いていて、台本はその前半
+  // だけを渡す (含むかどうかで探すため)。対訳表の鍵は単位まで込みなので、
+  // 単位を足した形も順に試し、引けたものを使う。
+  const UNITS = ["", " [km]", " [deg]", " [km/s]", " [m/s]"];
+  window.__ATD_T = (s) => {
+    for (const u of UNITS) {
+      const got = I.t(s + u);
+      if (got !== s + u) return got.replace(/ \[[^\]]+\]$/, "");
+    }
+    return s;
+  };
 
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const State = S.State;
@@ -55,7 +66,11 @@
       const sel = document.getElementById("propaty");
       // 選択欄の value は日本語のまま (中身の識別に使っている)。
       // 出ている文字ではなく value で探すので、英語表示でもそのまま通る
-      const opt = [...sel.options].find((o) => o.value.includes(name) || o.textContent.includes(name));
+      let opt = null;
+      for (let i = 0; i < 10 && !opt; i++) {
+        opt = [...sel.options].find((o) => o.value.includes(name) || o.textContent.includes(name));
+        if (!opt) await wait(300);
+      }
       if (!opt) throw new Error("天体が無い: " + name);
       sel.value = opt.value;
       sel.dispatchEvent(new Event("change", { bubbles: true }));
@@ -64,7 +79,13 @@
 
     async type(name) {
       const sel = document.getElementById("sequence_propaty");
-      const opt = [...sel.options].find((o) => o.value === name);
+      // 天体を変えた直後は、選べる種別の一覧がまだ組み直されていないことがある。
+      // 一度で見つからなければ少し待って探し直す
+      let opt = null;
+      for (let i = 0; i < 10 && !opt; i++) {
+        opt = [...sel.options].find((o) => o.value === name);
+        if (!opt) await wait(300);
+      }
       if (!opt) throw new Error("種別が無い: " + name + " / 選べるのは " + [...sel.options].map((o) => o.value).join(","));
       sel.value = opt.value;
       sel.dispatchEvent(new Event("change", { bubbles: true }));
