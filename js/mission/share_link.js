@@ -259,7 +259,7 @@ export function initShareLink() {
 
 // 投稿の本文。ミッション名は既定のままなら入れない (「無題のミッション」は情報にならない)
 function postText(name) {
-  const head = name && name !== DEFAULT_NAME ? "「" + name + "」\n" : "";
+  const head = isDefaultMissionName(name) ? "" : t("「{name}」", { name }) + "\n";
   return head + t("#だれでも軌道設計 でミッションを作成しました");
 }
 
