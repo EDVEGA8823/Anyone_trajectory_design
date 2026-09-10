@@ -741,6 +741,8 @@ export const EN = {
   "出発と到着の合計": "Departure plus arrival",
   "押すとその日付になります / ドラッグで移動 / ホイールで拡大縮小":
     "Click to take those dates / drag to pan / wheel to zoom",
+  "押すと日付が出ます / なぞって移動 / 2本指で拡大縮小":
+    "Tap to read a point / drag to pan / pinch to zoom",
   "到着 {date}": "Arrival {date}",
   "{days}日": "{days} d",
   "出発日": "Departure date",
@@ -787,6 +789,7 @@ export const EN = {
     "{dep} → {arr} ({tof} d in flight{rev}) · launch {c3} km²/s² · arrival {varr} km/s",
   " ・ {n}周": " · {n} rev",
   " ・ 押すとこの日付にします": " · click to take these dates",
+  " ・ もう一度押すとこの日付にします": " · tap again to take these dates",
   "色は{metric} [{unit}] ・ ◇ いちばん安い点 / 破線 いまの設定 / 灰色 高すぎるところ":
     "Colour is {metric} [{unit}] · ◇ cheapest point / dashed, the current setting / grey, too expensive",
   " / 斜線 まだ出発できないところ": " / hatched, you cannot leave yet",

@@ -204,6 +204,22 @@
   flex: 0 0 auto;
 }
 
+/* 狭い画面では一行に収まらず、末尾が「…」で切られる。切られるのは行の
+   終わりに置いた押し方の案内なので、指で二度押して決めることが伝わらなく
+   なってしまう。ここだけ折り返す (図はそのぶん縦に詰まる) */
+@media (max-width: 700px) {
+  .pc-hover {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    /* 案内文 (1行) と読み値 (2行) を行き来するたびに図が16px伸び縮みする。
+       2行ぶんの高さを先に取っておいて、図の大きさを動かさない。
+       行の高さを normal のままにすると計算が合わないので、ここで決める */
+    line-height: 1.5;
+    min-height: calc(3em + 10px); /* 2行 (1.5em × 2) + 上下の padding 5px */
+  }
+}
+
 .pc-status {
   padding: 0 10px 7px;
   color: var(--text-muted);

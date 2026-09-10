@@ -68,6 +68,19 @@ const COLOR_STOPS = [
 
 const PAD = { left: 78, right: 68, top: 20, bottom: 46 };
 const HOVER_HINT = "押すとその日付になります / ドラッグで移動 / ホイールで拡大縮小";
+// 指で触る端末にはホイールが無く、押し方も二段構え (下の handle_tap) なので、
+// 別の案内を出す
+const HOVER_HINT_TOUCH = "押すと日付が出ます / なぞって移動 / 2本指で拡大縮小";
+
+/** 指で触る端末か。マウスが載らない画面かどうかで見分ける */
+function is_touch_screen() {
+  return !!(window.matchMedia && window.matchMedia("(hover: none)").matches);
+}
+
+/** いまの端末に合う案内文 */
+function hint_text() {
+  return t(is_touch_screen() ? HOVER_HINT_TOUCH : HOVER_HINT);
+}
 
 let win = null; // ウィンドウのルート要素
 let canvas = null;
@@ -1280,7 +1293,7 @@ function build_window() {
   body.appendChild(spinner_el);
   root.appendChild(body);
 
-  hover_el = el("div", "pc-hover", t(HOVER_HINT));
+  hover_el = el("div", "pc-hover", hint_text());
   root.appendChild(hover_el);
   status_el = el("div", "pc-status", "");
   root.appendChild(status_el);
@@ -1288,7 +1301,8 @@ function build_window() {
   canvas.addEventListener("mousemove", on_move);
   canvas.addEventListener("mouseleave", () => {
     hover_cell = null;
-    hover_el.textContent = t(HOVER_HINT);
+    tap_pick = null;
+    hover_el.textContent = hint_text();
     draw();
   });
   canvas.addEventListener("click", on_click);
@@ -1385,9 +1399,14 @@ function canvas_pos(e) {
 
 // マウスが指している一点。格子の目に吸い付かせず、その場で解き直す
 function hovered(e) {
+  return hovered_at(canvas_pos(e));
+}
+
+// 指しているのがどこか、をキャンバス座標から解く。
+// 指で叩いたときは event ではなく座標しか無いので、ここで分けてある
+function hovered_at(p) {
   if (!view || !target) return null;
   const rect = plot_rect();
-  const p = canvas_pos(e);
   if (p.x < rect.x || p.x > rect.x + rect.w || p.y < rect.y || p.y > rect.y + rect.h) return null;
 
   const d = to_date(rect, p.x, p.y);
@@ -1408,10 +1427,18 @@ function hovered(e) {
 }
 
 function on_move(e) {
-  const c = hovered(e);
-  hover_cell = c;
+  hover_cell = hovered(e);
+  show_readout(hover_cell, false);
+}
+
+/**
+ * 図の下の一行に、指している点の中身を書く。
+ * @param {object|null} c 指している点 (図の外なら null)
+ * @param {boolean} by_touch 指で叩いて出しているか (押し方の案内が変わる)
+ */
+function show_readout(c, by_touch) {
   if (!c) {
-    hover_el.textContent = t(HOVER_HINT);
+    hover_el.textContent = hint_text();
   } else if (c.before_arrival) {
     hover_el.textContent =
       t("{dep} : この天体に着くのが {min} なので、まだ出発できません",
@@ -1429,9 +1456,16 @@ function on_move(e) {
         rev: c.rev > 0 ? t(" ・ {n}周", { n: c.rev }) : "",
         c3: c.c3.toFixed(1),
         varr: c.varr.toFixed(2),
-      }) + (on_pick ? t(" ・ 押すとこの日付にします") : "");
+      }) + take_hint(by_touch);
   }
   draw();
+}
+
+// 「押せば決まる」の案内。指のときは一度目で読み値を出しているので、
+// 「もう一度」と書かないと、いま押して決まったのかどうかが分からない
+function take_hint(by_touch) {
+  if (!on_pick) return "";
+  return by_touch ? t(" ・ もう一度押すとこの日付にします") : t(" ・ 押すとこの日付にします");
 }
 
 // 図の上で選んだ点を、そのレグの出発日・到着日にする。
@@ -1525,6 +1559,7 @@ function on_pan_start(e) {
     view.arr0 = v0.arr0 + d_arr;
     view.arr1 = v0.arr1 + d_arr;
     hover_cell = null;
+    tap_pick = null;
     draw();
   };
   const up = () => {
@@ -1541,8 +1576,26 @@ function on_pan_start(e) {
   window.addEventListener("mouseup", up);
 }
 
-// 指1本で移動、2本で拡大縮小
+/* ------------------------------------------------------------------
+   指の扱い
+   ------------------------------------------------------------------
+   指1本で移動、2本で拡大縮小、そして叩いて選ぶ。
+
+   叩いて選ぶところが元は動いていなかった。touchstart で preventDefault を
+   呼んでいる (そうしないと画面ごとスクロールしてしまう) が、これをすると
+   ブラウザは touchend のあとの click を作らなくなる決まりで、click を待って
+   いた on_click に何も届かなかった。指の分はここで自分で拾う。
+
+   決めるまでを二段にしてあるのは、指先が図の点よりずっと太いため。押した
+   瞬間は自分の指で隠れて、何を選んだのかが見えない。一度目は読み値を出す
+   だけにして、同じところをもう一度叩いたときに初めて日付を決める。
+------------------------------------------------------------------ */
+
 let touch_state = null;
+let tap_pick = null; // 一度目に叩いて読み値を出した点 (hovered_at の返り)
+
+const TAP_SLOP = 10; // これ以下の動きなら「動かさずに叩いた」とみなす [px]
+const TAP_AGAIN = 24; // 二度目がこの内側なら「同じところを叩いた」[px]
 
 function touch_center(touches) {
   const r = canvas.getBoundingClientRect();
@@ -1564,11 +1617,15 @@ function touch_spread(touches) {
 function on_touch_start(e) {
   if (!view) return;
   const touches = Array.from(e.touches);
+  const center = touch_center(touches);
   touch_state = {
     v0: { ...view },
-    center: touch_center(touches),
+    center,
     spread: touches.length >= 2 ? touch_spread(touches) : 0,
     count: touches.length,
+    start: center,
+    // 2本指は拡大縮小なので、はじめから「叩いた」ではない
+    moved: touches.length !== 1,
   };
   e.preventDefault();
 }
@@ -1583,6 +1640,12 @@ function on_touch_move(e) {
   const rect = plot_rect();
   const c = touch_center(touches);
   const v0 = touch_state.v0;
+
+  // 少しでも動かしたら、もう「叩いた」ではない (範囲を動かしただけの指で
+  // 日付が変わってしまわないように)
+  if (!touch_state.moved && Math.hypot(c.x - touch_state.start.x, c.y - touch_state.start.y) > TAP_SLOP) {
+    touch_state.moved = true;
+  }
 
   let f = 1;
   if (touches.length >= 2 && touch_state.spread > 1) {
@@ -1604,6 +1667,7 @@ function on_touch_move(e) {
   clamp_view();
 
   hover_cell = null;
+  tap_pick = null;
   sync_inputs();
   draw();
   e.preventDefault();
@@ -1611,8 +1675,49 @@ function on_touch_move(e) {
 
 function on_touch_end() {
   if (!touch_state) return;
+  const tapped = !touch_state.moved && touch_state.count === 1 ? touch_state.start : null;
   touch_state = null;
   schedule_recompute();
+  if (tapped) handle_tap(tapped);
+}
+
+/**
+ * 指で叩いたとき。一度目は読み値を出すだけ、同じところをもう一度叩いたら決める。
+ * @param {{x: number, y: number}} p 叩いた場所 (キャンバス座標)
+ */
+function handle_tap(p) {
+  const c = hovered_at(p);
+  hover_cell = c;
+  if (!c) {
+    tap_pick = null;
+    show_readout(null, true);
+    return;
+  }
+
+  // 同じところをもう一度叩いたか。一度目の点が「いま画面のどこに来ているか」で
+  // 測る。覚えているのは日付なので、読み値が折り返して図が縮んでも狂わない
+  // (画素の位置をそのまま覚えていると、そのぶんずれた日付を決めてしまう)
+  let again = false;
+  if (tap_pick) {
+    const q = to_px(plot_rect(), tap_pick.dep, tap_pick.arr);
+    again = Math.hypot(p.x - q.x, p.y - q.y) <= TAP_AGAIN;
+  }
+
+  if (again) {
+    // 決めるのは二度目に触れた点ではなく、一度目に読み値を出した点。
+    // 指は数pxぶれるので、そのぶん日付がずれると下見の意味が無くなる
+    const shown = tap_pick;
+    hover_cell = shown;
+    tap_pick = null;
+    show_readout(shown, true);
+    // 飛べない点は、何度叩いても決まらない。読み値を出すだけにする
+    if (on_pick && shown.c3 === shown.c3) {
+      on_pick({ index: target.index, dep_date: shown.dep, arr_date: shown.arr, revs: shown.rev, low_path: shown.low });
+    }
+    return;
+  }
+  tap_pick = c;
+  show_readout(c, true);
 }
 
 // 幅の入力欄に、いま映している範囲を映す
