@@ -1352,6 +1352,9 @@ function porkchop_target(i) {
     dep_date,
     arr_date,
     dep_min_date,
+    // 逆行で解いている区間の図は、順行のものとまるで別になる。
+    // 図だけ順行のまま描くと、選んだ点と実際の軌道が食い違う
+    retrograde: mission.leg_retrograde(i),
     dep_name: t(State.planet_list[dep_num]),
     arr_name: t(State.planet_list[arr_num]),
   };
@@ -1368,7 +1371,12 @@ function makePorkchopButton(i) {
   if (pc) {
     btn.title =
       t("出発日と到着日をいろいろ変えて、どの組み合わせが楽に行けるかを\n地図 (ポークチョップ図) にします。押した点をそのまま日付にできます。");
-    btn.onclick = () => openPorkchop(pc);
+    // 押した時点で作り直す。ここで pc をそのまま抱えると、ボタンを作った
+    // あとに変えた設定 (まわる向きなど) が図に届かない
+    btn.onclick = () => {
+      const now = porkchop_target(i);
+      if (now) openPorkchop(now);
+    };
   } else {
     btn.disabled = true;
     btn.title = t("次のシーケンスの天体を決めると開けます");
@@ -1676,6 +1684,30 @@ function invalidate_views() {
   invalidateDsmView();
 }
 
+/**
+ * 行き先の天体がまわっている向きと、この区間の解き方が食い違っていたら一言返す。
+ *
+ * 逆行天体は数が少なく (ハレー彗星や (514107) Ka`epaoka`awela など)、
+ * 知らないまま順行で解くと、着くときの相対速度だけが桁違いに大きくなる。
+ * 数字は出ているのに理由が画面のどこにも無い、という状態を避けるためのもの。
+ *
+ * @returns {string} 食い違っていなければ空文字
+ */
+function retrograde_note(mission, i) {
+  const n = mission.planet_num(i + 1);
+  if (n == undefined || n === -1) return "";
+  const el = get_planet_elements(mission.date(i + 1), n);
+  if (!el || !isFinite(el[2])) return "";
+  const inc = (el[2] * 180) / Math.PI;
+  const body_is_retro = inc > 90;
+  if (body_is_retro === mission.leg_retrograde(i)) return "";
+  const name = t(State.planet_list[n]);
+  const deg = inc.toFixed(0);
+  return body_is_retro
+    ? t("{name} は逆行しています (軌道傾斜角 {deg}度)。逆行で行くほうが速度を合わせやすいはずです", { name, deg })
+    : t("{name} は順行しています (軌道傾斜角 {deg}度)。ふつうは順行で行きます", { name, deg });
+}
+
 export function renderLegControls() {
   const revs_row = document.getElementById("leg_revs");
   const branch_row = document.getElementById("leg_branch");
@@ -1719,9 +1751,43 @@ export function renderLegControls() {
     revs_row.appendChild(btn);
   }
 
+  branch_row.innerHTML = "";
+
+  // 太陽をまわる向き。周回数と関わりなく効くので、直行のときも出す
+  {
+    const label = document.createElement("span");
+    label.className = "leg-branch-label";
+    label.textContent = t("まわる向き");
+    branch_row.appendChild(label);
+    const btns = document.createElement("div");
+    btns.className = "leg-btns";
+    branch_row.appendChild(btns);
+    const now_retro = mission.leg_retrograde(i);
+    [false, true].forEach((retro) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = retro ? t("逆行") : t("順行");
+      btn.className = "mode-btn" + (now_retro === retro ? " active" : "");
+      btn.title = retro
+        ? t("太陽を惑星と反対まわりに行きます。\nハレー彗星のように逆行している天体と速度を合わせるときは、こちらでないと合いません。")
+        : t("太陽を惑星と同じ向きにまわります。ふつうはこちらです。");
+      btn.onclick = () => {
+        mission.set_leg_retrograde(i, retro);
+        refresh_after_swingby_change();
+      };
+      btns.appendChild(btn);
+    });
+    const note = retrograde_note(mission, i);
+    if (note) {
+      const el = document.createElement("span");
+      el.className = "leg-branch-note";
+      el.textContent = note;
+      branch_row.appendChild(el);
+    }
+  }
+
   // 同じ周回数には解が2つある。「low path」のような内部の呼び名ではなく、
   // その解で実際に飛ぶ軌道の大きさ (遠日点) をそのままボタンに出して選ばせる
-  branch_row.innerHTML = "";
   if (wanted > 0) {
     const preview = mission.leg_branch_preview(i);
     const label = document.createElement("span");

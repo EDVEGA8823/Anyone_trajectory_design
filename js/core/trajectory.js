@@ -722,6 +722,17 @@ export function get_peariod(a, μ) {
    ライブラリ (Izzo法) は M と low_path を受け取れるので、こちら側は
    「その飛行時間で何周まで可能か」と「その周回数に必要な最短飛行時間」を
    用意して、選ばせる/はみ出しを防ぐ役に回る。
+
+   【太陽をまわる向き】
+   ランベール問題は、同じ2点・同じ飛行時間に対して「どちら回りで行くか」で
+   別の解を持つ。惑星と同じ向き (順行) と、その逆 (逆行) で、遷移軌道の
+   軌道傾斜角が 180度 - i に入れ替わる。
+
+   ふつうは順行しか要らない。太陽系の天体はほとんど順行に回っているので、
+   逆行で行くと相手と正面衝突する形になり、着くときの相対速度が跳ね上がる。
+   要るのは相手自身が逆行しているときで、ハレー彗星 (i=162度) や
+   (514107) Ka`epaoka`awela (i=163度) にランデブーするなら、こちらも
+   逆行で入らないと速度が合わない。
    ================================================================== */
 
 // ランベール問題の無次元飛行時間 T。M周の解は T ≧ M*pi でしか存在しない
@@ -1036,10 +1047,12 @@ export class Mission {
   // レグ (ノードiから次のノードへの区間) をランベールで解くときの設定。
   //   #m_leg_revs   太陽を何周してから着くか (0 = 直行)
   //   #m_leg_low    同じ周回数にある2つの解のどちらを採るか (true = 小さい軌道)
+  //   #m_leg_retro  太陽をまわる向き (true = 逆行)。逆行天体へのランデブー用
   // レグは出発側のノードが持つ。#m_leg_info には実際に使えた値を入れる
   // (指定した周回数が飛行時間的に無理なら直行に落ちるので、その顛末も含む)。
   #m_leg_revs = [];
   #m_leg_low = [];
+  #m_leg_retro = [];
   #m_leg_info = [];
 
   // batch() の入れ子の深さと、その間に再計算を頼まれたか。
@@ -1905,11 +1918,12 @@ export class Mission {
   #solve_leg(i, r1, r2, tof) {
     const wanted = this.#m_leg_revs[i] ?? 0;
     const low = this.#m_leg_low[i] !== false;
+    const retro = this.#m_leg_retro[i] === true;
     const limit = lambert_rev_limit(r1, r2, tof);
 
     const attempt = (revs) => {
       try {
-        const v = lambert_probrem(MU_SUN, r1, r2, tof, revs, true, low);
+        const v = lambert_probrem(MU_SUN, r1, r2, tof, revs, !retro, low);
         return v && v[0] && isFinite(v[0][0]) ? v : undefined;
       } catch (e) {
         return undefined;
@@ -1935,6 +1949,7 @@ export class Mission {
       revs: used,
       revs_wanted: wanted,
       low_path: low,
+      retrograde: retro,
       max_revs: limit,
       tof,
       aphelion, // [km]
@@ -1955,6 +1970,7 @@ export class Mission {
     if (!this.leg_is_lambert(i)) return out;
     const revs = this.#m_leg_revs[i] ?? 0;
     if (revs <= 0) return out;
+    const retro = this.#m_leg_retro[i] === true;
 
     const r1 = this.#m_s_c_pos[i];
     const r2 = this.#m_s_c_pos[i + 1] ?? this.#m_planet_pos[i + 1];
@@ -1963,7 +1979,7 @@ export class Mission {
 
     for (const low of [true, false]) {
       try {
-        const v = lambert_probrem(MU_SUN, r1, r2, tof, revs, true, low);
+        const v = lambert_probrem(MU_SUN, r1, r2, tof, revs, !retro, low);
         if (!v || !v[0]) continue;
         const par = ic2par(r1, v[0], MU_SUN);
         if (par != undefined && par[0] > 0 && par[1] < 1) out[low ? "low" : "high"] = par[0] * (1 + par[1]);
@@ -2459,7 +2475,18 @@ export class Mission {
     this.#recompute_all();
   }
 
-  /** 直近に解いたレグの顛末 {revs, revs_wanted, low_path, max_revs, tof, fallback} */
+  /** そのレグを逆行 (惑星と反対まわり) で解いているか */
+  leg_retrograde(i) {
+    return this.#m_leg_retro[i] === true;
+  }
+
+  set_leg_retrograde(i, retro) {
+    if (i < 0 || i >= this.#m_count) return;
+    this.#m_leg_retro[i] = !!retro;
+    this.#recompute_all();
+  }
+
+  /** 直近に解いたレグの顛末 {revs, revs_wanted, low_path, retrograde, max_revs, tof, fallback} */
   get_leg_info(i) {
     return this.#m_leg_info[i] ?? null;
   }
@@ -2497,7 +2524,8 @@ export class Mission {
     const r1 = this.#m_s_c_pos[i];
     const r2 = this.#m_s_c_pos[i + 1] ?? this.#m_planet_pos[i + 1];
     if (r1 == undefined || r2 == undefined) return undefined;
-    const tof = lambert_min_tof(r1, r2, revs);
+    // 谷の位置 (M周に要る最短時間) は回る向きで変わるので、揃えて聞く
+    const tof = lambert_min_tof(r1, r2, revs, MU_SUN, this.#m_leg_retro[i] !== true);
     return tof == undefined ? undefined : tof / 86400;
   }
 
@@ -2891,6 +2919,7 @@ export class Mission {
     this.#m_encounter_info.splice(idx, 0, undefined);
     this.#m_leg_revs.splice(idx, 0, 0);
     this.#m_leg_low.splice(idx, 0, true);
+    this.#m_leg_retro.splice(idx, 0, false);
     this.#m_leg_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
     this.#m_end_info.splice(idx, 0, undefined);
@@ -2926,6 +2955,7 @@ export class Mission {
     this.#m_encounter_info.splice(idx, 1);
     this.#m_leg_revs.splice(idx, 1);
     this.#m_leg_low.splice(idx, 1);
+    this.#m_leg_retro.splice(idx, 1);
     this.#m_leg_info.splice(idx, 1);
     this.#m_dsm_info.splice(idx, 1);
     this.#m_end_info.splice(idx, 1);
@@ -2977,6 +3007,7 @@ export class Mission {
     this.#m_encounter_info.splice(idx, 0, undefined);
     this.#m_leg_revs.splice(idx, 0, 0);
     this.#m_leg_low.splice(idx, 0, true);
+    this.#m_leg_retro.splice(idx, 0, false);
     this.#m_leg_info.splice(idx, 0, undefined);
     this.#m_dsm_info.splice(idx, 0, undefined);
     this.#m_end_info.splice(idx, 0, undefined);
@@ -3072,6 +3103,9 @@ export class Mission {
         n.rev = this.#m_leg_revs[i];
         if (this.#m_leg_low[i] === false) n.branch = "high";
       }
+      // まわる向きは周回数と関わりなく効く (直行でも逆行で行ける) ので、
+      // rev の中ではなく独立して書く
+      if (this.#m_leg_retro[i] === true) n.retro = true;
       nodes.push(n);
     }
 
@@ -3128,6 +3162,7 @@ export class Mission {
     );
     this.#m_leg_revs = nodes.map((n) => Math.max(0, Math.round(num(n.rev, 0))));
     this.#m_leg_low = nodes.map((n) => n.branch !== "high");
+    this.#m_leg_retro = nodes.map((n) => n.retro === true);
 
     // 日付は必ず前から順に、最小間隔を空けて並ぶようにする
     for (let i = 1; i < this.#m_count; i++) {

@@ -105,11 +105,23 @@ export const EN = {
     "Borrowing a body's gravity to bend your path without spending fuel.\n" +
     "How much it bends depends on how close you pass and which side you go around.\n" +
     "The figure shows where you aim, seen head-on (the B-plane).",
-  "次の目的地までの区間です。太陽を何周してから着くかを選べます。\n遠い目的地へは、1周まわってから着く方がずっと安く済むことがよくあります。\n押すと軌道の取り方と読み取りが開きます。":
+  "次の目的地までの区間です。太陽を何周してから着くかを選べます。\n遠い目的地へは、1周まわってから着く方がずっと安く済むことがよくあります。\n押すとまわる向き・軌道の取り方と読み取りが開きます。":
     "The leg to the next destination. You can choose how many times to circle the Sun first.\n" +
     "For far destinations, going around once is often much cheaper.\n" +
-    "Click to open the branch choice and the readouts.",
+    "Click to open the direction, the branch choice and the readouts.",
   "区間の周回数": "Revolutions on this leg",
+  "まわる向き": "Which way round",
+  "順行": "Prograde",
+  "逆行": "Retrograde",
+  "太陽を惑星と同じ向きにまわります。ふつうはこちらです。":
+    "Goes round the Sun the same way as the planets. This is the usual one.",
+  "太陽を惑星と反対まわりに行きます。\nハレー彗星のように逆行している天体と速度を合わせるときは、こちらでないと合いません。":
+    "Goes round the Sun the opposite way from the planets.\n" +
+    "To match velocity with a body that runs backwards itself — comet Halley, say — nothing else will do.",
+  "{name} は逆行しています (軌道傾斜角 {deg}度)。逆行で行くほうが速度を合わせやすいはずです":
+    "{name} runs backwards (its orbit is tilted {deg}°). Going retrograde should match its velocity far more easily.",
+  "{name} は順行しています (軌道傾斜角 {deg}度)。ふつうは順行で行きます":
+    "{name} runs the usual way (its orbit is tilted {deg}°). Prograde is normally what you want.",
 
   /* 凡例 */
   "方位角": "Azimuth",

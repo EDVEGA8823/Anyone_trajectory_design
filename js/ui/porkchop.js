@@ -266,7 +266,7 @@ async function compute_grid(spec, on_progress, generation) {
         let v;
         calls++;
         try {
-          v = lambert_probrem(MU_SUN, r1, r2, tof, combos[c].rev, true, combos[c].low);
+          v = lambert_probrem(MU_SUN, r1, r2, tof, combos[c].rev, !spec.retrograde, combos[c].low);
         } catch (e) {
           continue; // 収束しない配置 (ほぼ180度遷移など) は空白のまま残す
         }
@@ -348,7 +348,7 @@ function fit_view_for_revs(revs) {
   let arr_c = (view.arr0 + view.arr1) / 2;
   for (let k = 0; k < 3; k++) {
     const p2 = get_planets_pos(get_planet_elements(arr_c, target.arr_num)).r;
-    const tof = lambert_min_tof(p1, p2, revs);
+    const tof = lambert_min_tof(p1, p2, revs, MU_SUN, !target.retrograde);
     if (tof == undefined) return false;
     arr_c = dep_c + (tof / DAY) * 1.25; // 最短ぴったりだと解が1点しかないので少し先
   }
@@ -400,7 +400,7 @@ function choose_solutions(g) {
  * こちらで解き直す。1回 20μs 程度なのでマウスを動かすたびに解いても問題にならないし、
  * 「読めた値」と「設定される時刻」が食い違わない。
  */
-function solve_point(dep_num, arr_num, t1, t2) {
+function solve_point(dep_num, arr_num, t1, t2, retrograde) {
   const tof = (t2 - t1) * DAY;
   if (!(tof >= MIN_TOF_DAYS * DAY)) return null;
 
@@ -416,7 +416,7 @@ function solve_point(dep_num, arr_num, t1, t2) {
 
     let v;
     try {
-      v = lambert_probrem(MU_SUN, p1.r, p2.r, tof, cb.rev, true, cb.low);
+      v = lambert_probrem(MU_SUN, p1.r, p2.r, tof, cb.rev, !retrograde, cb.low);
     } catch (e) {
       continue;
     }
@@ -1414,7 +1414,7 @@ function hovered_at(p) {
   if (target.dep_min_date != undefined && d.dep < target.dep_min_date) {
     return { dep: d.dep, arr: d.arr, before_arrival: true, c3: NaN, vdep: NaN, varr: NaN, rev: 0, low: true };
   }
-  const s = solve_point(target.dep_num, target.arr_num, d.dep, d.arr);
+  const s = solve_point(target.dep_num, target.arr_num, d.dep, d.arr, target.retrograde);
   return {
     dep: d.dep,
     arr: d.arr,
@@ -1812,6 +1812,7 @@ async function recompute() {
     cols: n,
     rows: n,
     dep_min_date: target.dep_min_date,
+    retrograde: target.retrograde === true,
     // 周回数を固定しているなら、その分だけ解けばよい
     combos: rev_mode === "auto" ? COMBOS : COMBOS.filter((c) => c.rev === rev_mode),
   };
@@ -1851,9 +1852,19 @@ export function openPorkchop(info) {
   // 開いたまま対象が変わっただけのときは、動かした位置をそのままにする。
   if (!was_open) place_over_view();
 
-  const same = target && target.index === info.index && target.dep_num === info.dep_num && target.arr_num === info.arr_num;
+  const same =
+    target &&
+    target.index === info.index &&
+    target.dep_num === info.dep_num &&
+    target.arr_num === info.arr_num &&
+    target.retrograde === info.retrograde;
   target = { ...info };
-  title_el.textContent = t("出発日と到着日の地図") + "  " + info.dep_name + " → " + info.arr_name;
+  // 逆行のときは見出しに出す。同じ2天体でも中身がまるで別の図になるので、
+  // どちらを見ているのか分からなくなると読み違える
+  title_el.textContent =
+    t("出発日と到着日の地図") +
+    "  " + info.dep_name + " → " + info.arr_name +
+    (info.retrograde ? "  (" + t("逆行") + ")" : "");
 
   if (!same || !grid || !view) {
     // 対象が変わったら、ホーマン遷移から見積もった窓のまわりを映す
@@ -1906,7 +1917,15 @@ export function updatePorkchopTarget(info) {
     closePorkchop();
     return;
   }
-  if (target && (info.dep_num !== target.dep_num || info.arr_num !== target.arr_num || info.index !== target.index)) {
+  // まわる向きが変わったら、面そのものが別ものになるので開き直す
+  // (日付だけの反映と違って、焼き直さないと嘘の図が残る)
+  if (
+    target &&
+    (info.dep_num !== target.dep_num ||
+      info.arr_num !== target.arr_num ||
+      info.index !== target.index ||
+      info.retrograde !== target.retrograde)
+  ) {
     openPorkchop(info);
     return;
   }
