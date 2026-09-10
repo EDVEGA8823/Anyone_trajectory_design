@@ -26,6 +26,31 @@ let date_time, sequence, confirm_time, cancel_time, v_inf, C3, total_dv, sequenc
 // 掴んでドラッグする操作なのでこのくらいの余裕を持たせている。
 const PICK_RADIUS = 0.018;
 
+// 指で掴むときに確保したい、画面上の半径 [CSS px]。
+// 上の 3.4% はキャンバスの高さに比例するので、キャンバスが小さいスマホでは
+// 実測で 8px にしかならない (390x844 の端末でキャンバスは 342x244)。
+// 指の腹はこれよりずっと太いので、まず当たらない。指の当たり判定が端末の
+// 大きさで変わってはいけないので、こちらは画面上の px で決める。
+// 半径28px = 差し渡し56px。触る目標の目安 (44px) より少し大きめにしてある。
+const TOUCH_PICK_PX = 28;
+
+/**
+ * 掴める広さ (カメラ距離に掛ける係数)。
+ *
+ * 縦の画角から 画面上の半径 = 係数 / 0.536 * キャンバスの高さ になるので、
+ * 指のときはこれを逆に解いて、TOUCH_PICK_PX を下回らないところまで広げる。
+ * キャンバスが十分大きい端末では、マウスと同じ広さに落ち着く。
+ *
+ * @param {boolean} is_touch 指で触ったか
+ */
+function pick_radius(is_touch) {
+  if (!is_touch) return PICK_RADIUS;
+  const canvas = document.getElementById("plot");
+  const h = canvas ? canvas.getBoundingClientRect().height : 0;
+  if (!(h > 0)) return PICK_RADIUS;
+  return Math.max(PICK_RADIUS, (0.536 * TOUCH_PICK_PX) / h);
+}
+
 export function initEvents() {
   date_time = document.getElementById("date_time");
   sequence = document.getElementById("sequence");
@@ -370,7 +395,7 @@ export function Update_time() {
 function handleTouchStart(event) {
   if (event.touches.length != 1) return;
   if (!setMouseFromEvent(event.touches[0].clientX, event.touches[0].clientY)) return;
-  Select_planet();
+  Select_planet(true);
 }
 
 
@@ -425,7 +450,7 @@ function endDrag() {
 function handleMouseDown(event) {
   if (event.button != 0) return;
   if (!setMouseFromEvent(event.clientX, event.clientY)) return;
-  Select_planet();
+  Select_planet(false);
 }
 
 function handleMouseMove(event) {
@@ -439,19 +464,26 @@ function handleMouseUp(event) {
   endDrag();
 }
 
-function Select_planet() {
+/** @param {boolean} is_touch 指で触ったか (指のときは当たり判定を広げる) */
+function Select_planet(is_touch) {
   State.raycaster.setFromCamera(State.mouse, camera);
   State.is_selected = false;
 
   let v = State.raycaster.ray.direction;
   let x_0 = camera.position;
+  const radius = pick_radius(is_touch) * PlotState.camera_dist;
 
   // 選択中ノードとその前後のノードのマーカーを先に掴み判定する。
   // マーカーは各ノードの探査機位置そのものなので、これを掴むことで
   // 選択を切り替えずに前後ノードの時刻も動かせる。
-  if (Select_marker(v, x_0)) return;
+  if (Select_marker(v, x_0, radius)) return;
 
   if (State.mode == User_Mode.None) {
+    // 重なっているときは一番近いものを掴む。以前は添字の若い順に先に見つかった
+    // ものを採っていたが、指の判定はマウスの3倍以上広いので、それだと内側の
+    // 惑星 (水星) が後ろの惑星の分まで横取りしてしまう
+    let best = -1;
+    let best_dist = Infinity;
     for (let i = 0; i < State.planet_num; i++) {
         // 非表示中(toggle_planetで隠された惑星)はヒットテスト対象から除外する。
         // 位置は非表示でも毎フレーム更新され続けるため、除外しないと見えていない
@@ -460,11 +492,14 @@ function Select_planet() {
         if(!PlotState.planet_speres[i] || !PlotState.planet_speres[i].visible) continue;
       let p = PlotState.planet_speres[i].position;
       let dist = new THREE.Vector3().subVectors(p, x_0).cross(v).length() / v.length();
-      if (dist < PICK_RADIUS * PlotState.camera_dist) {
-        State.selected_planet = i;
-        State.is_selected = true;
-        break;
+      if (dist < radius && dist < best_dist) {
+        best = i;
+        best_dist = dist;
       }
+    }
+    if (best !== -1) {
+      State.selected_planet = best;
+      State.is_selected = true;
     }
   }
   
@@ -492,7 +527,7 @@ function Select_planet() {
 // 選択中ノードとその前後(marker_spheres[0..2] = selected-1, selected, selected+1)の
 // マーカーを掴めたら true を返す。マーカーは各ノードの探査機位置なので、
 // 掴んだノードの時刻をそのまま動かせる。
-function Select_marker(v, x_0) {
+function Select_marker(v, x_0, radius) {
   const sel = State.selected_sequence;
   if (sel == -1 || !State.mission_sequence) return false;
 
@@ -502,7 +537,7 @@ function Select_marker(v, x_0) {
     if (!marker || !marker.visible) continue;
 
     const dist = new THREE.Vector3().subVectors(marker.position, x_0).cross(v).length() / v.length();
-    if (dist >= PICK_RADIUS * PlotState.camera_dist) continue;
+    if (dist >= radius) continue;
 
     const n = sel + k - 1;
     if (n < 0 || n >= State.mission_sequence.count) continue;
