@@ -45,12 +45,12 @@ Google へ送られます。
 |---|---|---|---|
 | math.js (mathjs) | Jos de Jong | Apache-2.0 ([全文](js/lib/math.js.LICENSE.txt)) | github.com/josdejong/mathjs |
 | lambert_probrem.js | Chris Lexmond, Unstoppable Games | MIT | github.com/influenceth/lambert-orbit |
+| three.js r142 | three.js authors | MIT ([全文](js/lib/three/LICENSE.txt)) | github.com/mrdoob/three.js |
 
 読み込んでいるもの (CDN)
 
 | | 作者 | ライセンス | 出どころ |
 |---|---|---|---|
-| three.js r142 | three.js authors | MIT | github.com/mrdoob/three.js |
 | Noto Sans JP | Google Fonts | OFL-1.1 | fonts.google.com |
 
 移植したもの

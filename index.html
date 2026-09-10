@@ -29,9 +29,12 @@
   <link rel="stylesheet" href="css/overlay.css" />
   <link rel="stylesheet" href="css/modal.css" />
   <link rel="stylesheet" href="css/fold.css" />
-  <script src="https://unpkg.com/three@0.142.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.142.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://unpkg.com/three@0.142.0/examples/js/renderers/CSS2DRenderer.js"></script>
+  <!-- three.js は r142 を js/lib/three/ に同梱してある。CDN (unpkg) から読んでいたが、
+       向こうが落ちている日はアプリごと立ち上がらなくなるので、手元に置いた。
+       版を上げるときは build/three.min.js と examples/js/ の2つを同じ版で入れ替える -->
+  <script src="./js/lib/three/three.min.js"></script>
+  <script src="./js/lib/three/OrbitControls.js"></script>
+  <script src="./js/lib/three/CSS2DRenderer.js"></script>
   <script src="./js/lib/math.js"></script>
   <script src="./js/lib/lambert_probrem.js"></script>
   <script type="module" src="./js/main.js"></script>
@@ -40,7 +43,8 @@
   lambert-orbit | Copyright (c) 2021 Chris Lexmond and the Unstoppable Games, Inc. development team | MIT | github.com/influenceth/lambert-orbit
   math.js (mathjs) | Copyright (C) 2013-2025 Jos de Jong | Apache-2.0 | github.com/josdejong/mathjs
     (ライセンス全文は js/lib/math.js.LICENSE.txt)
-  three.js | Copyright © 2010-2024 three.js authors | MIT | github.com/mrdoob/three.js 
+  three.js r142 | Copyright © 2010-2022 three.js authors | MIT | github.com/mrdoob/three.js
+    (ライセンス全文は js/lib/three/LICENSE.txt)
   -->
 </head>
 <!-- Google tag (gtag.js) -->
