@@ -43,11 +43,36 @@ export function bodyLabel(b) {
   return b.desig;
 }
 
+/**
+ * 天体の種別を、表示する言葉にする。
+ *
+ * 種別は配布ファイルに入っている文字そのもので、MPC が元から英語で持っている
+ * もの (MBA, Apollo, Jupiter Trojan …) と、tools/build_bodies.py が日本語に
+ * 直しているもの (周期彗星、消失 …) が混ざっている。訳が要るのは後者だけ。
+ *
+ * 鍵を組み立てず1つずつ書いてあるのは、訳し漏れの検査 (t() に渡している
+ * 文字を拾う) に見えるようにするため。増やすときは build_bodies.py の
+ * COMET_TYPE と突き合わせること。
+ */
+function typeLabel(type) {
+  switch (type) {
+    case "周期彗星": return t("周期彗星");
+    case "非周期彗星": return t("非周期彗星");
+    case "消失": return t("消失");
+    case "軌道不定": return t("軌道不定");
+    case "小惑星軌道": return t("小惑星軌道");
+    // 分類の見出し (「恒星間天体」= まとまりの名前) とは別の鍵にする。
+    // ここは1つの天体の種別なので、英語では単数で出したい
+    case "恒星間天体": return t("恒星間天体##天体の種別");
+    default: return type; // 元から英語のものは、そのまま
+  }
+}
+
 /** 一覧の2行目に出す、番号や符号の補足 */
 export function bodySubLabel(b) {
   const parts = [];
   if (b.num && b.desig) parts.push(b.desig);
-  if (b.type) parts.push(b.type);
+  if (b.type) parts.push(typeLabel(b.type));
   return parts.join(t(" ・ "));
 }
 

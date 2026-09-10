@@ -706,6 +706,16 @@ export const EN = {
   "周期 {n}年": "Period {n} yr",
   "周期 —": "Period —",
   "取り込み済み": "added",
+
+  /* 天体の種別。配布ファイルに日本語で入っているものだけを訳す
+     (MBA・Apollo などは元から英語なので、ここには要らない)。
+     元は tools/build_bodies.py の COMET_TYPE */
+  "周期彗星": "Periodic comet",
+  "非周期彗星": "Non-periodic comet",
+  "消失": "Lost",
+  "軌道不定": "Orbit uncertain",
+  "小惑星軌道": "Asteroidal orbit",
+  "恒星間天体##天体の種別": "Interstellar object",
   "外す": "Remove",
   "「{name}」を天体の一覧から外す": "Remove “{name}” from the body list",
   "掲載されていない天体を、軌道要素から直接追加します。元期・近日点通過はユリウス日(JD)で入力してください。":
