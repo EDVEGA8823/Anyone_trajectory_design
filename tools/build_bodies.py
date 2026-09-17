@@ -420,6 +420,30 @@ def popular_key(rec, keys, kind):
     return None
 
 
+def read_named_rows(out_dir):
+    """前回書いた named.json から、小惑星の並びを読み戻す。
+
+    --full を付けない実行では 181MB の配布ファイルを落とさないので、名前付き
+    小惑星が手元に無い。何もしないと「よく使う天体」からケレスやガスプラの
+    ような天体が丸ごと抜ける (64件 → 38件) ため、前回の結果を読んで選び直しに
+    だけ使う。並びは書き出したときのままなので、そのまま行として扱える。
+    """
+    path = os.path.join(out_dir, "named.json")
+    if not os.path.exists(path):
+        return []
+    try:
+        with io.open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except ValueError:
+        return []
+    rows = []
+    for g in data.get("groups", []):
+        # 形が変わっていたら触らない (読み違えて壊すより、欠けたまま気付く方がよい)
+        if g.get("fields") == ASTEROID_FIELDS:
+            rows.extend(g.get("bodies", []))
+    return rows
+
+
 def same_but_time(old_text, data):
     """前のファイルと、時刻の欄を除いて同じ中身か。
 
@@ -484,8 +508,18 @@ def write_set(out_dir, set_id, label, note, groups, source, generated, extra=Non
     return write_json(path, data, separators=(",", ":"))
 
 
+def brightness_key(r):
+    """明るい順 (H が小さい順)。同じ明るさなら番号の若い順。
+
+    一覧の並びと、名前付き小惑星を取り込む順の両方で使う。取り込む順は
+    「よく使う天体」の木に並ぶ順になるので、--full の回と付けない回で
+    揃えておかないと、天体が1件も動いていなくても木の並びだけが入れ替わる。
+    """
+    return (r[10] is None, r[10], r[0] or 10 ** 9)
+
+
 def make_group(kind, bodies):
-    bodies.sort(key=lambda r: (r[10] is None, r[10], r[0] or 10 ** 9))  # 明るい順
+    bodies.sort(key=brightness_key)
     return {
         "kind": kind,
         "fields": COMET_FIELDS if kind in PERIHELION_KINDS else ASTEROID_FIELDS,
@@ -535,6 +569,22 @@ def main():
             tree_items.append((popular_where.get(hit, ["その他"]), key))
         return True
 
+    def take_popular_only(rec):
+        """まとまりには入れず、「よく使う天体」の選び直しにだけ使う。
+
+        前回の named.json を読み戻すときに通す。sets に入れないので
+        named.json は書き直されず、前回のものがそのまま据え置かれる。
+        """
+        key = body_id(rec[0], rec[2], ID_PREFIX["asteroid"])
+        if key in seen:
+            return False
+        seen.add(key)
+        hit = popular_key(rec, popular_keys, "asteroid")
+        if hit:
+            popular["asteroid"].append(rec)
+            tree_items.append((popular_where.get(hit, ["その他"]), key))
+        return True
+
     # --- 小さい配布ファイル ---
     for set_id, src_key in (("neo", "nea"), ("distant", "distant")):
         src = SOURCES[src_key]
@@ -580,8 +630,8 @@ def main():
         print("named: %s" % src["note"])
         path = fetch(src["url"], args.cache, args.offline)
         source_info["files"].append({"set": "named", "url": src["url"], "note": src["note"]})
-        n = 0
         scanned = 0
+        rows = []
         for rec in iter_json_objects(path):
             scanned += 1
             if scanned % 200000 == 0:
@@ -591,11 +641,28 @@ def main():
             if not name and (h is None or h > NAMED_MIN_H):
                 continue
             row = asteroid_record(rec)
-            if row and take("named", row):
-                n += 1
+            if row:
+                rows.append(row)
+        # 配布ファイルに並んでいる順ではなく、明るい順に取り込む。
+        # --full を付けない回は前回の named.json (明るい順で書いてある) から
+        # 拾うので、ここを揃えておかないと「よく使う天体」の木の並びだけが
+        # 回ごとに入れ替わり、そのたびに差分が出てしまう
+        rows.sort(key=brightness_key)
+        n = sum(1 for row in rows if take("named", row))
         print("  %d 件 (%d 件を走査)" % (n, scanned))
     else:
-        print("named: --full が無いので飛ばす")
+        # 落とさない代わりに、前回の named.json を読んで「よく使う天体」だけ
+        # 拾い直す。ここを飛ばすと popular.json が 64件 → 38件 に減り、
+        # check_bodies.py が「件数が少なすぎる」で止まる
+        rows = read_named_rows(args.out)
+        n = sum(1 for row in rows if take_popular_only(row))
+        if rows:
+            # 据え置く named.json はこの配布ファイルから作ったものなので、
+            # 出どころには載せたままにする。外すと source が変わり、落として
+            # いないのに全ファイルが「変わった」ことになってしまう
+            src = SOURCES["mpcorb"]
+            source_info["files"].append({"set": "named", "url": src["url"], "note": src["note"]})
+        print("named: --full が無いので落とさない (前回の %d 件から拾い直し)" % n)
 
     # --- 書き出し ---
     # 今回作らなかったまとまり (--full なしのときの named など) は、前回のものを
