@@ -420,6 +420,46 @@ def popular_key(rec, keys, kind):
     return None
 
 
+def same_but_time(old_text, data):
+    """前のファイルと、時刻の欄を除いて同じ中身か。
+
+    generated_at と source.retrieved は走らせるたびに動く。ここまで見て
+    比べてしまうと、MPC側に何の動きも無かった回でもファイルまるごとが
+    「変わった」ことになる。
+    """
+    try:
+        old = json.loads(old_text)
+    except ValueError:
+        return False
+    if not isinstance(old, dict):
+        return False
+    old["generated_at"] = data.get("generated_at")
+    if isinstance(old.get("source"), dict) and isinstance(data.get("source"), dict):
+        old["source"] = dict(old["source"], retrieved=data["source"].get("retrieved"))
+    return old == data
+
+
+def write_json(path, data, **dump_kw):
+    """書き出す。中身が前と同じなら触らない。
+
+    Actions は変化があったときだけ commit するので、ここで触らなければ
+    そのまま「変更なし」で終わる。時刻だけを書き換えて出していると、天体が
+    1件も増えていない回でも data/bodies まるごと (5MB前後) が記録に積み
+    上がる。更新を頻繁にするほど効いてくる。
+
+    @returns ファイルの大きさ [byte]
+    """
+    text = json.dumps(data, ensure_ascii=False, **dump_kw) + "\n"
+    if os.path.exists(path):
+        with io.open(path, encoding="utf-8") as f:
+            old_text = f.read()
+        if old_text == text or same_but_time(old_text, data):
+            return os.path.getsize(path)
+    with io.open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return os.path.getsize(path)
+
+
 def write_set(out_dir, set_id, label, note, groups, source, generated, extra=None):
     """1つのまとまりを書き出す。
 
@@ -441,10 +481,7 @@ def write_set(out_dir, set_id, label, note, groups, source, generated, extra=Non
     }
     if extra:
         data.update(extra)
-    with io.open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-        f.write("\n")
-    return os.path.getsize(path)
+    return write_json(path, data, separators=(",", ":"))
 
 
 def make_group(kind, bodies):
@@ -623,9 +660,7 @@ def main():
         "sets": entries,
         "total": total,
     }
-    with io.open(os.path.join(args.out, "index.json"), "w", encoding="utf-8") as f:
-        json.dump(index, f, ensure_ascii=False, indent=1)
-        f.write("\n")
+    write_json(os.path.join(args.out, "index.json"), index, indent=1)
 
     print("合計 %d 件 / %.2f MB" % (total, sum(e["bytes"] for e in entries) / 1e6))
     # 「popular」に取り込めなかった指定を知らせる (綴り違いに気付けるように)
