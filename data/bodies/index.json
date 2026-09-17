@@ -1,11 +1,11 @@
 {
  "format": "atd-bodies-index",
  "version": 1,
- "generated_at": "2026-08-29T12:27:50Z",
+ "generated_at": "2026-09-16T19:20:17Z",
  "source": {
   "name": "IAU Minor Planet Center",
   "site": "https://www.minorplanetcenter.net",
-  "retrieved": "2026-08-29T12:27:50Z",
+  "retrieved": "2026-09-16T19:20:17Z",
   "files": [
    {
     "set": "neo",
@@ -69,7 +69,7 @@
     "interstellar"
    ],
    "count": 3,
-   "bytes": 1589,
+   "bytes": 1588,
    "preload": true
   },
   {
@@ -80,8 +80,8 @@
    "kinds": [
     "asteroid"
    ],
-   "count": 42237,
-   "bytes": 4190762,
+   "count": 42422,
+   "bytes": 4209242,
    "preload": false
   },
   {
@@ -92,8 +92,8 @@
    "kinds": [
     "comet"
    ],
-   "count": 934,
-   "bytes": 105380,
+   "count": 935,
+   "bytes": 105571,
    "preload": false
   },
   {
@@ -104,8 +104,8 @@
    "kinds": [
     "asteroid"
    ],
-   "count": 8242,
-   "bytes": 906003,
+   "count": 8248,
+   "bytes": 906622,
    "preload": false
   },
   {
@@ -116,10 +116,10 @@
    "kinds": [
     "asteroid"
    ],
-   "count": 26244,
-   "bytes": 2890342,
+   "count": 26309,
+   "bytes": 2897674,
    "preload": false
   }
  ],
- "total": 77724
+ "total": 77981
 }
