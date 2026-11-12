@@ -1,11 +1,11 @@
 {
  "format": "atd-bodies-index",
  "version": 1,
- "generated_at": "2026-11-10T10:48:54Z",
+ "generated_at": "2026-11-12T10:41:24Z",
  "source": {
   "name": "IAU Minor Planet Center",
   "site": "https://www.minorplanetcenter.net",
-  "retrieved": "2026-11-10T10:48:54Z",
+  "retrieved": "2026-11-12T10:41:24Z",
   "files": [
    {
     "set": "neo",
@@ -57,7 +57,7 @@
     "comet"
    ],
    "count": 64,
-   "bytes": 9377,
+   "bytes": 9379,
    "preload": true
   },
   {
@@ -80,8 +80,8 @@
    "kinds": [
     "asteroid"
    ],
-   "count": 43038,
-   "bytes": 4280370,
+   "count": 43076,
+   "bytes": 4284157,
    "preload": false
   },
   {
@@ -93,7 +93,7 @@
     "comet"
    ],
    "count": 950,
-   "bytes": 107333,
+   "bytes": 107281,
    "preload": false
   },
   {
@@ -104,8 +104,8 @@
    "kinds": [
     "asteroid"
    ],
-   "count": 9352,
-   "bytes": 1028187,
+   "count": 9353,
+   "bytes": 1028311,
    "preload": false
   },
   {
@@ -121,5 +121,5 @@
    "preload": false
   }
  ],
- "total": 79716
+ "total": 79755
 }
