@@ -1,11 +1,11 @@
 {
  "format": "atd-bodies-index",
  "version": 1,
- "generated_at": "2026-11-22T10:46:30Z",
+ "generated_at": "2026-11-23T11:52:14Z",
  "source": {
   "name": "IAU Minor Planet Center",
   "site": "https://www.minorplanetcenter.net",
-  "retrieved": "2026-11-22T10:46:30Z",
+  "retrieved": "2026-11-23T11:52:14Z",
   "files": [
    {
     "set": "neo",
@@ -93,7 +93,7 @@
     "comet"
    ],
    "count": 951,
-   "bytes": 107371,
+   "bytes": 107357,
    "preload": false
   },
   {
